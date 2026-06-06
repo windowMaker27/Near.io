@@ -1,0 +1,51 @@
+{
+  "expo": {
+    "name": "Near.io",
+    "slug": "near-io",
+    "scheme": "neario",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "dark",
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#0B1020"
+    },
+    "assetBundlePatterns": ["**/*"],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "io.near.app",
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "Near.io utilise votre position pour vous guider vers le commerce alimentaire ouvert le plus proche.",
+        "NSCameraUsageDescription": "Near.io utilise la caméra pour afficher le mode AR directionnel."
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#0B1020"
+      },
+      "package": "io.near.app",
+      "permissions": [
+        "ACCESS_COARSE_LOCATION",
+        "ACCESS_FINE_LOCATION",
+        "CAMERA"
+      ]
+    },
+    "plugins": [
+      "expo-router",
+      "expo-location",
+      "expo-camera",
+      "react-native-reanimated"
+    ],
+    "experiments": {
+      "typedRoutes": true
+    },
+    "extra": {
+      "eas": {
+        "projectId": "near-io-local-dev"
+      }
+    }
+  }
+}
