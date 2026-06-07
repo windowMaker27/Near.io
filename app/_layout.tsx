@@ -20,7 +20,8 @@ function AppInitializer() {
 
 export default function RootLayout() {
   const [fontsLoaded] = Font.useFonts({
-    JetBrainsMono: JetBrainsMono_400Regular,
+    // Clés alignées avec les noms utilisés dans theme.ts et les écrans
+    JetBrainsMono_400Regular,
     JetBrainsMono_500Medium,
     JetBrainsMono_700Bold,
   });
