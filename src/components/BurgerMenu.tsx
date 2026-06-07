@@ -49,7 +49,7 @@ export function BurgerMenu({ open, onClose, onSubmitPlace }: Props) {
 
   const accountLabel = session
     ? (profile?.username ?? 'Mon compte')
-    : 'Créer un compte';
+    : 'Créer un compte / Connexion';
   const accountRoute = session ? '/profile' : '/(auth)/register';
 
   return (

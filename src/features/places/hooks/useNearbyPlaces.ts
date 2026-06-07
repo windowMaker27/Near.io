@@ -11,19 +11,34 @@ import { fetchApprovedPlaces } from '@/services/supabaseService';
 import { Coordinates, Place } from '@/types/place';
 import { isGoogleConfigured } from '@/lib/env';
 
+// Cache module-level : survive les re-renders déclenchés par onAuthStateChange
+interface OsmCache {
+  lat: number;
+  lon: number;
+  radius: number;
+  places: Place[];
+  fetchedAt: number;
+}
+let osmCache: OsmCache | null = null;
+const OSM_CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+
+function isCacheValid(cache: OsmCache, lat: number, lon: number, radius: number): boolean {
+  if (Date.now() - cache.fetchedAt > OSM_CACHE_TTL_MS) return false;
+  if (cache.radius !== radius) return false;
+  const d = haversineDistanceMeters(cache.lat, cache.lon, lat, lon);
+  return d < 50; // < 50 m de déplacement → cache valide
+}
+
 export const useNearbyPlaces = (userLocation?: Coordinates) => {
   const { filters } = useFiltersStore();
   const [places, setPlaces] = useState<Place[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string>();
 
-  // Utilise des primitives comme dépendances pour éviter les re-renders
-  // causés par des nouvelles références d'objet identiques en valeur.
   const lat = userLocation?.latitude;
   const lon = userLocation?.longitude;
   const radius = filters.radiusMeters;
 
-  // Garde la dernière valeur de radius sans re-déclencher le fetch
   const radiusRef = useRef(radius);
   radiusRef.current = radius;
 
@@ -40,23 +55,26 @@ export const useNearbyPlaces = (userLocation?: Coordinates) => {
       setLoading(true);
       setError(undefined);
       try {
-        const [osmResult, supabaseResult] = await Promise.allSettled([
-          fetchNearbyOverpassPlaces(lat, lon, radius),
-          fetchApprovedPlaces(lat, lon, radius),
-        ]);
+        // OSM : réutilise le cache si dispo (survit aux re-renders d'auth)
+        let osmPlaces: Place[];
+        if (osmCache && isCacheValid(osmCache, lat, lon, radius)) {
+          console.log('[useNearbyPlaces] OSM: cache hit', osmCache.places.length, 'lieux');
+          osmPlaces = osmCache.places;
+        } else {
+          const osmResult = await fetchNearbyOverpassPlaces(lat, lon, radius);
+          osmPlaces = osmResult;
+          osmCache = { lat, lon, radius, places: osmResult, fetchedAt: Date.now() };
+          console.log('[useNearbyPlaces] OSM: fetch', osmPlaces.length, 'lieux');
+        }
 
-        console.log('[useNearbyPlaces] OSM:', osmResult.status,
-          osmResult.status === 'fulfilled' ? osmResult.value.length + ' lieux' : osmResult.reason);
-        console.log('[useNearbyPlaces] Supabase:', supabaseResult.status,
-          supabaseResult.status === 'fulfilled' ? supabaseResult.value.length + ' lieux' : supabaseResult.reason);
+        const supabaseResult = await fetchApprovedPlaces(lat, lon, radius).catch((e) => {
+          console.warn('[useNearbyPlaces] Supabase error:', e);
+          return [];
+        });
 
-        const osmPlaces: Place[] =
-          osmResult.status === 'fulfilled' ? osmResult.value : [];
-        const userPlaces: Place[] =
-          supabaseResult.status === 'fulfilled'
-            ? supabaseResult.value.map(normalizeSupabasePlace)
-            : [];
+        console.log('[useNearbyPlaces] Supabase:', supabaseResult.length, 'lieux');
 
+        const userPlaces = supabaseResult.map(normalizeSupabasePlace);
         const merged = deduplicatePlaces([...osmPlaces, ...userPlaces]);
         console.log('[useNearbyPlaces] Total après dédoublonnage:', merged.length);
 
@@ -113,7 +131,6 @@ export const useNearbyPlaces = (userLocation?: Coordinates) => {
 
     load();
     return () => { cancelled = true; };
-  // Dépendances primitives : pas de re-render inutile sur nouvelle ref objet
   }, [lat, lon, radius]);
 
   const filteredPlaces = useMemo(() => filterPlaces(places, filters), [filters, places]);
