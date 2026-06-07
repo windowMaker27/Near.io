@@ -7,17 +7,13 @@ import { PlaceCategory } from '@/types/place';
 import { useFiltersStore } from '@/store/filtersStore';
 
 const categories: PlaceCategory[] = [
-  'supermarket',
-  'grocery',
-  'bakery',
-  'convenience',
-  'organic',
-  'halal',
+  'supermarket', 'grocery', 'bakery', 'convenience', 'organic', 'halal',
 ];
 
 export const FilterSheet = () => {
   const ref = useRef<BottomSheet>(null);
-  const snapPoints = useMemo(() => ['16%', '52%'], []);
+  // snap[0] plus bas : handle visible mais contenu masqué
+  const snapPoints = useMemo(() => ['8%', '52%'], []);
   const { filters, toggleCategory, toggleOpenOnly, setRadius } = useFiltersStore();
 
   return (

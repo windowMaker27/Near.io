@@ -9,16 +9,20 @@ import {
 import { useRouter } from 'expo-router';
 import { theme } from '@/constants/theme';
 
-type Props = { open: boolean; onClose: () => void };
+type Props = {
+  open: boolean;
+  onClose: () => void;
+  onSubmitPlace: () => void;
+};
 
-const ITEMS = [
-  { label: 'Favoris', route: '/favorites', icon: '♥' },
-  { label: 'Paramètres', route: '/settings', icon: '⚙' },
-  { label: 'Mode AR', route: '/ar', icon: '◎' },
-  { label: 'Carte', route: '/map', icon: '⊞' },
+const NAV_ITEMS = [
+  { label: 'Favoris',     route: '/favorites', icon: '♥' },
+  { label: 'Paramètres', route: '/settings',  icon: '⚙' },
+  { label: 'Mode AR',    route: '/ar',        icon: '◎' },
+  { label: 'Carte',      route: '/map',       icon: '⊞' },
 ] as const;
 
-export function BurgerMenu({ open, onClose }: Props) {
+export function BurgerMenu({ open, onClose, onSubmitPlace }: Props) {
   const router = useRouter();
   const opacity = useRef(new Animated.Value(0)).current;
   const translateY = useRef(new Animated.Value(-20)).current;
@@ -42,24 +46,31 @@ export function BurgerMenu({ open, onClose }: Props) {
 
   return (
     <Pressable style={s.backdrop} onPress={onClose}>
-      <Animated.View
-        style={[s.menu, { opacity, transform: [{ translateY }] }]}
-      >
+      <Animated.View style={[s.menu, { opacity, transform: [{ translateY }] }]}>
         <Text style={s.menuTitle}>NEAR.IO</Text>
         <View style={s.divider} />
-        {ITEMS.map((item) => (
+
+        {NAV_ITEMS.map((item) => (
           <Pressable
             key={item.route}
             style={s.menuItem}
-            onPress={() => {
-              onClose();
-              router.push(item.route);
-            }}
+            onPress={() => { onClose(); router.push(item.route); }}
           >
             <Text style={s.menuIcon}>{item.icon}</Text>
             <Text style={s.menuLabel}>{item.label}</Text>
           </Pressable>
         ))}
+
+        <View style={s.divider} />
+
+        {/* Proposer un commerce */}
+        <Pressable
+          style={s.menuItem}
+          onPress={() => { onClose(); onSubmitPlace(); }}
+        >
+          <Text style={s.menuIcon}>＋</Text>
+          <Text style={s.menuLabel}>Proposer un commerce</Text>
+        </Pressable>
       </Animated.View>
     </Pressable>
   );
@@ -96,6 +107,7 @@ const s = StyleSheet.create({
     backgroundColor: theme.border,
     marginHorizontal: 20,
     marginBottom: 8,
+    marginTop: 4,
   },
   menuItem: {
     flexDirection: 'row',

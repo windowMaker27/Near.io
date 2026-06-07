@@ -14,7 +14,7 @@ type FiltersState = {
 
 const initialFilters: Filters = {
   categories: [],
-  openOnly: false,
+  openOnly: true,   // activé par défaut
   radiusMeters: DEFAULT_RADIUS_METERS,
 };
 

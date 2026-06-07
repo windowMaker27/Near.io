@@ -15,14 +15,8 @@ function dayIndex(token: string): number {
   return OSM_DAYS.indexOf(normalized);
 }
 
-/**
- * Convertit une heure en minutes depuis minuit.
- * Supporte : "08h" "08h30" "08:30" "8" "20h" "20h00" "8:00"
- */
 function timeToMinutes(t: string): number | null {
   const s = t.trim();
-
-  // Format "08h30" ou "08h" ou "20h"
   const hFmt = s.match(/^(\d{1,2})[hH](\d{0,2})$/);
   if (hFmt) {
     const h = parseInt(hFmt[1], 10);
@@ -30,8 +24,6 @@ function timeToMinutes(t: string): number | null {
     if (h > 24 || m > 59) return null;
     return h * 60 + m;
   }
-
-  // Format "08:30" ou "08:00" ou "8:00"
   const colonFmt = s.match(/^(\d{1,2}):(\d{2})$/);
   if (colonFmt) {
     const h = parseInt(colonFmt[1], 10);
@@ -39,22 +31,21 @@ function timeToMinutes(t: string): number | null {
     if (h > 24 || m > 59) return null;
     return h * 60 + m;
   }
-
-  // Format entier seul "8" ou "20"
   const intFmt = s.match(/^(\d{1,2})$/);
   if (intFmt) {
     const h = parseInt(intFmt[1], 10);
     if (h > 24) return null;
     return h * 60;
   }
-
   return null;
 }
 
 function minutesToDisplay(minutes: number): string {
   const h = Math.floor(minutes / 60) % 24;
   const m = minutes % 60;
-  return m === 0 ? `${h}h` : `${h}h${m.toString().padStart(2, '0')}`;
+  // Toujours 2 chiffres pour l'heure (ex: 0h → "00h")
+  const hh = h.toString().padStart(2, '0');
+  return m === 0 ? `${hh}h` : `${hh}h${m.toString().padStart(2, '0')}`;
 }
 
 function todayIndex(): number {
@@ -65,11 +56,6 @@ function nowMinutes(): number {
   return d.getHours() * 60 + d.getMinutes();
 }
 
-/**
- * Regex qui isole la plage horaire en fin de règle.
- * Matche : "08h-20h" "08h30-20h00" "08:00-20:00" "8-20"
- * Groupe 1 = ouverture, groupe 2 = fermeture
- */
 const TIME_RANGE_RE =
   /([\d]{1,2}(?:[hH][\d]{0,2}|:[\d]{2})?)\s*-\s*([\d]{1,2}(?:[hH][\d]{0,2}|:[\d]{2})?)\s*$/;
 
@@ -123,7 +109,6 @@ function parseRule(rule: string): RuleResult | null {
 
 export function parseOpeningHoursInfo(raw: string | undefined): OpeningInfo {
   if (!raw) return { status: 'unknown' };
-
   for (const rule of raw.split(';').map((r) => r.trim()).filter(Boolean)) {
     const result = parseRule(rule);
     if (result !== null) return result;

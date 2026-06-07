@@ -88,7 +88,6 @@ export default function CompassScreen() {
           <View style={s.burgerLine} />
         </Pressable>
 
-        {/* Appui sur les infos de la cible → ouvre le détail */}
         <Pressable
           style={s.targetInfo}
           onPress={() => target && setDetailVisible(true)}
@@ -161,23 +160,17 @@ export default function CompassScreen() {
       {/* BOTTOM ACTION */}
       <View style={s.bottomBar}>
         <Pressable style={s.mapBtn} onPress={() => router.push('/map')}>
-          <Text style={s.mapBtnText}>Ouvrir la carte</Text>
+          <Text style={s.mapBtnText}>Afficher sur la carte</Text>
         </Pressable>
       </View>
 
-      {/* FAB */}
-      <Pressable
-        style={s.fab}
-        onPress={() => setSubmitModalOpen(true)}
-        accessibilityLabel="Proposer un commerce"
-        accessibilityRole="button"
-      >
-        <Text style={s.fabIcon}>+</Text>
-      </Pressable>
-
       {/* MODALS / DRAWERS */}
       <FilterDrawer />
-      <BurgerMenu open={burgerOpen} onClose={() => setBurgerOpen(false)} />
+      <BurgerMenu
+        open={burgerOpen}
+        onClose={() => setBurgerOpen(false)}
+        onSubmitPlace={() => setSubmitModalOpen(true)}
+      />
       <SubmitPlaceModal
         visible={submitModalOpen}
         onClose={() => setSubmitModalOpen(false)}
@@ -282,27 +275,5 @@ const s = StyleSheet.create({
     fontSize: 14,
     color: theme.text,
     letterSpacing: 0.5,
-  },
-  fab: {
-    position: 'absolute',
-    bottom: 104,
-    right: 20,
-    width: 52,
-    height: 52,
-    borderRadius: 26,
-    backgroundColor: theme.accent,
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 8,
-  },
-  fabIcon: {
-    fontSize: 28,
-    color: theme.bg,
-    lineHeight: 32,
-    fontFamily: theme.fontMonoBold,
   },
 });
