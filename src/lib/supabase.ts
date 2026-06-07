@@ -1,0 +1,7 @@
+/**
+ * supabase.ts — client SDK unique, importé partout
+ */
+import { createClient } from '@supabase/supabase-js';
+import { SUPABASE_URL, SUPABASE_ANON_KEY } from '@/lib/env';
+
+export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);

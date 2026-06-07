@@ -1,5 +1,6 @@
 import { OSM_TAG_TO_CATEGORY } from '@/constants/placeTypes';
-import { Place } from '@/types/place';
+import { Place, UserPlaceSubmission } from '@/types/place';
+import { parseOpeningHours } from '@/features/places/utils/parseOpeningHours';
 
 export const normalizeOsmPlace = (element: any): Place | null => {
   const latitude = element.lat ?? element.center?.lat;
@@ -18,7 +19,7 @@ export const normalizeOsmPlace = (element: any): Place | null => {
     category,
     coordinates: { latitude, longitude },
     shortAddress: element.tags?.['addr:street'] ?? element.tags?.addr_full,
-    openingStatus: 'unknown',
+    openingStatus: parseOpeningHours(openingHours),
     osmOpeningHours: openingHours,
   };
 };
@@ -41,3 +42,26 @@ export const mergeGoogleDetails = (place: Place, details: any): Place => {
     lastUpdatedAt: Date.now(),
   };
 };
+
+/** Convertit un lieu soumis par l'utilisateur (Supabase) en Place */
+export const normalizeSupabasePlace = (row: UserPlaceSubmission): Place => ({
+  id: `user-${row.id ?? Math.random().toString(36).slice(2)}`,
+  source: 'user',
+  name: row.name,
+  category: row.category,
+  coordinates: { latitude: row.latitude, longitude: row.longitude },
+  shortAddress: row.short_address,
+  openingStatus: parseOpeningHours(row.opening_hours),
+  osmOpeningHours: row.opening_hours,
+  openingHoursText: row.opening_hours ? [row.opening_hours] : undefined,
+  qualityScore: computeUserPlaceScore(row),
+  lastUpdatedAt: row.submitted_at ? new Date(row.submitted_at).getTime() : undefined,
+});
+
+function computeUserPlaceScore(row: UserPlaceSubmission): number {
+  let score = 2; // bonus source communautaire
+  if (row.short_address) score += 1;
+  if (row.opening_hours) score += 2;
+  if (row.description) score += 1;
+  return score;
+}

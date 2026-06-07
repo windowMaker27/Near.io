@@ -1,13 +1,6 @@
 /**
  * env.ts
  * Lecture des variables d'environnement Expo.
- *
- * Les variables préfixées EXPO_PUBLIC_* sont injectées par Metro
- * directement dans process.env au build/start — pas besoin de Constants.
- *
- * NE PAS utiliser Constants.expoConfig.extra pour des vars .env :
- * extra ne reçoit les valeurs que si elles sont explicitement mappées
- * dans app.config.js, ce qui crée une duplication inutile.
  */
 
 export const GOOGLE_PLACES_API_KEY: string =
@@ -27,3 +20,11 @@ export const SUPABASE_URL: string =
 
 export const SUPABASE_ANON_KEY: string =
   process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY ?? '';
+
+// Alias utilisé dans overpass.ts
+export const env = {
+  overpassUrl: OVERPASS_URL,
+};
+
+export const isGoogleConfigured =
+  !!GOOGLE_PLACES_API_KEY && ENABLE_GOOGLE_ENRICHMENT;
