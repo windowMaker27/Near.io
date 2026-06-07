@@ -67,7 +67,6 @@ export function PlaceDetailSheet({ place, onClose }: Props) {
             <View style={{ flex: 1 }}>
               <Text style={s.name}>{place.name}</Text>
               <Text style={s.category}>{PLACE_TYPE_LABELS[place.category]}</Text>
-              {/* Badge source : Communauté / Admin (rien pour OSM) */}
               <SourceBadge place={place} />
             </View>
             <Pressable onPress={onClose} hitSlop={12}>
@@ -107,8 +106,8 @@ export function PlaceDetailSheet({ place, onClose }: Props) {
             </View>
           )}
 
-          {/* Logs communautaires */}
-          <PlaceLogsSection placeId={place.id} />
+          {/* Logs communautaires — onClose ferme le sheet si l'utilisateur n'est pas connecté */}
+          <PlaceLogsSection placeId={place.id} onCloseParent={onClose} />
         </ScrollView>
       </View>
     </Modal>

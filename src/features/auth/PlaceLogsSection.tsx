@@ -39,7 +39,12 @@ function LogItem({ log }: { log: PlaceLog }) {
   );
 }
 
-export function PlaceLogsSection({ placeId }: { placeId: string }) {
+type Props = {
+  placeId: string;
+  onCloseParent?: () => void;  // ferme le PlaceDetailSheet si fourni
+};
+
+export function PlaceLogsSection({ placeId, onCloseParent }: Props) {
   const { logs, isLoading, isPosting, addLog } = usePlaceLogs(placeId);
   const { session } = useAuthStore();
   const [modalVisible, setModalVisible] = useState(false);
@@ -57,6 +62,16 @@ export function PlaceLogsSection({ placeId }: { placeId: string }) {
     }
   }
 
+  function handleAddPress() {
+    if (!session) {
+      // Ferme le sheet parent avant de naviguer pour éviter le bug visuel
+      onCloseParent?.();
+      router.push('/(auth)/login');
+      return;
+    }
+    setModalVisible(true);
+  }
+
   return (
     <View style={styles.container}>
       {/* En-tête */}
@@ -64,10 +79,7 @@ export function PlaceLogsSection({ placeId }: { placeId: string }) {
         <Text style={styles.title}>LOGS</Text>
         <TouchableOpacity
           style={styles.addBtn}
-          onPress={() => {
-            if (!session) { router.push('/(auth)/login'); return; }
-            setModalVisible(true);
-          }}
+          onPress={handleAddPress}
           accessibilityLabel="Ajouter un log"
         >
           <Text style={styles.addBtnText}>+</Text>
@@ -142,7 +154,6 @@ const styles = StyleSheet.create({
   logMeta: { color: theme.textMuted },
   logAt: { color: theme.accent },
   logSep: { color: theme.textMuted },
-  // Modal
   modalOverlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.6)' },
   modalBox: { backgroundColor: theme.surface, borderTopLeftRadius: 16, borderTopRightRadius: 16, padding: 20, paddingBottom: 36 },
   modalTitle: { fontFamily: 'JetBrainsMono_700Bold', fontSize: 13, color: theme.text, marginBottom: 14, letterSpacing: 1 },
