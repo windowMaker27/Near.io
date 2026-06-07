@@ -11,24 +11,25 @@ export interface GeocodedCoords {
   displayName: string;
 }
 
+/**
+ * Géocode une adresse française via l'API BAN (Base Adresse Nationale / IGN).
+ * Beaucoup plus précis que Nominatim sur les numéros de voie en France.
+ * Endpoint de référence : https://data.geopf.fr/geocodage/search
+ */
 export async function geocodeAddress(address: string): Promise<GeocodedCoords | null> {
   try {
     const query = encodeURIComponent(address);
-    const url = `https://nominatim.openstreetmap.org/search?q=${query}&format=json&limit=1&addressdetails=0`;
+    const url = `https://data.geopf.fr/geocodage/search?q=${query}&limit=1`;
     const res = await fetch(url, {
-      headers: {
-        Accept: 'application/json',
-        'User-Agent': 'Near.io/1.0 (mobile app, contact@near.io)',
-      },
+      headers: { Accept: 'application/json' },
     });
     if (!res.ok) return null;
-    const data: Array<{ lat: string; lon: string; display_name: string }> = await res.json();
-    if (!data.length) return null;
-    return {
-      latitude: parseFloat(data[0].lat),
-      longitude: parseFloat(data[0].lon),
-      displayName: data[0].display_name,
-    };
+    const data = await res.json();
+    const feature = data?.features?.[0];
+    if (!feature) return null;
+    const [longitude, latitude] = feature.geometry.coordinates;
+    const displayName = feature.properties?.label ?? address;
+    return { latitude, longitude, displayName };
   } catch {
     return null;
   }
