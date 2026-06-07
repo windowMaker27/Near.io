@@ -3,23 +3,39 @@ import { PlaceLog } from '@/types/user';
 
 /** Charge tous les logs d'un commerce, du plus récent au plus ancien */
 export async function fetchPlaceLogs(placeId: string): Promise<PlaceLog[]> {
-  const { data, error } = await supabase
+  // 1. Récupère les logs
+  const { data: logsData, error: logsError } = await supabase
     .from('place_logs')
-    .select('id, place_id, user_id, content, created_at, profiles(username, avatar_url)')
+    .select('id, place_id, user_id, content, created_at')
     .eq('place_id', placeId)
     .order('created_at', { ascending: true });
 
-  if (error) throw error;
+  if (logsError) throw logsError;
+  if (!logsData || logsData.length === 0) return [];
 
-  return (data ?? []).map((row: any) => ({
-    id: row.id,
-    placeId: row.place_id,
-    userId: row.user_id,
-    username: row.profiles?.username ?? 'anonyme',
-    avatarUrl: row.profiles?.avatar_url ?? undefined,
-    content: row.content,
-    createdAt: row.created_at,
-  }));
+  // 2. Récupère les profils correspondants
+  const userIds = [...new Set(logsData.map((r) => r.user_id))];
+  const { data: profilesData } = await supabase
+    .from('profiles')
+    .select('id, username, avatar_url')
+    .in('id', userIds);
+
+  const profileMap = new Map(
+    (profilesData ?? []).map((p) => [p.id, p])
+  );
+
+  return logsData.map((row) => {
+    const profile = profileMap.get(row.user_id);
+    return {
+      id: row.id,
+      placeId: row.place_id,
+      userId: row.user_id,
+      username: profile?.username ?? 'anonyme',
+      avatarUrl: profile?.avatar_url ?? undefined,
+      content: row.content,
+      createdAt: row.created_at,
+    };
+  });
 }
 
 /** Poste un nouveau log */
