@@ -1,6 +1,7 @@
 /**
  * Modal de soumission d'un lieu par l'utilisateur.
- * Utilise uniquement des composants RN core — pas de dépendance native.
+ * L'utilisateur saisit une adresse postale — les coordonnées
+ * sont déduites via l'API Nominatim (OpenStreetMap), sans clé requise.
  */
 import { useState } from 'react';
 import {
@@ -15,8 +16,7 @@ import {
 } from 'react-native';
 import { theme } from '@/constants/theme';
 import { SUBMITTABLE_CATEGORIES, PLACE_TYPE_LABELS } from '@/constants/placeTypes';
-import { submitPlace } from '@/services/supabaseService';
-import { useAppStore } from '@/store/appStore';
+import { submitPlace, geocodeAddress } from '@/services/supabaseService';
 import { PlaceCategory } from '@/types/place';
 
 type Props = {
@@ -25,14 +25,13 @@ type Props = {
 };
 
 export function SubmitPlaceModal({ visible, onClose }: Props) {
-  const { userLocation } = useAppStore();
-
   const [name, setName] = useState('');
   const [category, setCategory] = useState<PlaceCategory>('grocery');
   const [address, setAddress] = useState('');
   const [hours, setHours] = useState('');
   const [note, setNote] = useState('');
   const [loading, setLoading] = useState(false);
+  const [geocoding, setGeocoding] = useState(false);
   const [result, setResult] = useState<{ ok: boolean; message: string } | null>(null);
 
   const reset = () => {
@@ -43,25 +42,49 @@ export function SubmitPlaceModal({ visible, onClose }: Props) {
   const handleClose = () => { reset(); onClose(); };
 
   const handleSubmit = async () => {
-    if (!name.trim()) { setResult({ ok: false, message: 'Le nom est requis.' }); return; }
-    if (!userLocation) { setResult({ ok: false, message: 'Position GPS indisponible.' }); return; }
+    if (!name.trim()) {
+      setResult({ ok: false, message: 'Le nom est requis.' });
+      return;
+    }
+    if (!address.trim()) {
+      setResult({ ok: false, message: "L'adresse postale est requise." });
+      return;
+    }
+
+    // 1. Géocodage Nominatim
+    setGeocoding(true);
+    const coords = await geocodeAddress(address.trim());
+    setGeocoding(false);
+
+    if (!coords) {
+      setResult({
+        ok: false,
+        message: 'Adresse introuvable. Vérifiez et réessayez (ex : 12 rue de Rivoli, Paris).',
+      });
+      return;
+    }
+
+    // 2. Soumission Supabase
     setLoading(true);
     const res = await submitPlace({
       name: name.trim(),
       category,
-      latitude: userLocation.latitude,
-      longitude: userLocation.longitude,
-      short_address: address.trim() || undefined,
+      latitude: coords.latitude,
+      longitude: coords.longitude,
+      short_address: address.trim(),
       opening_hours: hours.trim() || undefined,
       description: note.trim() || undefined,
     });
     setLoading(false);
+
     setResult(
       res.ok
-        ? { ok: true, message: '✓ Soumis ! Visible après validation.' }
+        ? { ok: true, message: '✓ Soumis ! Visible après validation admin.' }
         : { ok: false, message: res.error ?? 'Erreur inconnue.' },
     );
   };
+
+  const busy = loading || geocoding;
 
   return (
     <Modal visible={visible} animationType="slide" transparent onRequestClose={handleClose}>
@@ -76,6 +99,7 @@ export function SubmitPlaceModal({ visible, onClose }: Props) {
 
           <ScrollView style={s.body} keyboardShouldPersistTaps="handled">
 
+            {/* NOM */}
             <Text style={s.label}>Nom *</Text>
             <TextInput
               style={s.input}
@@ -86,6 +110,7 @@ export function SubmitPlaceModal({ visible, onClose }: Props) {
               maxLength={80}
             />
 
+            {/* TYPE */}
             <Text style={s.label}>Type</Text>
             <View style={s.chips}>
               {SUBMITTABLE_CATEGORIES.map((cat) => (
@@ -101,16 +126,23 @@ export function SubmitPlaceModal({ visible, onClose }: Props) {
               ))}
             </View>
 
-            <Text style={s.label}>Adresse courte (optionnel)</Text>
+            {/* ADRESSE — obligatoire, utilisée pour le géocodage */}
+            <Text style={s.label}>Adresse postale *</Text>
             <TextInput
               style={s.input}
-              placeholder="Ex : 12 rue de la Paix, Paris"
+              placeholder="Ex : 12 rue de la Paix, 75001 Paris"
               placeholderTextColor={theme.textFaint}
               value={address}
               onChangeText={setAddress}
-              maxLength={120}
+              maxLength={150}
+              autoCapitalize="words"
+              returnKeyType="next"
             />
+            <Text style={s.hint}>
+              Les coordonnées GPS seront calculées automatiquement depuis l'adresse via OpenStreetMap.
+            </Text>
 
+            {/* HORAIRES */}
             <Text style={s.label}>Horaires (optionnel)</Text>
             <TextInput
               style={s.input}
@@ -121,6 +153,7 @@ export function SubmitPlaceModal({ visible, onClose }: Props) {
               maxLength={100}
             />
 
+            {/* NOTE */}
             <Text style={s.label}>Note (optionnel)</Text>
             <TextInput
               style={[s.input, s.inputMulti]}
@@ -133,25 +166,29 @@ export function SubmitPlaceModal({ visible, onClose }: Props) {
               maxLength={200}
             />
 
-            <Text style={s.hint}>
-              📍 Coordonnées GPS actuelles utilisées automatiquement.
-            </Text>
-
+            {/* RÉSULTAT */}
             {result && (
               <View style={[s.resultBox, result.ok ? s.resultOk : s.resultErr]}>
                 <Text style={s.resultText}>{result.message}</Text>
               </View>
             )}
 
+            {/* CTA */}
             <Pressable
-              style={[s.submitBtn, loading && s.submitDisabled]}
+              style={[s.submitBtn, busy && s.submitDisabled]}
               onPress={handleSubmit}
-              disabled={loading}
+              disabled={busy}
             >
-              {loading
-                ? <ActivityIndicator color={theme.bg} />
-                : <Text style={s.submitLabel}>Envoyer pour validation</Text>
-              }
+              {busy ? (
+                <View style={s.loadingRow}>
+                  <ActivityIndicator color={theme.bg} size="small" />
+                  <Text style={[s.submitLabel, { marginLeft: 8 }]}>
+                    {geocoding ? 'Géocodage…' : 'Envoi…'}
+                  </Text>
+                </View>
+              ) : (
+                <Text style={s.submitLabel}>Envoyer pour validation</Text>
+              )}
             </Pressable>
 
             <View style={{ height: 32 }} />
@@ -227,13 +264,14 @@ const s = StyleSheet.create({
     fontFamily: theme.fontMono,
     fontSize: 11,
     color: theme.textFaint,
-    marginTop: 14,
-    marginBottom: 8,
+    marginTop: 6,
+    marginBottom: 4,
+    lineHeight: 16,
   },
   resultBox: {
     padding: 12,
     borderRadius: 10,
-    marginTop: 8,
+    marginTop: 12,
     marginBottom: 4,
   },
   resultOk: { backgroundColor: '#0D2B1A', borderWidth: 1, borderColor: '#1A5C30' },
@@ -252,5 +290,9 @@ const s = StyleSheet.create({
     fontSize: 14,
     color: theme.bg,
     letterSpacing: 0.5,
+  },
+  loadingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
 });

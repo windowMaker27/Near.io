@@ -1,10 +1,9 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   Pressable,
   StyleSheet,
   Text,
   View,
-  Animated,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -23,6 +22,7 @@ import { triggerAlignmentHaptic } from '@/services/headingService';
 import { ALIGNMENT_THRESHOLD } from '@/constants/thresholds';
 import { FilterDrawer } from '@/components/FilterDrawer';
 import { BurgerMenu } from '@/components/BurgerMenu';
+import { SubmitPlaceModal } from '@/components/SubmitPlaceModal';
 import { theme } from '@/constants/theme';
 import { formatDistance } from '@/features/compass/utils/distance';
 import { PLACE_TYPE_LABELS } from '@/constants/placeTypes';
@@ -44,6 +44,7 @@ export default function CompassScreen() {
   const instruction = getDirectionInstruction(deltaAngle);
   const { isFavorite, toggleFavorite } = useFavorites();
   const [burgerOpen, setBurgerOpen] = useState(false);
+  const [submitModalOpen, setSubmitModalOpen] = useState(false);
 
   useEffect(() => { setSelectedTarget(target); }, [setSelectedTarget, target]);
 
@@ -155,11 +156,23 @@ export default function CompassScreen() {
         </Pressable>
       </View>
 
-      {/* SIDE FILTER DRAWER */}
-      <FilterDrawer />
+      {/* FAB — Ajouter un lieu */}
+      <Pressable
+        style={s.fab}
+        onPress={() => setSubmitModalOpen(true)}
+        accessibilityLabel="Proposer un commerce"
+        accessibilityRole="button"
+      >
+        <Text style={s.fabIcon}>+</Text>
+      </Pressable>
 
-      {/* BURGER MENU */}
+      {/* MODALS / DRAWERS */}
+      <FilterDrawer />
       <BurgerMenu open={burgerOpen} onClose={() => setBurgerOpen(false)} />
+      <SubmitPlaceModal
+        visible={submitModalOpen}
+        onClose={() => setSubmitModalOpen(false)}
+      />
     </SafeAreaView>
   );
 }
@@ -256,5 +269,28 @@ const s = StyleSheet.create({
     fontSize: 14,
     color: theme.text,
     letterSpacing: 0.5,
+  },
+  // FAB — bouton flottant bas droite
+  fab: {
+    position: 'absolute',
+    bottom: 104,
+    right: 20,
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: theme.accent,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  fabIcon: {
+    fontSize: 28,
+    color: theme.bg,
+    lineHeight: 32,
+    fontFamily: theme.fontMonoBold,
   },
 });
