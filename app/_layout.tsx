@@ -11,6 +11,12 @@ import {
   JetBrainsMono_700Bold,
 } from '@expo-google-fonts/jetbrains-mono';
 import { theme } from '@/constants/theme';
+import { useAuthInit } from '@/features/auth/useAuth';
+
+function AppInitializer() {
+  useAuthInit();
+  return null;
+}
 
 export default function RootLayout() {
   const [fontsLoaded] = Font.useFonts({
@@ -25,12 +31,15 @@ export default function RootLayout() {
     <GestureHandlerRootView style={{ flex: 1, backgroundColor: theme.bg }}>
       <SafeAreaProvider>
         <StatusBar style="light" backgroundColor={theme.bg} />
+        <AppInitializer />
         <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: theme.bg } }}>
           <Stack.Screen name="index" />
           <Stack.Screen name="map" />
           <Stack.Screen name="ar" />
           <Stack.Screen name="favorites" />
           <Stack.Screen name="settings" />
+          <Stack.Screen name="profile" />
+          <Stack.Screen name="(auth)" />
         </Stack>
       </SafeAreaProvider>
     </GestureHandlerRootView>

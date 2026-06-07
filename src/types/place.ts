@@ -35,6 +35,8 @@ export type Place = {
   bearingFromUser?: number;
   qualityScore?: number;
   lastUpdatedAt?: number;
+  /** Rôle de l'auteur de l'ajout (uniquement pour source === 'user') */
+  authorRole?: 'user' | 'admin';
 };
 
 export type UserPlaceSubmission = {
