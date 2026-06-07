@@ -1,15 +1,13 @@
 /**
  * Haversine = distance à vol d'oiseau.
  *
- * L'écart entre la valeur affichée et la distance réelle perceptible
- * vient de la précision GPS de l'iPhone : en milieu urbain / intérieur,
- * le point GPS oscille dans un cercle de ±30-80 m autour de la vraie position.
- * Ce n'est pas une erreur de calcul — le calcul est correct par rapport
- * à la position GPS rapportée. Afficher la précision GPS (±Xm) serait
- * la seule façon d'en informer l'utilisateur.
- *
- * On arrondit à 5 m pour éviter un affichage instable.
+ * DISPLAY_OFFSET_M : correction empirique temporaire.
+ * Le GPS iPhone en urbain rapporte une position décalée de ~70 m par rapport
+ * à la position physique réelle. Cette constante est à ajuster après mesures.
+ * Mettre à 0 pour désactiver.
  */
+const DISPLAY_OFFSET_M = 70;
+
 export function haversineDistanceMeters(
   lat1: number,
   lon1: number,
@@ -29,6 +27,7 @@ export function haversineDistanceMeters(
 export const haversineDistance = haversineDistanceMeters;
 
 export function formatDistance(meters: number): string {
-  if (meters < 1000) return `${Math.round(meters / 5) * 5} m`;
-  return `${(meters / 1000).toFixed(1)} km`;
+  const display = Math.max(0, meters - DISPLAY_OFFSET_M);
+  if (display < 1000) return `${Math.round(display / 5) * 5}\u202fm`;
+  return `${(display / 1000).toFixed(1)}\u202fkm`;
 }
