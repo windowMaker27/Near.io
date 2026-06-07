@@ -8,7 +8,6 @@ import {
   Text,
   View,
 } from 'react-native';
-import Slider from '@react-native-community/slider';
 import { useFiltersStore } from '@/store/filtersStore';
 import { theme } from '@/constants/theme';
 import { PLACE_TYPE_LABELS } from '@/constants/placeTypes';
@@ -16,7 +15,8 @@ import { PlaceCategory } from '@/types/place';
 import { formatDistance } from '@/features/compass/utils/distance';
 
 const DRAWER_WIDTH = 280;
-const { width: SCREEN_W } = Dimensions.get('window');
+
+const RADIUS_OPTIONS = [100, 300, 500, 1000, 2000, 3000];
 
 export function FilterDrawer() {
   const [open, setOpen] = useState(false);
@@ -49,7 +49,7 @@ export function FilterDrawer() {
 
   return (
     <>
-      {/* Pull handle — always visible on left edge */}
+      {/* Handle gauche */}
       {!open && (
         <Pressable style={s.handle} onPress={openDrawer}>
           <Text style={s.handleIcon}>›</Text>
@@ -58,11 +58,9 @@ export function FilterDrawer() {
       )}
 
       {/* Backdrop */}
-      {open && (
-        <Pressable style={s.backdrop} onPress={closeDrawer} />
-      )}
+      {open && <Pressable style={s.backdrop} onPress={closeDrawer} />}
 
-      {/* Drawer panel */}
+      {/* Drawer */}
       <Animated.View style={[s.drawer, { transform: [{ translateX }] }]}>
         <View style={s.drawerHeader}>
           <Text style={s.drawerTitle}>Filtres</Text>
@@ -72,7 +70,8 @@ export function FilterDrawer() {
         </View>
 
         <ScrollView style={s.drawerContent} showsVerticalScrollIndicator={false}>
-          {/* Ouverts uniquement */}
+
+          {/* Toggle ouverts uniquement */}
           <Pressable style={s.toggleRow} onPress={toggleOpenOnly}>
             <Text style={s.toggleLabel}>Ouverts uniquement</Text>
             <View style={[s.toggle, filters.openOnly && s.toggleOn]}>
@@ -82,23 +81,24 @@ export function FilterDrawer() {
 
           <View style={s.divider} />
 
-          {/* Rayon slider */}
+          {/* Rayon — boutons tap */}
           <Text style={s.sectionLabel}>Rayon de recherche</Text>
           <Text style={s.radiusValue}>{formatDistance(filters.radiusMeters)}</Text>
-          <Slider
-            style={{ width: '100%', height: 40 }}
-            minimumValue={100}
-            maximumValue={3000}
-            step={50}
-            value={filters.radiusMeters}
-            onValueChange={setRadius}
-            minimumTrackTintColor={theme.accent}
-            maximumTrackTintColor={theme.border}
-            thumbTintColor={theme.accent}
-          />
-          <View style={s.sliderLabels}>
-            <Text style={s.sliderMin}>100 m</Text>
-            <Text style={s.sliderMax}>3 km</Text>
+          <View style={s.radiusRow}>
+            {RADIUS_OPTIONS.map((r) => {
+              const active = filters.radiusMeters === r;
+              return (
+                <Pressable
+                  key={r}
+                  style={[s.radiusChip, active && s.radiusChipActive]}
+                  onPress={() => setRadius(r)}
+                >
+                  <Text style={[s.radiusChipLabel, active && s.radiusChipLabelActive]}>
+                    {formatDistance(r)}
+                  </Text>
+                </Pressable>
+              );
+            })}
           </View>
 
           <View style={s.divider} />
@@ -248,23 +248,31 @@ const s = StyleSheet.create({
     fontFamily: theme.fontMonoBold,
     fontSize: 22,
     color: theme.accent,
+    marginBottom: 8,
+  },
+  radiusRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
     marginBottom: 4,
   },
-  sliderLabels: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginTop: -4,
+  radiusChip: {
+    borderWidth: 1,
+    borderColor: theme.border,
+    borderRadius: 20,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
   },
-  sliderMin: {
+  radiusChipActive: {
+    borderColor: theme.accent,
+    backgroundColor: theme.accentDim,
+  },
+  radiusChipLabel: {
     fontFamily: theme.fontMono,
-    fontSize: 10,
+    fontSize: 12,
     color: theme.textMuted,
   },
-  sliderMax: {
-    fontFamily: theme.fontMono,
-    fontSize: 10,
-    color: theme.textMuted,
-  },
+  radiusChipLabelActive: { color: theme.text },
   categories: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 4 },
   catChip: {
     borderWidth: 1,
