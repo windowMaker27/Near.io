@@ -24,6 +24,7 @@ import { FilterDrawer } from '@/components/FilterDrawer';
 import { BurgerMenu } from '@/components/BurgerMenu';
 import { SubmitPlaceModal } from '@/components/SubmitPlaceModal';
 import { PlaceDetailSheet } from '@/components/PlaceDetailSheet';
+import { PlaceNavigator } from '@/components/PlaceNavigator';
 import { theme } from '@/constants/theme';
 import { formatDistance } from '@/features/compass/utils/distance';
 import { PLACE_TYPE_LABELS } from '@/constants/placeTypes';
@@ -41,7 +42,7 @@ export default function CompassScreen() {
   } = useAppStore();
 
   const { headingAvailable } = useHeading();
-  const { places, target, loading } = useNearbyPlaces(userLocation);
+  const { places, target, targetIndex, totalPlaces, goToNext, goToPrev, loading } = useNearbyPlaces(userLocation);
   const { deltaAngle } = useTargetBearing(userLocation, userHeading, target);
   const instruction = getDirectionInstruction(deltaAngle);
   const { isFavorite, toggleFavorite } = useFavorites();
@@ -166,6 +167,12 @@ export default function CompassScreen() {
 
       {/* MODALS / DRAWERS */}
       <FilterDrawer />
+      <PlaceNavigator
+        currentIndex={targetIndex}
+        total={totalPlaces}
+        onNext={goToNext}
+        onPrev={goToPrev}
+      />
       <BurgerMenu
         open={burgerOpen}
         onClose={() => setBurgerOpen(false)}

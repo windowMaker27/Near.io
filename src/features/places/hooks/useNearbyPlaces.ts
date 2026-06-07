@@ -20,13 +20,13 @@ interface OsmCache {
   fetchedAt: number;
 }
 let osmCache: OsmCache | null = null;
-const OSM_CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+const OSM_CACHE_TTL_MS = 5 * 60 * 1000;
 
 function isCacheValid(cache: OsmCache, lat: number, lon: number, radius: number): boolean {
   if (Date.now() - cache.fetchedAt > OSM_CACHE_TTL_MS) return false;
   if (cache.radius !== radius) return false;
   const d = haversineDistanceMeters(cache.lat, cache.lon, lat, lon);
-  return d < 50; // < 50 m de déplacement → cache valide
+  return d < 50;
 }
 
 export const useNearbyPlaces = (userLocation?: Coordinates) => {
@@ -34,6 +34,7 @@ export const useNearbyPlaces = (userLocation?: Coordinates) => {
   const [places, setPlaces] = useState<Place[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string>();
+  const [targetIndex, setTargetIndex] = useState(0);
 
   const lat = userLocation?.latitude;
   const lon = userLocation?.longitude;
@@ -42,42 +43,30 @@ export const useNearbyPlaces = (userLocation?: Coordinates) => {
   const radiusRef = useRef(radius);
   radiusRef.current = radius;
 
+  // Reset l'index quand la liste change
+  const prevPlacesRef = useRef<Place[]>([]);
+
   useEffect(() => {
-    if (lat == null || lon == null) {
-      console.log('[useNearbyPlaces] userLocation non disponible, attente...');
-      return;
-    }
+    if (lat == null || lon == null) return;
 
     let cancelled = false;
-    console.log(`[useNearbyPlaces] Chargement lieux — lat:${lat} lon:${lon} radius:${radius}`);
 
     const load = async () => {
       setLoading(true);
       setError(undefined);
       try {
-        // OSM : réutilise le cache si dispo (survit aux re-renders d'auth)
         let osmPlaces: Place[];
         if (osmCache && isCacheValid(osmCache, lat, lon, radius)) {
-          console.log('[useNearbyPlaces] OSM: cache hit', osmCache.places.length, 'lieux');
           osmPlaces = osmCache.places;
         } else {
           const osmResult = await fetchNearbyOverpassPlaces(lat, lon, radius);
           osmPlaces = osmResult;
           osmCache = { lat, lon, radius, places: osmResult, fetchedAt: Date.now() };
-          console.log('[useNearbyPlaces] OSM: fetch', osmPlaces.length, 'lieux');
         }
 
-        const supabaseResult = await fetchApprovedPlaces(lat, lon, radius).catch((e) => {
-          console.warn('[useNearbyPlaces] Supabase error:', e);
-          return [];
-        });
-
-        console.log('[useNearbyPlaces] Supabase:', supabaseResult.length, 'lieux');
-
+        const supabaseResult = await fetchApprovedPlaces(lat, lon, radius).catch(() => []);
         const userPlaces = supabaseResult.map(normalizeSupabasePlace);
         const merged = deduplicatePlaces([...osmPlaces, ...userPlaces]);
-        console.log('[useNearbyPlaces] Total après dédoublonnage:', merged.length);
-
         const base = merged.length ? merged : mockPlaces;
 
         const withDistance = base.map((place) => ({
@@ -109,11 +98,13 @@ export const useNearbyPlaces = (userLocation?: Coordinates) => {
           );
         }
 
-        if (!cancelled) setPlaces(enriched);
-      } catch (e) {
-        console.error('[useNearbyPlaces] Erreur critique:', e);
         if (!cancelled) {
-          setError('Impossible de charger les commerces, mode mock activé.');
+          setPlaces(enriched);
+          setTargetIndex(0); // reset à chaque nouveau chargement
+        }
+      } catch (e) {
+        if (!cancelled) {
+          setError('Impossible de charger les commerces.');
           const fallback = mockPlaces.map((place) => ({
             ...place,
             distanceMeters: haversineDistanceMeters(
@@ -123,6 +114,7 @@ export const useNearbyPlaces = (userLocation?: Coordinates) => {
             ),
           }));
           setPlaces(rankPlaces(fallback));
+          setTargetIndex(0);
         }
       } finally {
         if (!cancelled) setLoading(false);
@@ -135,28 +127,42 @@ export const useNearbyPlaces = (userLocation?: Coordinates) => {
 
   const filteredPlaces = useMemo(() => filterPlaces(places, filters), [filters, places]);
   const rankedPlaces = useMemo(() => rankPlaces(filteredPlaces), [filteredPlaces]);
-  const target = rankedPlaces[0];
 
-  return { places: rankedPlaces, target, loading, error, isGoogleConfigured };
+  // Clamp l'index si la liste rétrécit
+  const clampedIndex = Math.min(targetIndex, Math.max(0, rankedPlaces.length - 1));
+  const target = rankedPlaces[clampedIndex] ?? null;
+
+  const goToNext = () =>
+    setTargetIndex((i) => Math.min(i + 1, rankedPlaces.length - 1));
+  const goToPrev = () =>
+    setTargetIndex((i) => Math.max(i - 1, 0));
+
+  return {
+    places: rankedPlaces,
+    target,
+    targetIndex: clampedIndex,
+    totalPlaces: rankedPlaces.length,
+    goToNext,
+    goToPrev,
+    loading,
+    error,
+    isGoogleConfigured,
+  };
 };
 
 function deduplicatePlaces(places: Place[]): Place[] {
   const result: Place[] = [];
-
   for (const candidate of places) {
     const isDuplicate = result.some((existing) => {
       const d = haversineDistanceMeters(
-        existing.coordinates.latitude,
-        existing.coordinates.longitude,
-        candidate.coordinates.latitude,
-        candidate.coordinates.longitude,
+        existing.coordinates.latitude, existing.coordinates.longitude,
+        candidate.coordinates.latitude, candidate.coordinates.longitude,
       );
       if (d > 30) return false;
       const nameA = existing.name.toLowerCase();
       const nameB = candidate.name.toLowerCase();
       return nameA === nameB || nameA.includes(nameB) || nameB.includes(nameA);
     });
-
     if (!isDuplicate) {
       result.push(candidate);
     } else {
@@ -169,12 +175,10 @@ function deduplicatePlaces(places: Place[]): Place[] {
       });
       if (existingIdx !== -1) {
         const existing = result[existingIdx];
-        const existingScore = existing.qualityScore ?? 0;
-        const candidateScore = candidate.qualityScore ?? 0;
-        if (candidateScore > existingScore) result[existingIdx] = candidate;
+        if ((candidate.qualityScore ?? 0) > (existing.qualityScore ?? 0))
+          result[existingIdx] = candidate;
       }
     }
   }
-
   return result;
 }
