@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import {
   Pressable,
   StyleSheet,
@@ -23,9 +23,11 @@ import { ALIGNMENT_THRESHOLD } from '@/constants/thresholds';
 import { FilterDrawer } from '@/components/FilterDrawer';
 import { BurgerMenu } from '@/components/BurgerMenu';
 import { SubmitPlaceModal } from '@/components/SubmitPlaceModal';
+import { PlaceDetailSheet } from '@/components/PlaceDetailSheet';
 import { theme } from '@/constants/theme';
 import { formatDistance } from '@/features/compass/utils/distance';
 import { PLACE_TYPE_LABELS } from '@/constants/placeTypes';
+import { useEffect } from 'react';
 
 export default function CompassScreen() {
   const router = useRouter();
@@ -45,6 +47,7 @@ export default function CompassScreen() {
   const { isFavorite, toggleFavorite } = useFavorites();
   const [burgerOpen, setBurgerOpen] = useState(false);
   const [submitModalOpen, setSubmitModalOpen] = useState(false);
+  const [detailVisible, setDetailVisible] = useState(false);
 
   useEffect(() => { setSelectedTarget(target); }, [setSelectedTarget, target]);
 
@@ -85,7 +88,12 @@ export default function CompassScreen() {
           <View style={s.burgerLine} />
         </Pressable>
 
-        <View style={s.targetInfo}>
+        {/* Appui sur les infos de la cible → ouvre le détail */}
+        <Pressable
+          style={s.targetInfo}
+          onPress={() => target && setDetailVisible(true)}
+          disabled={!target}
+        >
           {target ? (
             <>
               <Text style={s.targetName} numberOfLines={1}>{target.name}</Text>
@@ -97,7 +105,8 @@ export default function CompassScreen() {
                   target.openingStatus === 'open' && { color: theme.accent },
                   target.openingStatus === 'closed' && { color: theme.textFaint },
                 ]}>
-                  {target.openingStatus === 'open' ? '● ouvert'
+                  {target.openingStatus === 'open'
+                    ? `● ouvert${target.closingTime ? ` jusqu'à ${target.closingTime}` : ''}`
                     : target.openingStatus === 'closed' ? '● fermé'
                     : '● ?'}
                 </Text>
@@ -106,7 +115,7 @@ export default function CompassScreen() {
           ) : (
             <Text style={s.targetName}>Aucune cible</Text>
           )}
-        </View>
+        </Pressable>
 
         <Pressable
           onPress={() => target && toggleFavorite(target)}
@@ -156,7 +165,7 @@ export default function CompassScreen() {
         </Pressable>
       </View>
 
-      {/* FAB — Ajouter un lieu */}
+      {/* FAB */}
       <Pressable
         style={s.fab}
         onPress={() => setSubmitModalOpen(true)}
@@ -172,6 +181,10 @@ export default function CompassScreen() {
       <SubmitPlaceModal
         visible={submitModalOpen}
         onClose={() => setSubmitModalOpen(false)}
+      />
+      <PlaceDetailSheet
+        place={detailVisible ? target ?? null : null}
+        onClose={() => setDetailVisible(false)}
       />
     </SafeAreaView>
   );
@@ -270,7 +283,6 @@ const s = StyleSheet.create({
     color: theme.text,
     letterSpacing: 0.5,
   },
-  // FAB — bouton flottant bas droite
   fab: {
     position: 'absolute',
     bottom: 104,

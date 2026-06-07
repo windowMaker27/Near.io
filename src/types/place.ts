@@ -28,6 +28,8 @@ export type Place = {
   shortAddress?: string;
   isFavorite?: boolean;
   openingStatus: OpeningStatus;
+  /** Heure de fermeture du jour courant, ex: "20h" ou "20h30" */
+  closingTime?: string;
   openingHoursText?: string[];
   osmOpeningHours?: string;
   bearingFromUser?: number;
@@ -35,7 +37,6 @@ export type Place = {
   lastUpdatedAt?: number;
 };
 
-/** Lieu soumis par un utilisateur, en attente de validation */
 export type UserPlaceSubmission = {
   id?: string;
   name: string;
