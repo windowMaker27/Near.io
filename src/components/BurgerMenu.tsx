@@ -8,6 +8,7 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { theme } from '@/constants/theme';
+import { useAuthStore } from '@/store/authStore';
 
 type Props = {
   open: boolean;
@@ -26,6 +27,8 @@ export function BurgerMenu({ open, onClose, onSubmitPlace }: Props) {
   const router = useRouter();
   const opacity = useRef(new Animated.Value(0)).current;
   const translateY = useRef(new Animated.Value(-20)).current;
+  const session = useAuthStore((s) => s.session);
+  const profile = useAuthStore((s) => s.profile);
 
   useEffect(() => {
     Animated.parallel([
@@ -44,10 +47,28 @@ export function BurgerMenu({ open, onClose, onSubmitPlace }: Props) {
 
   if (!open) return null;
 
+  const accountLabel = session
+    ? (profile?.username ?? 'Mon compte')
+    : 'Créer un compte';
+  const accountRoute = session ? '/profile' : '/(auth)/register';
+
   return (
     <Pressable style={s.backdrop} onPress={onClose}>
       <Animated.View style={[s.menu, { opacity, transform: [{ translateY }] }]}>
         <Text style={s.menuTitle}>NEAR.IO</Text>
+        <View style={s.divider} />
+
+        {/* Compte */}
+        <Pressable
+          style={s.menuItem}
+          onPress={() => { onClose(); router.push(accountRoute as any); }}
+        >
+          <Text style={s.menuIcon}>◉</Text>
+          <Text style={[s.menuLabel, session && { color: theme.accent }]}>
+            {accountLabel}
+          </Text>
+        </Pressable>
+
         <View style={s.divider} />
 
         {NAV_ITEMS.map((item) => (
