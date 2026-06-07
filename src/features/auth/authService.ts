@@ -12,20 +12,23 @@ export type SignInParams = {
   password: string;
 };
 
-/** Inscription — crée le compte auth + le profil */
+/**
+ * Inscription — crée le compte auth.
+ * Le profil est créé automatiquement par le trigger `on_auth_user_created`
+ * (SECURITY DEFINER) qui lit `raw_user_meta_data.username`.
+ */
 export async function signUp({ email, password, username }: SignUpParams): Promise<UserProfile> {
-  const { data, error } = await supabase.auth.signUp({ email, password });
+  const { data, error } = await supabase.auth.signUp({
+    email,
+    password,
+    options: { data: { username } },   // transmis au trigger via raw_user_meta_data
+  });
   if (error) throw error;
   if (!data.user) throw new Error('Utilisateur non créé');
 
-  const { error: profileError } = await supabase.from('profiles').insert({
-    id: data.user.id,
-    username,
-    role: 'user',
-  });
-  if (profileError) throw profileError;
-
-  return { id: data.user.id, username, role: 'user', createdAt: new Date().toISOString() };
+  // Attendre que le trigger ait inséré le profil (généralement instantané)
+  // puis le charger
+  return fetchProfile(data.user.id);
 }
 
 /** Connexion */
