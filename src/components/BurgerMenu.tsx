@@ -1,11 +1,10 @@
+import { useEffect, useRef } from 'react';
 import {
   Animated,
   Pressable,
   StyleSheet,
   Text,
   View,
-  useRef,
-  useEffect,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { theme } from '@/constants/theme';
@@ -21,8 +20,8 @@ const ITEMS = [
 
 export function BurgerMenu({ open, onClose }: Props) {
   const router = useRouter();
-  const opacity = new Animated.Value(0);
-  const translateY = new Animated.Value(-20);
+  const opacity = useRef(new Animated.Value(0)).current;
+  const translateY = useRef(new Animated.Value(-20)).current;
 
   useEffect(() => {
     Animated.parallel([
