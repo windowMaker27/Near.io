@@ -65,7 +65,7 @@ export function PlaceLogsSection({ placeId, onCloseParent }: Props) {
   function handleAddPress() {
     if (!session) {
       onCloseParent?.();
-      router.push('/(auth)/register');  // inscription plus logique pour un nouvel utilisateur
+      router.push('/(auth)/register');
       return;
     }
     setModalVisible(true);
@@ -76,8 +76,8 @@ export function PlaceLogsSection({ placeId, onCloseParent }: Props) {
       <View style={styles.header}>
         <Text style={styles.title}>LOGS</Text>
         <TouchableOpacity
-          style={styles.addBtn}
           onPress={handleAddPress}
+          hitSlop={10}
           accessibilityLabel="Ajouter un log"
         >
           <Text style={styles.addBtnText}>+</Text>
@@ -142,8 +142,12 @@ const styles = StyleSheet.create({
   container: { marginTop: 24 },
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 },
   title: { fontFamily: 'JetBrainsMono_700Bold', fontSize: 11, color: theme.textMuted, letterSpacing: 2 },
-  addBtn: { width: 28, height: 28, borderRadius: 14, backgroundColor: theme.accent, alignItems: 'center', justifyContent: 'center' },
-  addBtnText: { fontFamily: 'JetBrainsMono_700Bold', fontSize: 18, color: theme.bg, lineHeight: 22 },
+  addBtnText: {
+    fontSize: 26,
+    lineHeight: 28,
+    color: theme.accent,
+    fontFamily: 'JetBrainsMono_400Regular',
+  },
   empty: { fontFamily: 'JetBrainsMono_400Regular', fontSize: 12, color: theme.textMuted, fontStyle: 'italic' },
   logRow: { marginBottom: 6 },
   logText: { fontFamily: 'JetBrainsMono_400Regular', fontSize: 12, color: theme.text, lineHeight: 18 },
