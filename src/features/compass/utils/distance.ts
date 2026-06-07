@@ -2,11 +2,10 @@
  * Haversine = distance à vol d'oiseau.
  *
  * DISPLAY_OFFSET_M : correction empirique temporaire.
- * Le GPS iPhone en urbain rapporte une position décalée de ~70 m par rapport
- * à la position physique réelle. Cette constante est à ajuster après mesures.
- * Mettre à 0 pour désactiver.
+ * Mis à 0 depuis le fix du géocodage BAN/IGN.
+ * À réajuster si une dérive systématique est constatée après mesures terrain.
  */
-const DISPLAY_OFFSET_M = 70;
+const DISPLAY_OFFSET_M = 0;
 
 export function haversineDistanceMeters(
   lat1: number,
