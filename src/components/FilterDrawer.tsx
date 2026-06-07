@@ -81,7 +81,7 @@ export function FilterDrawer() {
 
           <View style={s.divider} />
 
-          {/* Rayon — boutons tap */}
+          {/* Rayon */}
           <Text style={s.sectionLabel}>Rayon de recherche</Text>
           <Text style={s.radiusValue}>{formatDistance(filters.radiusMeters)}</Text>
           <View style={s.radiusRow}>
@@ -137,7 +137,7 @@ const s = StyleSheet.create({
   handle: {
     position: 'absolute',
     left: 0,
-    top: '40%',
+    top: '55%',
     backgroundColor: theme.surface,
     borderTopRightRadius: 8,
     borderBottomRightRadius: 8,
