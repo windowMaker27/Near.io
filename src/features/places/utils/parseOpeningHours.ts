@@ -1,39 +1,42 @@
 /**
  * parseOpeningHours.ts
  *
- * Parse la syntaxe OSM opening_hours ET le format Near.io ("Lu-Ve 08h-20h ; Sa 10h-18h").
- * Retourne : status ('open'|'closed'|'unknown') + closingTime (heure de fermeture du jour, ex: "20h")
+ * Parse deux formats :
+ *   - OSM  : "Mo-Fr 08:00-20:00" / "Mo,Sa 09:00-21:00" / "24/7"
+ *   - Near : "Lu-Ve 08h-20h" / "Lu-Ve 08h-20h ; Sa 10h-18h"
+ *
+ * Le problème précédent : "Lu-Ve 08h-20h" → lastIndexOf(' ') = 5 (OK),
+ * mais daysPart = "Lu-Ve" contient un '-', et hoursPart = "08h-20h" aussi.
+ * Solution : on détecte la partie horaire par regex plutôt que par position.
  */
 import { OpeningStatus } from '@/types/place';
 
 export interface OpeningInfo {
   status: OpeningStatus;
-  /** Heure de fermeture du jour courant, ex: "20h" ou "20h30" — undefined si inconnue */
   closingTime?: string;
 }
 
 const FR_TO_OSM: Record<string, string> = {
   Lu: 'Mo', Ma: 'Tu', Me: 'We', Je: 'Th', Ve: 'Fr', Sa: 'Sa', Di: 'Su',
 };
-
 const OSM_DAYS = ['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su'];
 
 function dayIndex(token: string): number {
-  const normalized = FR_TO_OSM[token] ?? token;
+  const normalized = FR_TO_OSM[token.trim()] ?? token.trim();
   return OSM_DAYS.indexOf(normalized);
 }
 
+/** "08h" | "08h30" | "08:30" | "8" | "08h00" → minutes depuis minuit */
 function timeToMinutes(t: string): number | null {
-  // Supporte : "08h" "08h30" "08:30" "8" "08h00" "20h"
-  const cleaned = t.trim().replace(/h/i, ':');
+  // Remplace 'h' par ':' puis nettoyage
+  const cleaned = t.trim().replace(/[hH]/, ':').replace(/:{2,}/, ':');
   const [hStr, mStr = '0'] = cleaned.split(':');
   const h = parseInt(hStr, 10);
   const m = parseInt(mStr, 10);
-  if (isNaN(h) || isNaN(m)) return null;
+  if (isNaN(h) || isNaN(m) || h > 24 || m > 59) return null;
   return h * 60 + m;
 }
 
-/** Formate des minutes depuis minuit en "20h" ou "20h30" */
 function minutesToDisplay(minutes: number): string {
   const h = Math.floor(minutes / 60) % 24;
   const m = minutes % 60;
@@ -43,11 +46,17 @@ function minutesToDisplay(minutes: number): string {
 function todayIndex(): number {
   return (new Date().getDay() + 6) % 7;
 }
-
 function nowMinutes(): number {
   const d = new Date();
   return d.getHours() * 60 + d.getMinutes();
 }
+
+/**
+ * Regex qui capture la partie horaire en fin de règle.
+ * Exemples matchés : "08:00-20:00" "08h-20h" "08h30-20h00" "8-20"
+ * Groupe 1 = heure ouverture, groupe 2 = heure fermeture
+ */
+const TIME_RANGE_RE = /([\d]{1,2}[hH:]?[\d]{0,2})\s*-\s*([\d]{1,2}[hH:]?[\d]{0,2})\s*$/;
 
 interface RuleResult {
   status: OpeningStatus;
@@ -58,35 +67,44 @@ function parseRule(rule: string): RuleResult | null {
   const trimmed = rule.trim();
   if (!trimmed) return null;
 
-  if (trimmed === '24/7') return { status: 'open', closingTime: undefined };
+  if (trimmed === '24/7') return { status: 'open' };
 
-  const spaceIdx = trimmed.lastIndexOf(' ');
-  if (spaceIdx === -1) return null;
+  // Extrait la plage horaire avec la regex
+  const timeMatch = trimmed.match(TIME_RANGE_RE);
+  if (!timeMatch) return null;
 
-  const daysPart = trimmed.slice(0, spaceIdx).trim();
-  const hoursPart = trimmed.slice(spaceIdx + 1).trim();
-
-  // Trouve le séparateur entre heure ouverture et fermeture
-  // Le "-" peut aussi apparaître dans les heures ("08h-20h") — on cherche le 2e token
-  const dashIdx = hoursPart.lastIndexOf('-');
-  if (dashIdx === -1) return null;
-
-  const openMin = timeToMinutes(hoursPart.slice(0, dashIdx));
-  const closeMin = timeToMinutes(hoursPart.slice(dashIdx + 1));
+  const openMin = timeToMinutes(timeMatch[1]);
+  const closeMin = timeToMinutes(timeMatch[2]);
   if (openMin === null || closeMin === null) return null;
 
+  // Tout ce qui précède la plage horaire = partie jours
+  const daysPart = trimmed.slice(0, timeMatch.index).trim();
+  if (!daysPart) return null;
+
+  // Vérifie si la règle s'applique aujourd'hui
   const today = todayIndex();
-  const dayRangeDash = daysPart.indexOf('-');
   let applies = false;
 
-  if (dayRangeDash !== -1) {
-    const fromDay = dayIndex(daysPart.slice(0, dayRangeDash).trim());
-    const toDay = dayIndex(daysPart.slice(dayRangeDash + 1).trim());
-    applies = fromDay !== -1 && toDay !== -1 && today >= fromDay && today <= toDay;
-  } else if (daysPart.includes(',')) {
-    applies = daysPart.split(',').some((d) => dayIndex(d.trim()) === today);
-  } else {
-    applies = dayIndex(daysPart.trim()) === today;
+  // Plusieurs groupes séparés par virgule : "Lu, Ve" ou "Mo, Sa"
+  const dayGroups = daysPart.split(',').map((g) => g.trim()).filter(Boolean);
+
+  for (const group of dayGroups) {
+    const dashIdx = group.indexOf('-');
+    if (dashIdx !== -1) {
+      // Plage "Lu-Ve" ou "Mo-Fr"
+      const fromDay = dayIndex(group.slice(0, dashIdx));
+      const toDay = dayIndex(group.slice(dashIdx + 1));
+      if (fromDay !== -1 && toDay !== -1 && today >= fromDay && today <= toDay) {
+        applies = true;
+        break;
+      }
+    } else {
+      // Jour unique "Sa" ou "Mo"
+      if (dayIndex(group) === today) {
+        applies = true;
+        break;
+      }
+    }
   }
 
   if (!applies) return null;
@@ -104,9 +122,19 @@ function parseRule(rule: string): RuleResult | null {
 export function parseOpeningHoursInfo(raw: string | undefined): OpeningInfo {
   if (!raw) return { status: 'unknown' };
 
-  const rules = raw.split(/[;,]/).map((r) => r.trim()).filter(Boolean);
+  // Sépare par ';' ou ','
+  // Note : on split sur ',' SEULEMENT si ce n'est pas une virgule dans une liste de jours.
+  // Pour simplifier : on split d'abord sur ';', puis sur ',' si aucune règle trouvée.
+  const bySemicolon = raw.split(';').map((r) => r.trim()).filter(Boolean);
 
-  for (const rule of rules) {
+  for (const rule of bySemicolon) {
+    const result = parseRule(rule);
+    if (result !== null) return result;
+  }
+
+  // Fallback : split sur ','
+  const byComma = raw.split(',').map((r) => r.trim()).filter(Boolean);
+  for (const rule of byComma) {
     const result = parseRule(rule);
     if (result !== null) return result;
   }
@@ -114,7 +142,7 @@ export function parseOpeningHoursInfo(raw: string | undefined): OpeningInfo {
   return { status: 'unknown' };
 }
 
-/** Rétrocompatibilité — retourne juste le statut */
+/** Rétrocompatibilité */
 export function parseOpeningHours(raw: string | undefined): OpeningStatus {
   return parseOpeningHoursInfo(raw).status;
 }

@@ -1,11 +1,14 @@
 /**
- * Haversine donne la distance à vol d'oiseau (ligne droite).
- * Les applis GPS affichent généralement la distance réseau (rue), qui est
- * ~10-20 % plus longue. L'écart de ~100 m observé vient d'une légère
- * imprécision du GPS de l'iPhone en intérieur + arrondi du formatter.
+ * Haversine = distance à vol d'oiseau.
  *
- * Correction : on utilise un rayon terrestre moyen plus précis (WGS-84)
- * et on arrondit à 5 m près au lieu de 1 m pour éviter un affichage instable.
+ * L'écart entre la valeur affichée et la distance réelle perceptible
+ * vient de la précision GPS de l'iPhone : en milieu urbain / intérieur,
+ * le point GPS oscille dans un cercle de ±30-80 m autour de la vraie position.
+ * Ce n'est pas une erreur de calcul — le calcul est correct par rapport
+ * à la position GPS rapportée. Afficher la précision GPS (±Xm) serait
+ * la seule façon d'en informer l'utilisateur.
+ *
+ * On arrondit à 5 m pour éviter un affichage instable.
  */
 export function haversineDistanceMeters(
   lat1: number,
@@ -13,7 +16,7 @@ export function haversineDistanceMeters(
   lat2: number,
   lon2: number,
 ): number {
-  const R = 6_371_008.8; // rayon moyen WGS-84 en mètres (au lieu de 6 371 000)
+  const R = 6_371_008.8;
   const toRad = (deg: number) => (deg * Math.PI) / 180;
   const dLat = toRad(lat2 - lat1);
   const dLon = toRad(lon2 - lon1);
@@ -23,13 +26,9 @@ export function haversineDistanceMeters(
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
-// Alias rétrocompatibilité
 export const haversineDistance = haversineDistanceMeters;
 
 export function formatDistance(meters: number): string {
-  if (meters < 1000) {
-    // Arrondi à 5 m près — évite l'affichage instable "243 m / 247 m / 244 m"
-    return `${Math.round(meters / 5) * 5} m`;
-  }
-  return `${(meters / 1000).toFixed(1)} km`;
+  if (meters < 1000) return `${Math.round(meters / 5) * 5} m`;
+  return `${(meters / 1000).toFixed(1)} km`;
 }
