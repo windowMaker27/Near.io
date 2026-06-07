@@ -7,11 +7,17 @@ import { useAppStore } from '@/store/appStore';
 /**
  * Seuil de précision magnétomètre.
  * iOS expose data.accuracy en degrés (erreur max estimée).
- * On rejette les samples avec une erreur > 20° pour éviter
- * les sauts de direction après une période d'immobilité
- * (le magnétomètre dérive quand il n'est pas recalibré).
+ * On rejette les samples avec une erreur > 20°.
  */
 const MAX_ACCURACY_DEG = 20;
+
+/**
+ * Intervalle de re-souscription forcée (ms).
+ * iOS met le magnétomètre en veille après immobilité, ce qui
+ * fait dériver le heading. Un unsub/resub force une recalibration
+ * — c'est ce que fait l'appli Plans en interne.
+ */
+const RESUB_INTERVAL_MS = 30_000;
 
 export const useHeading = () => {
   const [heading, setHeading] = useState<number | undefined>();
@@ -20,20 +26,23 @@ export const useHeading = () => {
   const setUserHeading = useAppStore((s) => s.setUserHeading);
 
   useEffect(() => {
-    let locationSub: Location.LocationSubscription | undefined;
     let cancelled = false;
+    let locationSub: Location.LocationSubscription | undefined;
+    let resubTimer: ReturnType<typeof setTimeout>;
 
     const subscribe = async () => {
+      // Nettoie l'ancienne souscription avant de recréer
+      locationSub?.remove();
+      locationSub = undefined;
+
       try {
         locationSub = await Location.watchHeadingAsync((data) => {
           if (cancelled) return;
 
-          // Sur iOS, accuracy = erreur estimée en degrés (plus petit = meilleur).
-          // On ignore les samples trop imprécis.
           if (typeof data.accuracy === 'number' && data.accuracy > MAX_ACCURACY_DEG) return;
 
           const raw = data.trueHeading >= 0 ? data.trueHeading : data.magHeading;
-          if (raw < 0) return; // iOS pas encore initialisé
+          if (raw < 0) return;
 
           setHeadingAvailable(true);
           const smoothed = ema(previous.current, raw, HEADING_SMOOTHING_ALPHA);
@@ -44,11 +53,20 @@ export const useHeading = () => {
       } catch {
         setHeadingAvailable(false);
       }
+
+      // Planifie la prochaine recalibration si pas annulé
+      if (!cancelled) {
+        resubTimer = setTimeout(() => {
+          if (!cancelled) subscribe();
+        }, RESUB_INTERVAL_MS);
+      }
     };
 
     subscribe();
+
     return () => {
       cancelled = true;
+      clearTimeout(resubTimer);
       locationSub?.remove();
     };
   }, [setUserHeading]);
