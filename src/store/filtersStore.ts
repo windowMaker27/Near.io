@@ -1,14 +1,8 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
-import { storage } from '@/lib/mmkv';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Filters } from '@/types/filters';
 import { DEFAULT_RADIUS_METERS } from '@/constants/thresholds';
-
-const zustandStorage = {
-  getItem: (name: string) => storage.getString(name) ?? null,
-  setItem: (name: string, value: string) => storage.set(name, value),
-  removeItem: (name: string) => storage.delete(name),
-};
 
 type FiltersState = {
   filters: Filters;
@@ -50,7 +44,7 @@ export const useFiltersStore = create<FiltersState>()(
     }),
     {
       name: 'near-io-filters',
-      storage: createJSONStorage(() => zustandStorage),
+      storage: createJSONStorage(() => AsyncStorage),
     },
   ),
 );

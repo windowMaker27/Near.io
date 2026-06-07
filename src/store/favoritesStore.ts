@@ -1,13 +1,7 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
-import { storage } from '@/lib/mmkv';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Place } from '@/types/place';
-
-const zustandStorage = {
-  getItem: (name: string) => storage.getString(name) ?? null,
-  setItem: (name: string, value: string) => storage.set(name, value),
-  removeItem: (name: string) => storage.delete(name),
-};
 
 type FavoritesState = {
   favorites: Place[];
@@ -31,7 +25,7 @@ export const useFavoritesStore = create<FavoritesState>()(
     }),
     {
       name: 'near-io-favorites',
-      storage: createJSONStorage(() => zustandStorage),
+      storage: createJSONStorage(() => AsyncStorage),
     },
   ),
 );
