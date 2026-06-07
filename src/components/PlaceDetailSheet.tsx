@@ -4,7 +4,7 @@
  * - Nom, catégorie, source (OSM / communautaire)
  * - Adresse
  * - Statut d'ouverture + heure de fermeture
- * - Horaires bruts si disponibles
+ * - Horaires formatés par groupes de jours
  * - Distance
  */
 import {
@@ -19,6 +19,7 @@ import { theme } from '@/constants/theme';
 import { Place } from '@/types/place';
 import { PLACE_TYPE_LABELS } from '@/constants/placeTypes';
 import { formatDistance } from '@/features/compass/utils/distance';
+import { formatOpeningHours } from '@/features/compass/utils/formatOpeningHours';
 
 type Props = {
   place: Place | null;
@@ -47,10 +48,7 @@ export function PlaceDetailSheet({ place, onClose }: Props) {
     return <Text style={[d.statusText, { color: theme.textMuted }]}>● Horaires inconnus</Text>;
   };
 
-  const hours =
-    place.openingHoursText?.join('\n') ??
-    place.osmOpeningHours ??
-    null;
+  const hoursGroups = formatOpeningHours(place.openingHoursText, place.osmOpeningHours);
 
   return (
     <Modal visible animationType="slide" transparent onRequestClose={onClose}>
@@ -93,13 +91,20 @@ export function PlaceDetailSheet({ place, onClose }: Props) {
             <View>{openingLabel()}</View>
           </View>
 
-          {/* Horaires bruts */}
-          {hours ? (
+          {/* Horaires formatés */}
+          {hoursGroups && hoursGroups.length > 0 && (
             <View style={s.hoursBox}>
               <Text style={s.hoursLabel}>HORAIRES</Text>
-              <Text style={s.hoursText}>{hours}</Text>
+              {hoursGroups.map((group, i) => (
+                <View key={i} style={s.hoursRow}>
+                  <Text style={s.hoursDayText}>{group.label}</Text>
+                  {group.hours ? (
+                    <Text style={s.hoursTimeText}>{group.hours}</Text>
+                  ) : null}
+                </View>
+              ))}
             </View>
-          ) : null}
+          )}
         </ScrollView>
       </View>
     </Modal>
@@ -172,15 +177,6 @@ const s = StyleSheet.create({
     color: theme.text,
     flexShrink: 1,
   },
-  statusText: {
-    fontFamily: theme.fontMonoBold,
-    fontSize: 13,
-  },
-  closingTime: {
-    fontFamily: theme.fontMono,
-    fontSize: 13,
-    color: theme.textMuted,
-  },
   hoursBox: {
     marginTop: 4,
     backgroundColor: theme.bg,
@@ -188,6 +184,7 @@ const s = StyleSheet.create({
     padding: 14,
     borderWidth: 1,
     borderColor: theme.border,
+    gap: 6,
   },
   hoursLabel: {
     fontFamily: theme.fontMono,
@@ -195,13 +192,25 @@ const s = StyleSheet.create({
     color: theme.textFaint,
     letterSpacing: 1,
     textTransform: 'uppercase',
-    marginBottom: 6,
+    marginBottom: 2,
   },
-  hoursText: {
+  hoursRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    gap: 12,
+  },
+  hoursDayText: {
     fontFamily: theme.fontMono,
     fontSize: 12,
+    color: theme.textMuted,
+    flexShrink: 1,
+  },
+  hoursTimeText: {
+    fontFamily: theme.fontMonoBold,
+    fontSize: 12,
     color: theme.text,
-    lineHeight: 20,
+    textAlign: 'right',
   },
 });
 
