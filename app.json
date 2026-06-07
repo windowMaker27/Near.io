@@ -43,11 +43,6 @@
     ],
     "experiments": {
       "typedRoutes": true
-    },
-    "extra": {
-      "eas": {
-        "projectId": "near-io-local-dev"
-      }
     }
   }
 }
