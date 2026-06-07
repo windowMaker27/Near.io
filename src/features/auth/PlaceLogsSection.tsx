@@ -41,7 +41,7 @@ function LogItem({ log }: { log: PlaceLog }) {
 
 type Props = {
   placeId: string;
-  onCloseParent?: () => void;  // ferme le PlaceDetailSheet si fourni
+  onCloseParent?: () => void;
 };
 
 export function PlaceLogsSection({ placeId, onCloseParent }: Props) {
@@ -64,9 +64,8 @@ export function PlaceLogsSection({ placeId, onCloseParent }: Props) {
 
   function handleAddPress() {
     if (!session) {
-      // Ferme le sheet parent avant de naviguer pour éviter le bug visuel
       onCloseParent?.();
-      router.push('/(auth)/login');
+      router.push('/(auth)/register');  // inscription plus logique pour un nouvel utilisateur
       return;
     }
     setModalVisible(true);
@@ -74,7 +73,6 @@ export function PlaceLogsSection({ placeId, onCloseParent }: Props) {
 
   return (
     <View style={styles.container}>
-      {/* En-tête */}
       <View style={styles.header}>
         <Text style={styles.title}>LOGS</Text>
         <TouchableOpacity
@@ -86,7 +84,6 @@ export function PlaceLogsSection({ placeId, onCloseParent }: Props) {
         </TouchableOpacity>
       </View>
 
-      {/* Liste */}
       {isLoading ? (
         <ActivityIndicator color={theme.accent} style={{ marginVertical: 12 }} />
       ) : logs.length === 0 ? (
@@ -100,7 +97,6 @@ export function PlaceLogsSection({ placeId, onCloseParent }: Props) {
         />
       )}
 
-      {/* Modal de saisie */}
       <Modal visible={modalVisible} transparent animationType="fade">
         <KeyboardAvoidingView
           style={styles.modalOverlay}
