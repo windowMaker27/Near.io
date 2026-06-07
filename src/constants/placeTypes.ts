@@ -8,6 +8,7 @@ export const PLACE_TYPE_LABELS: Record<PlaceCategory, string> = {
   organic: 'Bio',
   halal: 'Halal',
   deli: 'Traiteur',
+  street_vendor: 'Vendeur de rue',
   unknown: 'Commerce',
 };
 
@@ -20,3 +21,14 @@ export const OSM_TAG_TO_CATEGORY: Record<string, PlaceCategory> = {
   organic: 'organic',
   halal: 'halal',
 };
+
+export const SUBMITTABLE_CATEGORIES: PlaceCategory[] = [
+  'grocery',
+  'bakery',
+  'convenience',
+  'supermarket',
+  'organic',
+  'halal',
+  'deli',
+  'street_vendor',
+];

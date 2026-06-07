@@ -1,5 +1,5 @@
 export type OpeningStatus = 'open' | 'closed' | 'unknown';
-export type DataSource = 'osm' | 'google' | 'mock';
+export type DataSource = 'osm' | 'google' | 'mock' | 'user';
 export type PlaceCategory =
   | 'supermarket'
   | 'convenience'
@@ -8,6 +8,7 @@ export type PlaceCategory =
   | 'organic'
   | 'halal'
   | 'deli'
+  | 'street_vendor'
   | 'unknown';
 
 export type Coordinates = {
@@ -32,4 +33,18 @@ export type Place = {
   bearingFromUser?: number;
   qualityScore?: number;
   lastUpdatedAt?: number;
+};
+
+/** Lieu soumis par un utilisateur, en attente de validation */
+export type UserPlaceSubmission = {
+  id?: string;
+  name: string;
+  category: PlaceCategory;
+  latitude: number;
+  longitude: number;
+  short_address?: string;
+  opening_hours?: string;
+  description?: string;
+  submitted_at?: string;
+  status?: 'pending' | 'approved' | 'rejected';
 };
