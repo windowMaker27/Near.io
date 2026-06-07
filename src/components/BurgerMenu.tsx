@@ -116,7 +116,7 @@ const s = StyleSheet.create({
     paddingBottom: 8,
   },
   menuTitle: {
-    fontFamily: theme.fontMonoBold,
+    fontFamily: 'JetBrainsMono_700Bold',
     fontSize: 11,
     color: theme.accent,
     letterSpacing: 3,
@@ -142,9 +142,10 @@ const s = StyleSheet.create({
     color: theme.textMuted,
     width: 24,
     textAlign: 'center',
+    fontFamily: 'JetBrainsMono_400Regular',
   },
   menuLabel: {
-    fontFamily: theme.fontMono,
+    fontFamily: 'JetBrainsMono_400Regular',
     fontSize: 15,
     color: theme.text,
   },

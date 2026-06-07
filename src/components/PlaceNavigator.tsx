@@ -16,20 +16,7 @@ export function PlaceNavigator({ currentIndex, total, onNext, onPrev }: Props) {
 
   return (
     <View style={s.container}>
-      <Pressable
-        style={[s.btn, !canPrev && s.btnDisabled]}
-        onPress={onPrev}
-        disabled={!canPrev}
-        hitSlop={8}
-        accessibilityLabel="Commerce précédent"
-      >
-        <Text style={[s.arrow, !canPrev && s.arrowDisabled]}>⌃</Text>
-      </Pressable>
-
-      <Text style={s.counter}>
-        {currentIndex + 1}<Text style={s.counterTotal}>/{total}</Text>
-      </Text>
-
+      {/* Suivant en haut */}
       <Pressable
         style={[s.btn, !canNext && s.btnDisabled]}
         onPress={onNext}
@@ -37,7 +24,22 @@ export function PlaceNavigator({ currentIndex, total, onNext, onPrev }: Props) {
         hitSlop={8}
         accessibilityLabel="Commerce suivant"
       >
-        <Text style={[s.arrow, !canNext && s.arrowDisabled]}>⌄</Text>
+        <Text style={[s.arrow, !canNext && s.arrowDisabled]}>⌃</Text>
+      </Pressable>
+
+      <Text style={s.counter}>
+        {currentIndex + 1}<Text style={s.counterTotal}>/{total}</Text>
+      </Text>
+
+      {/* Précédent en bas */}
+      <Pressable
+        style={[s.btn, !canPrev && s.btnDisabled]}
+        onPress={onPrev}
+        disabled={!canPrev}
+        hitSlop={8}
+        accessibilityLabel="Commerce précédent"
+      >
+        <Text style={[s.arrow, !canPrev && s.arrowDisabled]}>⌄</Text>
       </Pressable>
     </View>
   );
@@ -47,7 +49,7 @@ const s = StyleSheet.create({
   container: {
     position: 'absolute',
     right: 0,
-    top: '80%',            // symétrique au handle filtre
+    top: '80%',
     backgroundColor: theme.surface,
     borderTopLeftRadius: 8,
     borderBottomLeftRadius: 8,
