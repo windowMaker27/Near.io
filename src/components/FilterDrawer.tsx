@@ -137,7 +137,7 @@ const s = StyleSheet.create({
   handle: {
     position: 'absolute',
     left: 0,
-    top: '55%',
+    top: '80%',
     backgroundColor: theme.surface,
     borderTopRightRadius: 8,
     borderBottomRightRadius: 8,
