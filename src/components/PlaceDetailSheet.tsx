@@ -1,11 +1,12 @@
 /**
  * PlaceDetailSheet
  * Bottom sheet affichant les détails d'un lieu :
- * - Nom, catégorie, source (OSM / communautaire)
+ * - Nom, catégorie, badge source (OSM / Communauté / Admin)
  * - Adresse
  * - Statut d'ouverture + heure de fermeture
  * - Horaires formatés par groupes de jours
  * - Distance
+ * - Logs communautaires
  */
 import {
   Modal,
@@ -20,6 +21,8 @@ import { Place } from '@/types/place';
 import { PLACE_TYPE_LABELS } from '@/constants/placeTypes';
 import { formatDistance } from '@/features/compass/utils/distance';
 import { formatOpeningHours } from '@/features/compass/utils/formatOpeningHours';
+import { PlaceLogsSection } from '@/features/auth/PlaceLogsSection';
+import { SourceBadge } from '@/features/auth/SourceBadge';
 
 type Props = {
   place: Place | null;
@@ -28,8 +31,6 @@ type Props = {
 
 export function PlaceDetailSheet({ place, onClose }: Props) {
   if (!place) return null;
-
-  const sourceLabel = place.source === 'user' ? '👥 Communautaire' : '🗺 OpenStreetMap';
 
   const openingLabel = () => {
     if (place.openingStatus === 'open') {
@@ -61,20 +62,20 @@ export function PlaceDetailSheet({ place, onClose }: Props) {
           contentContainerStyle={s.content}
           showsVerticalScrollIndicator={false}
         >
-          {/* Titre + source */}
+          {/* Titre + fermeture */}
           <View style={s.titleRow}>
             <View style={{ flex: 1 }}>
               <Text style={s.name}>{place.name}</Text>
               <Text style={s.category}>{PLACE_TYPE_LABELS[place.category]}</Text>
+              {/* Badge source : Communauté / Admin (rien pour OSM) */}
+              <SourceBadge place={place} />
             </View>
             <Pressable onPress={onClose} hitSlop={12}>
               <Text style={s.closeBtn}>✕</Text>
             </Pressable>
           </View>
 
-          <Text style={s.source}>{sourceLabel}</Text>
-
-          {/* Distance */}
+          {/* Distance + adresse */}
           {place.distanceMeters != null && (
             <View style={s.row}>
               <Text style={s.rowIcon}>📍</Text>
@@ -105,6 +106,9 @@ export function PlaceDetailSheet({ place, onClose }: Props) {
               ))}
             </View>
           )}
+
+          {/* Logs communautaires */}
+          <PlaceLogsSection placeId={place.id} />
         </ScrollView>
       </View>
     </Modal>
@@ -126,7 +130,7 @@ const s = StyleSheet.create({
     borderTopRightRadius: 20,
     borderTopWidth: 1,
     borderTopColor: theme.border,
-    maxHeight: '60%',
+    maxHeight: '75%',
   },
   handle: {
     width: 36,
@@ -137,8 +141,8 @@ const s = StyleSheet.create({
     marginTop: 10,
     marginBottom: 4,
   },
-  content: { padding: 20, paddingBottom: 40 },
-  titleRow: { flexDirection: 'row', alignItems: 'flex-start', marginBottom: 4 },
+  content: { padding: 20, paddingBottom: 48 },
+  titleRow: { flexDirection: 'row', alignItems: 'flex-start', marginBottom: 12 },
   name: {
     fontFamily: theme.fontMonoBold,
     fontSize: 18,
@@ -157,12 +161,6 @@ const s = StyleSheet.create({
     fontFamily: theme.fontMono,
     paddingLeft: 16,
     paddingTop: 2,
-  },
-  source: {
-    fontFamily: theme.fontMono,
-    fontSize: 11,
-    color: theme.textFaint,
-    marginBottom: 16,
   },
   row: {
     flexDirection: 'row',
