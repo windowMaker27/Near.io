@@ -1,9 +1,5 @@
 /**
  * supabaseService.ts
- * Appels Supabase via fetch natif — pas de SDK natif, 100% compatible Expo Go.
- *
- * geocodeAddress() : résolution adresse → coordonnées via Nominatim (OSM).
- * Aucune clé API requise pour le géocodage.
  */
 import { UserPlaceSubmission } from '@/types/place';
 import { SUPABASE_URL, SUPABASE_ANON_KEY } from '@/lib/env';
@@ -15,30 +11,19 @@ const supabaseHeaders = () => ({
   Prefer: 'return=representation',
 });
 
-// ---------------------------------------------------------------------------
-// Géocodage — Nominatim (OpenStreetMap, gratuit, sans clé)
-// ---------------------------------------------------------------------------
-
 export interface GeocodedCoords {
   latitude: number;
   longitude: number;
   displayName: string;
 }
 
-/**
- * Convertit une adresse postale en coordonnées GPS via Nominatim.
- * Retourne null si l'adresse est introuvable ou en cas d'erreur réseau.
- *
- * Policy Nominatim : 1 req/s max, User-Agent requis.
- */
 export async function geocodeAddress(address: string): Promise<GeocodedCoords | null> {
   try {
     const query = encodeURIComponent(address);
     const url = `https://nominatim.openstreetmap.org/search?q=${query}&format=json&limit=1&addressdetails=0`;
     const res = await fetch(url, {
       headers: {
-        'Accept': 'application/json',
-        // User-Agent obligatoire selon la politique Nominatim
+        Accept: 'application/json',
         'User-Agent': 'Near.io/1.0 (mobile app, contact@near.io)',
       },
     });
@@ -55,19 +40,28 @@ export async function geocodeAddress(address: string): Promise<GeocodedCoords | 
   }
 }
 
-// ---------------------------------------------------------------------------
-// Supabase — soumissions
-// ---------------------------------------------------------------------------
-
-/** Soumet un lieu à validation admin */
 export async function submitPlace(
   data: Omit<UserPlaceSubmission, 'id' | 'submitted_at' | 'status'>,
 ): Promise<{ ok: boolean; error?: string }> {
+  // --- DEBUG : affiche les valeurs brutes lues par process.env ---
+  const rawUrl = process.env.EXPO_PUBLIC_SUPABASE_URL ?? '(undefined)';
+  const rawKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY ?? '(undefined)';
+  console.log('[Supabase] rawUrl  :', JSON.stringify(rawUrl));
+  console.log('[Supabase] rawKey  :', rawKey.slice(0, 20) + '...');
+  console.log('[Supabase] SUPABASE_URL from lib/env :', JSON.stringify(SUPABASE_URL));
+  // ----------------------------------------------------------------
+
   if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
     return { ok: false, error: 'Supabase non configuré — ajoutez les variables .env' };
   }
+
+  // Nettoyage défensif du slash final
+  const baseUrl = SUPABASE_URL.replace(/\/+$/, '');
+  const endpoint = `${baseUrl}/rest/v1/place_submissions`;
+  console.log('[Supabase] endpoint final :', endpoint);
+
   try {
-    const res = await fetch(`${SUPABASE_URL}/rest/v1/place_submissions`, {
+    const res = await fetch(endpoint, {
       method: 'POST',
       headers: supabaseHeaders(),
       body: JSON.stringify({
@@ -76,17 +70,23 @@ export async function submitPlace(
         status: 'pending',
       }),
     });
+
+    const text = await res.text();
+    console.log('[Supabase] status :', res.status);
+    console.log('[Supabase] body   :', text.slice(0, 300));
+
     if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
-      return { ok: false, error: err?.message ?? `Erreur ${res.status}` };
+      let msg = `Erreur ${res.status}`;
+      try { msg = JSON.parse(text)?.message ?? msg; } catch {}
+      return { ok: false, error: msg };
     }
     return { ok: true };
   } catch (e: any) {
+    console.log('[Supabase] catch  :', e?.message);
     return { ok: false, error: e?.message ?? 'Erreur réseau' };
   }
 }
 
-/** Récupère les lieux approuvés pour la zone (appelé en complément OSM) */
 export async function fetchApprovedPlaces(
   lat: number,
   lon: number,
@@ -94,9 +94,10 @@ export async function fetchApprovedPlaces(
 ): Promise<UserPlaceSubmission[]> {
   if (!SUPABASE_URL || !SUPABASE_ANON_KEY) return [];
   try {
+    const baseUrl = SUPABASE_URL.replace(/\/+$/, '');
     const delta = radiusMeters / 111_000;
     const url =
-      `${SUPABASE_URL}/rest/v1/place_submissions` +
+      `${baseUrl}/rest/v1/place_submissions` +
       `?status=eq.approved` +
       `&latitude=gte.${lat - delta}&latitude=lte.${lat + delta}` +
       `&longitude=gte.${lon - delta}&longitude=lte.${lon + delta}` +
