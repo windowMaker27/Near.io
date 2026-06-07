@@ -23,6 +23,7 @@ export const normalizeOsmPlace = (element: any): Place | null => {
     openingStatus: info.status,
     closingTime: info.closingTime,
     osmOpeningHours: openingHours,
+    // openingHoursText volontairement absent : sera rempli par mergeGoogleDetails si dispo
   };
 };
 
@@ -56,8 +57,9 @@ export const normalizeSupabasePlace = (row: UserPlaceSubmission): Place => {
     shortAddress: row.short_address,
     openingStatus: info.status,
     closingTime: info.closingTime,
+    // On laisse osmOpeningHours pour que le parser OSM formate proprement à l'affichage.
+    // openingHoursText est réservé aux weekdayDescriptions Google (format structuré).
     osmOpeningHours: row.opening_hours,
-    openingHoursText: row.opening_hours ? [row.opening_hours] : undefined,
     qualityScore: computeUserPlaceScore(row),
     lastUpdatedAt: row.submitted_at ? new Date(row.submitted_at).getTime() : undefined,
   };
