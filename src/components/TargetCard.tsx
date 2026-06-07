@@ -1,60 +1,80 @@
 import { StyleSheet, Text, View } from 'react-native';
-import { formatDistance } from '@/features/compass/utils/distance';
-import { PLACE_TYPE_LABELS } from '@/constants/placeTypes';
 import { Place } from '@/types/place';
+import { theme } from '@/constants/theme';
+import { PLACE_TYPE_LABELS } from '@/constants/placeTypes';
+import { formatDistance } from '@/features/compass/utils/distance';
 
-export const TargetCard = ({ place }: { place?: Place }) => {
-  if (!place) {
-    return (
-      <View style={styles.card}>
-        <Text style={styles.label}>Cible actuelle</Text>
-        <Text style={styles.name}>Aucun commerce trouvé</Text>
-      </View>
-    );
-  }
+type Props = { place?: Place | null };
+
+export function TargetCard({ place }: Props) {
+  if (!place) return null;
 
   const statusColor =
-    place.openingStatus === 'open'
-      ? '#34D399'
-      : place.openingStatus === 'closed'
-        ? '#F87171'
-        : '#F59E0B';
+    place.openingStatus === 'open' ? theme.accent
+    : place.openingStatus === 'closed' ? theme.textFaint
+    : theme.textMuted;
+
+  const statusLabel =
+    place.openingStatus === 'open' ? 'Ouvert'
+    : place.openingStatus === 'closed' ? 'Fermé'
+    : 'Horaires inconnus';
 
   return (
-    <View style={styles.card}>
-      <Text style={styles.label}>Cible actuelle</Text>
-      <Text style={styles.name}>{place.name}</Text>
-      <View style={styles.row}>
-        <Text style={styles.meta}>{formatDistance(place.distanceMeters)}</Text>
-        <Text style={[styles.status, { color: statusColor }]}>
-          {place.openingStatus === 'open'
-            ? 'Ouvert'
-            : place.openingStatus === 'closed'
-              ? 'Fermé'
-              : 'Inconnu'}
-        </Text>
+    <View style={s.card}>
+      <View style={s.row}>
+        <Text style={s.name} numberOfLines={1}>{place.name}</Text>
+        <View style={[s.badge, { borderColor: statusColor }]}>
+          <Text style={[s.badgeText, { color: statusColor }]}>{statusLabel}</Text>
+        </View>
       </View>
-      <Text style={styles.meta}>{PLACE_TYPE_LABELS[place.category]}</Text>
-      {place.shortAddress ? (
-        <Text style={styles.address}>{place.shortAddress}</Text>
-      ) : null}
+      <View style={s.meta}>
+        <Text style={s.metaText}>{PLACE_TYPE_LABELS[place.category]}</Text>
+        {place.distanceMeters != null && (
+          <Text style={s.metaText}>{formatDistance(place.distanceMeters)}</Text>
+        )}
+        {place.shortAddress ? (
+          <Text style={s.metaText} numberOfLines={1}>{place.shortAddress}</Text>
+        ) : null}
+      </View>
     </View>
   );
-};
+}
 
-const styles = StyleSheet.create({
+const s = StyleSheet.create({
   card: {
-    backgroundColor: '#131A2A',
-    borderRadius: 24,
-    padding: 18,
-    gap: 8,
+    backgroundColor: theme.surface,
+    borderRadius: theme.radius,
     borderWidth: 1,
-    borderColor: '#22304A',
+    borderColor: theme.border,
+    padding: 14,
+    gap: 8,
   },
-  label: { color: '#9AA5BD', fontSize: 13, textTransform: 'uppercase' },
-  name: { color: '#F4F7FB', fontSize: 24, fontWeight: '800' },
-  row: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  meta: { color: '#F4F7FB', fontSize: 16, fontWeight: '600' },
-  status: { fontSize: 15, fontWeight: '700' },
-  address: { color: '#9AA5BD', fontSize: 14 },
+  row: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 8,
+  },
+  name: {
+    fontFamily: theme.fontMonoBold,
+    fontSize: 15,
+    color: theme.text,
+    flex: 1,
+  },
+  badge: {
+    borderWidth: 1,
+    borderRadius: 20,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+  },
+  badgeText: {
+    fontFamily: theme.fontMono,
+    fontSize: 11,
+  },
+  meta: { flexDirection: 'row', gap: 12, flexWrap: 'wrap' },
+  metaText: {
+    fontFamily: theme.fontMono,
+    fontSize: 12,
+    color: theme.textMuted,
+  },
 });

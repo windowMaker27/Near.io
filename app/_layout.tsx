@@ -1,26 +1,36 @@
 import 'react-native-gesture-handler';
+import { useEffect } from 'react';
 import { Stack } from 'expo-router';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
+import * as Font from 'expo-font';
+import {
+  JetBrainsMono_400Regular,
+  JetBrainsMono_500Medium,
+  JetBrainsMono_700Bold,
+} from '@expo-google-fonts/jetbrains-mono';
+import { theme } from '@/constants/theme';
 
 export default function RootLayout() {
+  const [fontsLoaded] = Font.useFonts({
+    JetBrainsMono: JetBrainsMono_400Regular,
+    JetBrainsMono_500Medium,
+    JetBrainsMono_700Bold,
+  });
+
+  if (!fontsLoaded) return null;
+
   return (
-    <GestureHandlerRootView style={{ flex: 1 }}>
+    <GestureHandlerRootView style={{ flex: 1, backgroundColor: theme.bg }}>
       <SafeAreaProvider>
-        <StatusBar style="light" />
-        <Stack
-          screenOptions={{
-            headerStyle: { backgroundColor: '#0B1020' },
-            headerTintColor: '#F4F7FB',
-            contentStyle: { backgroundColor: '#0B1020' },
-          }}
-        >
-          <Stack.Screen name="index" options={{ title: 'Near.io' }} />
-          <Stack.Screen name="map" options={{ title: 'Carte' }} />
-          <Stack.Screen name="ar" options={{ title: 'Mode AR' }} />
-          <Stack.Screen name="favorites" options={{ title: 'Favoris' }} />
-          <Stack.Screen name="settings" options={{ title: 'Réglages' }} />
+        <StatusBar style="light" backgroundColor={theme.bg} />
+        <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: theme.bg } }}>
+          <Stack.Screen name="index" />
+          <Stack.Screen name="map" />
+          <Stack.Screen name="ar" />
+          <Stack.Screen name="favorites" />
+          <Stack.Screen name="settings" />
         </Stack>
       </SafeAreaProvider>
     </GestureHandlerRootView>

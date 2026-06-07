@@ -1,39 +1,57 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { theme } from '@/constants/theme';
 
-export const PermissionGate = ({
-  title,
-  description,
-  onPress,
-}: {
-  title: string;
-  description: string;
-  onPress: () => void;
-}) => (
-  <View style={styles.container}>
-    <Text style={styles.title}>{title}</Text>
-    <Text style={styles.description}>{description}</Text>
-    <Pressable style={styles.button} onPress={onPress}>
-      <Text style={styles.buttonText}>Autoriser</Text>
-    </Pressable>
-  </View>
-);
+type Props = { onPress: () => void };
 
-const styles = StyleSheet.create({
+export function PermissionGate({ onPress }: Props) {
+  return (
+    <View style={s.container}>
+      <Text style={s.icon}>◎</Text>
+      <Text style={s.title}>Localisation requise</Text>
+      <Text style={s.desc}>
+        Near.io utilise votre position pour pointer vers le commerce alimentaire ouvert le plus proche.
+      </Text>
+      <Pressable style={s.btn} onPress={onPress}>
+        <Text style={s.btnText}>Autoriser la localisation</Text>
+      </Pressable>
+    </View>
+  );
+}
+
+const s = StyleSheet.create({
   container: {
     flex: 1,
-    justifyContent: 'center',
-    padding: 24,
-    gap: 14,
-    backgroundColor: '#0B1020',
-  },
-  title: { color: '#F4F7FB', fontSize: 24, fontWeight: '800' },
-  description: { color: '#9AA5BD', lineHeight: 22 },
-  button: {
-    marginTop: 10,
-    backgroundColor: '#4FD1C5',
-    borderRadius: 16,
-    paddingVertical: 14,
+    backgroundColor: theme.bg,
     alignItems: 'center',
+    justifyContent: 'center',
+    padding: 32,
+    gap: 16,
   },
-  buttonText: { color: '#081018', fontWeight: '800', fontSize: 16 },
+  icon: { fontSize: 56, color: theme.accent },
+  title: {
+    fontFamily: theme.fontMonoBold,
+    fontSize: 20,
+    color: theme.text,
+    textAlign: 'center',
+  },
+  desc: {
+    fontFamily: theme.fontMono,
+    fontSize: 13,
+    color: theme.textMuted,
+    textAlign: 'center',
+    lineHeight: 20,
+    maxWidth: 300,
+  },
+  btn: {
+    marginTop: 8,
+    backgroundColor: theme.accent,
+    paddingVertical: 15,
+    paddingHorizontal: 32,
+    borderRadius: theme.radius,
+  },
+  btnText: {
+    fontFamily: theme.fontMonoBold,
+    fontSize: 14,
+    color: theme.white,
+  },
 });

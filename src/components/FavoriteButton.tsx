@@ -1,31 +1,18 @@
-import { Ionicons } from '@expo/vector-icons';
-import { Pressable, StyleSheet } from 'react-native';
+import { Pressable, StyleSheet, Text } from 'react-native';
+import { theme } from '@/constants/theme';
 
-export const FavoriteButton = ({
-  active,
-  onPress,
-}: {
-  active: boolean;
-  onPress: () => void;
-}) => (
-  <Pressable style={styles.button} onPress={onPress}>
-    <Ionicons
-      name={active ? 'heart' : 'heart-outline'}
-      size={22}
-      color={active ? '#F87171' : '#F4F7FB'}
-    />
-  </Pressable>
-);
+type Props = { active: boolean; onPress: () => void };
 
-const styles = StyleSheet.create({
-  button: {
-    height: 44,
-    width: 44,
-    borderRadius: 22,
-    backgroundColor: '#1A2338',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: '#22304A',
-  },
+export function FavoriteButton({ active, onPress }: Props) {
+  return (
+    <Pressable onPress={onPress} hitSlop={12} style={s.btn}>
+      <Text style={[s.icon, active && s.active]}>{active ? '♥' : '♡'}</Text>
+    </Pressable>
+  );
+}
+
+const s = StyleSheet.create({
+  btn: { padding: 4 },
+  icon: { fontSize: 22, color: theme.textMuted },
+  active: { color: theme.accent },
 });

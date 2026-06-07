@@ -1,5 +1,12 @@
-import { useEffect } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useEffect, useRef, useState } from 'react';
+import {
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+  SafeAreaView,
+  Animated,
+} from 'react-native';
 import { useRouter } from 'expo-router';
 import { PermissionGate } from '@/components/PermissionGate';
 import { requestLocationPermission, watchPosition } from '@/services/locationService';
@@ -8,16 +15,17 @@ import { useHeading } from '@/features/compass/hooks/useHeading';
 import { useNearbyPlaces } from '@/features/places/hooks/useNearbyPlaces';
 import { LoadingView } from '@/components/LoadingView';
 import { EmptyState } from '@/components/EmptyState';
-import { TargetCard } from '@/components/TargetCard';
 import { CompassDial } from '@/components/CompassDial';
 import { useTargetBearing } from '@/features/compass/hooks/useTargetBearing';
 import { getDirectionInstruction } from '@/features/compass/utils/direction';
-import { FavoriteButton } from '@/components/FavoriteButton';
 import { useFavorites } from '@/features/favorites/hooks/useFavorites';
 import { triggerAlignmentHaptic } from '@/services/headingService';
 import { ALIGNMENT_THRESHOLD } from '@/constants/thresholds';
-import { FilterSheet } from '@/components/FilterSheet';
-import { isGoogleConfigured } from '@/lib/env';
+import { FilterDrawer } from '@/components/FilterDrawer';
+import { BurgerMenu } from '@/components/BurgerMenu';
+import { theme } from '@/constants/theme';
+import { formatDistance } from '@/features/compass/utils/distance';
+import { PLACE_TYPE_LABELS } from '@/constants/placeTypes';
 
 export default function CompassScreen() {
   const router = useRouter();
@@ -29,15 +37,15 @@ export default function CompassScreen() {
     setSelectedTarget,
     userHeading,
   } = useAppStore();
-  useHeading();
-  const { places, target, loading, error } = useNearbyPlaces(userLocation);
+
+  const { headingAvailable } = useHeading();
+  const { places, target, loading } = useNearbyPlaces(userLocation);
   const { deltaAngle } = useTargetBearing(userLocation, userHeading, target);
   const instruction = getDirectionInstruction(deltaAngle);
   const { isFavorite, toggleFavorite } = useFavorites();
+  const [burgerOpen, setBurgerOpen] = useState(false);
 
-  useEffect(() => {
-    setSelectedTarget(target);
-  }, [setSelectedTarget, target]);
+  useEffect(() => { setSelectedTarget(target); }, [setSelectedTarget, target]);
 
   useEffect(() => {
     if (deltaAngle != null && Math.abs(deltaAngle) < ALIGNMENT_THRESHOLD) {
@@ -54,119 +62,199 @@ export default function CompassScreen() {
     }
   };
 
-  useEffect(() => {
-    askPermission();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  useEffect(() => { askPermission(); }, []);
 
   if (locationPermission !== 'granted') {
-    return (
-      <PermissionGate
-        title="Localisation requise"
-        description="Near.io utilise votre position pour pointer vers le commerce alimentaire le plus proche. Presque aussi utile qu'un Jarvis."
-        onPress={() => { askPermission(); }}
-      />
-    );
+    return <PermissionGate onPress={askPermission} />;
   }
 
   if (loading && !target) {
-    return <LoadingView label="Recherche des commerces proches..." />;
+    return <LoadingView label="Recherche..." />;
   }
 
-  return (
-    <View style={styles.container}>
-      <ScrollView contentContainerStyle={styles.content}>
-        {!isGoogleConfigured ? (
-          <View style={styles.banner}>
-            <Text style={styles.bannerText}>
-              Mode OSM only — horaires temps réel limités.
-            </Text>
-          </View>
-        ) : null}
-        {error ? (
-          <View style={styles.bannerAlt}>
-            <Text style={styles.bannerText}>{error}</Text>
-          </View>
-        ) : null}
+  const fav = target ? isFavorite(target.id) : false;
 
-        <View style={styles.headerRow}>
-          <View>
-            <Text style={styles.title}>Compass</Text>
-            <Text style={styles.subtitle}>{places.length} lieux chargés</Text>
-          </View>
-          <FavoriteButton
-            active={target ? isFavorite(target.id) : false}
-            onPress={() => target && toggleFavorite(target)}
-          />
+  return (
+    <SafeAreaView style={s.root}>
+      {/* HEADER */}
+      <View style={s.header}>
+        <Pressable onPress={() => setBurgerOpen(true)} hitSlop={12} style={s.burger}>
+          <View style={s.burgerLine} />
+          <View style={[s.burgerLine, { width: 16 }]} />
+          <View style={s.burgerLine} />
+        </Pressable>
+
+        <View style={s.targetInfo}>
+          {target ? (
+            <>
+              <Text style={s.targetName} numberOfLines={1}>{target.name}</Text>
+              <Text style={s.targetMeta}>
+                {PLACE_TYPE_LABELS[target.category]}
+                {'  '}
+                <Text style={[
+                  s.targetStatus,
+                  target.openingStatus === 'open' && { color: theme.accent },
+                  target.openingStatus === 'closed' && { color: theme.textFaint },
+                ]}>
+                  {target.openingStatus === 'open' ? '● ouvert'
+                    : target.openingStatus === 'closed' ? '● fermé'
+                    : '● ?'}
+                </Text>
+              </Text>
+            </>
+          ) : (
+            <Text style={s.targetName}>Aucune cible</Text>
+          )}
         </View>
 
-        <TargetCard place={target} />
+        <Pressable
+          onPress={() => target && toggleFavorite(target)}
+          hitSlop={12}
+          style={s.heartBtn}
+          disabled={!target}
+        >
+          <Text style={[s.heartIcon, fav && { color: theme.accent }]}>
+            {fav ? '♥' : '♡'}
+          </Text>
+        </Pressable>
+      </View>
 
+      {/* HEADING WARNING */}
+      {!headingAvailable && (
+        <View style={s.warningBanner}>
+          <Text style={s.warningText}>⚠ Orientation simulée — capteur indisponible dans Expo Go</Text>
+        </View>
+      )}
+
+      {/* COMPASS */}
+      <View style={s.compassZone}>
         {target ? (
           <CompassDial deltaAngle={deltaAngle} instruction={instruction} />
         ) : (
           <EmptyState
             title="Aucun commerce trouvé"
-            description="Essayez d'augmenter le rayon ou d'ajuster les filtres."
+            description="Augmentez le rayon dans les filtres."
           />
         )}
+      </View>
 
-        <View style={styles.actions}>
-          <Pressable style={styles.buttonPrimary} onPress={() => router.push('/map')}>
-            <Text style={styles.buttonPrimaryText}>Ouvrir la carte</Text>
-          </Pressable>
-          <Pressable style={styles.buttonSecondary} onPress={() => router.push('/ar')}>
-            <Text style={styles.buttonSecondaryText}>Mode AR</Text>
-          </Pressable>
-          <Pressable style={styles.buttonSecondary} onPress={() => router.push('/favorites')}>
-            <Text style={styles.buttonSecondaryText}>Favoris</Text>
-          </Pressable>
-          <Pressable style={styles.buttonSecondary} onPress={() => router.push('/settings')}>
-            <Text style={styles.buttonSecondaryText}>Réglages</Text>
-          </Pressable>
+      {/* DISTANCE */}
+      {target && (
+        <View style={s.distanceRow}>
+          <Text style={s.distanceValue}>
+            {target.distanceMeters != null ? formatDistance(target.distanceMeters) : '---'}
+          </Text>
+          {instruction ? <Text style={s.instruction}>{instruction}</Text> : null}
         </View>
-      </ScrollView>
-      <FilterSheet />
-    </View>
+      )}
+
+      {/* BOTTOM ACTION */}
+      <View style={s.bottomBar}>
+        <Pressable style={s.mapBtn} onPress={() => router.push('/map')}>
+          <Text style={s.mapBtnText}>Ouvrir la carte</Text>
+        </Pressable>
+      </View>
+
+      {/* SIDE FILTER DRAWER */}
+      <FilterDrawer />
+
+      {/* BURGER MENU */}
+      <BurgerMenu open={burgerOpen} onClose={() => setBurgerOpen(false)} />
+    </SafeAreaView>
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#0B1020' },
-  content: { padding: 20, gap: 18, paddingBottom: 140 },
-  headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  title: { color: '#F4F7FB', fontSize: 30, fontWeight: '900' },
-  subtitle: { color: '#9AA5BD', marginTop: 4 },
-  banner: {
-    backgroundColor: '#3A2A0F',
-    padding: 12,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: '#6E541B',
+const s = StyleSheet.create({
+  root: { flex: 1, backgroundColor: theme.bg },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingTop: 12,
+    paddingBottom: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.border,
   },
-  bannerAlt: {
-    backgroundColor: '#30222B',
-    padding: 12,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: '#5A3950',
+  burger: { gap: 4, paddingRight: 16 },
+  burgerLine: {
+    width: 22,
+    height: 2,
+    backgroundColor: theme.text,
+    borderRadius: 2,
   },
-  bannerText: { color: '#F4F7FB', lineHeight: 20 },
-  actions: { gap: 12 },
-  buttonPrimary: {
-    backgroundColor: '#4FD1C5',
+  targetInfo: { flex: 1 },
+  targetName: {
+    fontFamily: theme.fontMonoBold,
+    fontSize: 15,
+    color: theme.text,
+  },
+  targetMeta: {
+    fontFamily: theme.fontMono,
+    fontSize: 11,
+    color: theme.textMuted,
+    marginTop: 2,
+  },
+  targetStatus: {
+    fontFamily: theme.fontMono,
+    fontSize: 11,
+  },
+  heartBtn: { paddingLeft: 16 },
+  heartIcon: {
+    fontSize: 24,
+    color: theme.textMuted,
+  },
+  warningBanner: {
+    backgroundColor: '#1A1200',
+    paddingVertical: 7,
+    paddingHorizontal: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#3A2A00',
+  },
+  warningText: {
+    fontFamily: theme.fontMono,
+    fontSize: 11,
+    color: '#C8A020',
+  },
+  compassZone: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  distanceRow: {
+    alignItems: 'center',
+    paddingBottom: 16,
+    gap: 4,
+  },
+  distanceValue: {
+    fontFamily: theme.fontMonoBold,
+    fontSize: 36,
+    color: theme.text,
+    letterSpacing: -1,
+  },
+  instruction: {
+    fontFamily: theme.fontMono,
+    fontSize: 13,
+    color: theme.accent,
+    letterSpacing: 1,
+    textTransform: 'uppercase',
+  },
+  bottomBar: {
+    paddingHorizontal: 20,
+    paddingBottom: 24,
+    paddingTop: 8,
+  },
+  mapBtn: {
+    backgroundColor: theme.surface,
+    borderWidth: 1,
+    borderColor: theme.border,
     paddingVertical: 15,
     alignItems: 'center',
-    borderRadius: 16,
+    borderRadius: theme.radius,
   },
-  buttonPrimaryText: { color: '#071018', fontSize: 16, fontWeight: '800' },
-  buttonSecondary: {
-    backgroundColor: '#131A2A',
-    paddingVertical: 15,
-    alignItems: 'center',
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: '#22304A',
+  mapBtnText: {
+    fontFamily: theme.fontMonoMedium,
+    fontSize: 14,
+    color: theme.text,
+    letterSpacing: 0.5,
   },
-  buttonSecondaryText: { color: '#F4F7FB', fontSize: 15, fontWeight: '700' },
 });
