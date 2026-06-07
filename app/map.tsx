@@ -1,17 +1,24 @@
-import { StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import MapView, { Marker } from 'react-native-maps';
+import { useRouter } from 'expo-router';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAppStore } from '@/store/appStore';
 import { useNearbyPlaces } from '@/features/places/hooks/useNearbyPlaces';
+import { theme } from '@/constants/theme';
 
 export default function MapScreen() {
+  const router = useRouter();
   const { userLocation, selectedTarget } = useAppStore();
   const { places } = useNearbyPlaces(userLocation);
 
   if (!userLocation) {
     return (
-      <View style={styles.fallback}>
+      <SafeAreaView style={styles.fallback}>
+        <Pressable onPress={() => router.back()} style={styles.backBtn}>
+          <Text style={styles.backText}>← Retour</Text>
+        </Pressable>
         <Text style={styles.text}>Position indisponible.</Text>
-      </View>
+      </SafeAreaView>
     );
   }
 
@@ -38,6 +45,15 @@ export default function MapScreen() {
           />
         ))}
       </MapView>
+
+      {/* BOUTON RETOUR */}
+      <SafeAreaView edges={['top']} style={styles.topBar}>
+        <Pressable onPress={() => router.back()} style={styles.backBtn}>
+          <Text style={styles.backText}>← Retour</Text>
+        </Pressable>
+      </SafeAreaView>
+
+      {/* CIBLE EN BAS */}
       <View style={styles.overlay}>
         <Text style={styles.overlayTitle}>
           {selectedTarget?.name ?? 'Aucune cible'}
@@ -53,9 +69,31 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#0B1020',
+    backgroundColor: theme.bg,
   },
-  text: { color: '#F4F7FB' },
+  topBar: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    paddingHorizontal: 16,
+    paddingTop: 8,
+  },
+  backBtn: {
+    alignSelf: 'flex-start',
+    backgroundColor: 'rgba(11,16,32,0.82)',
+    borderRadius: 20,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderWidth: 1,
+    borderColor: theme.border,
+  },
+  backText: {
+    color: theme.text,
+    fontSize: 14,
+    fontFamily: theme.fontMonoMedium,
+  },
+  text: { color: theme.text },
   overlay: {
     position: 'absolute',
     left: 16,
@@ -65,5 +103,5 @@ const styles = StyleSheet.create({
     borderRadius: 24,
     padding: 16,
   },
-  overlayTitle: { color: '#F4F7FB', fontSize: 18, fontWeight: '800' },
+  overlayTitle: { color: theme.text, fontSize: 18, fontWeight: '800' },
 });
