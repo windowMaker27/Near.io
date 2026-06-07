@@ -12,15 +12,32 @@
       "resizeMode": "contain",
       "backgroundColor": "#0B1020"
     },
-    "assetBundlePatterns": [
-      "**/*"
-    ],
+    "assetBundlePatterns": ["**/*"],
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "io.near.app",
       "infoPlist": {
         "NSLocationWhenInUseUsageDescription": "Near.io utilise votre position pour vous guider vers le commerce alimentaire ouvert le plus proche.",
-        "NSCameraUsageDescription": "Near.io utilise la caméra pour afficher le mode AR directionnel."
+        "NSCameraUsageDescription": "Near.io utilise la caméra pour afficher le mode AR directionnel.",
+        "NSAppTransportSecurity": {
+          "NSExceptionDomains": {
+            "supabase.co": {
+              "NSIncludesSubdomains": true,
+              "NSExceptionAllowsInsecureHTTPLoads": false,
+              "NSExceptionRequiresForwardSecrecy": false
+            },
+            "nominatim.openstreetmap.org": {
+              "NSIncludesSubdomains": false,
+              "NSExceptionAllowsInsecureHTTPLoads": false,
+              "NSExceptionRequiresForwardSecrecy": false
+            },
+            "overpass-api.de": {
+              "NSIncludesSubdomains": false,
+              "NSExceptionAllowsInsecureHTTPLoads": false,
+              "NSExceptionRequiresForwardSecrecy": false
+            }
+          }
+        }
       }
     },
     "android": {
