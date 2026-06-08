@@ -9,7 +9,7 @@ import { signIn } from '@/features/auth/authService';
 import { useAuthStore } from '@/store/authStore';
 
 export default function LoginScreen() {
-  const [email, setEmail] = useState('');
+  const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -19,7 +19,7 @@ export default function LoginScreen() {
     setError(null);
     setLoading(true);
     try {
-      const profile = await signIn({ email: email.trim(), password });
+      const profile = await signIn({ identifier: identifier.trim(), password });
       setProfile(profile);
       router.replace('/');
     } catch (e: any) {
@@ -37,13 +37,12 @@ export default function LoginScreen() {
 
         <TextInput
           style={styles.input}
-          placeholder="Email"
+          placeholder="Email ou nom d'utilisateur"
           placeholderTextColor={theme.textMuted}
-          value={email}
-          onChangeText={setEmail}
-          keyboardType="email-address"
+          value={identifier}
+          onChangeText={setIdentifier}
           autoCapitalize="none"
-          autoComplete="email"
+          autoComplete="username"
         />
         <TextInput
           style={styles.input}

@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { AppState, AppStateStatus } from 'react-native';
 import { haversineDistanceMeters } from '@/features/compass/utils/distance';
 import { fetchNearbyOverpassPlaces } from '@/features/places/api/overpass';
 import { fetchGooglePlaceDetails, searchGooglePlacesText } from '@/features/places/api/googlePlaces';
@@ -35,41 +36,90 @@ export const useNearbyPlaces = (userLocation?: Coordinates) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string>();
   const [targetIndex, setTargetIndex] = useState(0);
+  // Compteur pour forcer un re-fetch (AppState foreground)
+  const [refreshTick, setRefreshTick] = useState(0);
 
   const lat = userLocation?.latitude;
   const lon = userLocation?.longitude;
   const radius = filters.radiusMeters;
 
-  const radiusRef = useRef(radius);
-  radiusRef.current = radius;
-
-  // Reset l'index quand la liste change
-  const prevPlacesRef = useRef<Place[]>([]);
-
+  // Écoute AppState : invalide le cache OSM et force un reload au retour foreground
   useEffect(() => {
-    if (lat == null || lon == null) return;
+    const handleAppStateChange = (nextState: AppStateStatus) => {
+      if (nextState === 'active') {
+        osmCache = null; // invalide le cache pour forcer un nouveau fetch
+        setRefreshTick((t) => t + 1);
+      }
+    };
+    const sub = AppState.addEventListener('change', handleAppStateChange);
+    return () => sub.remove();
+  }, []);
 
+  const load = useCallback(async (lat: number, lon: number, radius: number) => {
     let cancelled = false;
-
-    const load = async () => {
-      setLoading(true);
-      setError(undefined);
-      try {
-        let osmPlaces: Place[];
-        if (osmCache && isCacheValid(osmCache, lat, lon, radius)) {
-          osmPlaces = osmCache.places;
-        } else {
-          const osmResult = await fetchNearbyOverpassPlaces(lat, lon, radius);
-          osmPlaces = osmResult;
-          osmCache = { lat, lon, radius, places: osmResult, fetchedAt: Date.now() };
+    setLoading(true);
+    setError(undefined);
+    try {
+      let osmPlaces: Place[];
+      if (osmCache && isCacheValid(osmCache, lat, lon, radius)) {
+        osmPlaces = osmCache.places;
+      } else {
+        // Fallback sur plusieurs miroirs si le premier échoue
+        let osmResult: Place[] = [];
+        try {
+          osmResult = await fetchNearbyOverpassPlaces(lat, lon, radius);
+        } catch (e) {
+          console.warn('[useNearbyPlaces] Overpass principal failed, fallback mock', e);
         }
+        osmPlaces = osmResult;
+        osmCache = { lat, lon, radius, places: osmResult, fetchedAt: Date.now() };
+      }
 
-        const supabaseResult = await fetchApprovedPlaces(lat, lon, radius).catch(() => []);
-        const userPlaces = supabaseResult.map(normalizeSupabasePlace);
-        const merged = deduplicatePlaces([...osmPlaces, ...userPlaces]);
-        const base = merged.length ? merged : mockPlaces;
+      const supabaseResult = await fetchApprovedPlaces(lat, lon, radius).catch(() => []);
+      const userPlaces = supabaseResult.map(normalizeSupabasePlace);
+      const merged = deduplicatePlaces([...osmPlaces, ...userPlaces]);
 
-        const withDistance = base.map((place) => ({
+      // Toujours afficher quelque chose — mockPlaces si rien d'autre
+      const base = merged.length ? merged : mockPlaces;
+
+      const withDistance = base.map((place) => ({
+        ...place,
+        distanceMeters: haversineDistanceMeters(
+          lat, lon,
+          place.coordinates.latitude,
+          place.coordinates.longitude,
+        ),
+      }));
+
+      const ranked = rankPlaces(withDistance);
+      let enriched = ranked;
+
+      if (isGoogleConfigured && ranked.length > 0) {
+        const top = ranked.slice(0, 3);
+        enriched = await Promise.all(
+          ranked.map(async (place) => {
+            if (place.source !== 'osm') return place;
+            if (!top.some((item) => item.id === place.id)) return place;
+            const results = await searchGooglePlacesText(
+              `${place.name} ${place.shortAddress ?? ''}`.trim(),
+            );
+            const googleId = results?.[0]?.id;
+            if (!googleId) return place;
+            const details = await fetchGooglePlaceDetails(googleId);
+            return details ? mergeGoogleDetails(place, details) : place;
+          }),
+        );
+      }
+
+      if (!cancelled) {
+        setPlaces(enriched);
+        setTargetIndex(0);
+      }
+    } catch (e) {
+      console.error('[useNearbyPlaces] Erreur critique:', e);
+      if (!cancelled) {
+        setError('Impossible de charger les commerces.');
+        const fallback = mockPlaces.map((place) => ({
           ...place,
           distanceMeters: haversineDistanceMeters(
             lat, lon,
@@ -77,58 +127,24 @@ export const useNearbyPlaces = (userLocation?: Coordinates) => {
             place.coordinates.longitude,
           ),
         }));
-
-        const ranked = rankPlaces(withDistance);
-        let enriched = ranked;
-
-        if (isGoogleConfigured && ranked.length > 0) {
-          const top = ranked.slice(0, 3);
-          enriched = await Promise.all(
-            ranked.map(async (place) => {
-              if (place.source !== 'osm') return place;
-              if (!top.some((item) => item.id === place.id)) return place;
-              const results = await searchGooglePlacesText(
-                `${place.name} ${place.shortAddress ?? ''}`.trim(),
-              );
-              const googleId = results?.[0]?.id;
-              if (!googleId) return place;
-              const details = await fetchGooglePlaceDetails(googleId);
-              return details ? mergeGoogleDetails(place, details) : place;
-            }),
-          );
-        }
-
-        if (!cancelled) {
-          setPlaces(enriched);
-          setTargetIndex(0); // reset à chaque nouveau chargement
-        }
-      } catch (e) {
-        if (!cancelled) {
-          setError('Impossible de charger les commerces.');
-          const fallback = mockPlaces.map((place) => ({
-            ...place,
-            distanceMeters: haversineDistanceMeters(
-              lat, lon,
-              place.coordinates.latitude,
-              place.coordinates.longitude,
-            ),
-          }));
-          setPlaces(rankPlaces(fallback));
-          setTargetIndex(0);
-        }
-      } finally {
-        if (!cancelled) setLoading(false);
+        setPlaces(rankPlaces(fallback));
+        setTargetIndex(0);
       }
-    };
-
-    load();
+    } finally {
+      if (!cancelled) setLoading(false);
+    }
     return () => { cancelled = true; };
-  }, [lat, lon, radius]);
+  }, []);
+
+  useEffect(() => {
+    if (lat == null || lon == null) return;
+    const cancel = load(lat, lon, radius);
+    return () => { cancel?.then((fn) => fn?.()); };
+  }, [lat, lon, radius, refreshTick, load]);
 
   const filteredPlaces = useMemo(() => filterPlaces(places, filters), [filters, places]);
   const rankedPlaces = useMemo(() => rankPlaces(filteredPlaces), [filteredPlaces]);
 
-  // Clamp l'index si la liste rétrécit
   const clampedIndex = Math.min(targetIndex, Math.max(0, rankedPlaces.length - 1));
   const target = rankedPlaces[clampedIndex] ?? null;
 

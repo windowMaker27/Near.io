@@ -8,18 +8,19 @@ export type SignUpParams = {
 };
 
 export type SignInParams = {
-  email: string;
+  /** Email ou username */
+  identifier: string;
   password: string;
 };
 
 /** Attend que le trigger ait inséré le profil, avec retry */
 async function fetchProfileWithRetry(userId: string, attempts = 5): Promise<UserProfile> {
   for (let i = 0; i < attempts; i++) {
-    const { data, error } = await supabase
+    const { data } = await supabase
       .from('profiles')
       .select('id, username, avatar_url, role, created_at')
       .eq('id', userId)
-      .maybeSingle();  // ne lève pas d'erreur si 0 résultats
+      .maybeSingle();
 
     if (data) {
       return {
@@ -30,8 +31,6 @@ async function fetchProfileWithRetry(userId: string, attempts = 5): Promise<User
         createdAt: data.created_at,
       };
     }
-
-    // Profil pas encore créé par le trigger — on attend
     await new Promise((r) => setTimeout(r, 400));
   }
   throw new Error('Profil introuvable après inscription. Veuillez réessayer.');
@@ -49,16 +48,42 @@ export async function signUp({ email, password, username }: SignUpParams): Promi
   });
   if (error) throw error;
   if (!data.user) throw new Error('Utilisateur non créé');
-
   return fetchProfileWithRetry(data.user.id);
 }
 
-/** Connexion */
-export async function signIn({ email, password }: SignInParams): Promise<UserProfile> {
+/**
+ * Connexion par email OU username.
+ * Si l'identifiant ne contient pas '@', on cherche l'email correspondant
+ * dans la table profiles avant d'appeler signInWithPassword.
+ */
+export async function signIn({ identifier, password }: SignInParams): Promise<UserProfile> {
+  let email = identifier.trim();
+
+  // Résolution username → email
+  if (!email.includes('@')) {
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('id')
+      .ilike('username', email)
+      .maybeSingle();
+
+    if (error || !data) {
+      throw new Error('Nom d\'utilisateur introuvable.');
+    }
+
+    // Récupère l'email depuis auth.users via la fonction RPC
+    const { data: emailData, error: emailError } = await supabase
+      .rpc('get_email_by_user_id', { user_id: data.id });
+
+    if (emailError || !emailData) {
+      throw new Error('Impossible de résoudre cet identifiant.');
+    }
+    email = emailData as string;
+  }
+
   const { data, error } = await supabase.auth.signInWithPassword({ email, password });
   if (error) throw error;
   if (!data.user) throw new Error('Connexion échouée');
-
   return fetchProfile(data.user.id);
 }
 
