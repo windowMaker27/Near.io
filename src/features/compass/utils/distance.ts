@@ -1,10 +1,3 @@
-/**
- * Haversine = distance à vol d'oiseau.
- *
- * DISPLAY_OFFSET_M : correction empirique temporaire.
- * Mis à 0 depuis le fix du géocodage BAN/IGN.
- * À réajuster si une dérive systématique est constatée après mesures terrain.
- */
 const DISPLAY_OFFSET_M = 0;
 
 export function haversineDistanceMeters(
@@ -27,6 +20,6 @@ export const haversineDistance = haversineDistanceMeters;
 
 export function formatDistance(meters: number): string {
   const display = Math.max(0, meters - DISPLAY_OFFSET_M);
-  if (display < 1000) return `${Math.round(display / 5) * 5}\u202fm`;
+  if (display < 1000) return `${Math.round(display)}\u202fm`;
   return `${(display / 1000).toFixed(1)}\u202fkm`;
 }
