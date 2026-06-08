@@ -47,14 +47,8 @@ export async function signUp({ email, password, username }: SignUpParams): Promi
 
 /**
  * Connexion par email OU username.
- *
- * Stratégie username : on stocke l'email dans auth.users.email mais aussi
- * dans profiles. On utilise une RPC côté Supabase pour éviter d'exposer
- * auth.users. Si la RPC échoue (pas encore déployée), on tente de sign in
- * directement avec un email factice pour obtenir un message d'erreur clair.
- *
- * Alternative sans RPC : on stocke l'email dans profiles.email.
- * C'est la solution la plus simple et la plus robuste.
+ * La résolution username → email passe par la RPC `get_email_by_user_id`
+ * (SECURITY DEFINER, accessible à anon).
  */
 export async function signIn({ identifier, password }: SignInParams): Promise<UserProfile> {
   const trimmed = identifier.trim();
@@ -63,17 +57,25 @@ export async function signIn({ identifier, password }: SignInParams): Promise<Us
   if (trimmed.includes('@')) {
     email = trimmed;
   } else {
-    // Résolution username → email via colonne email dans profiles
-    const { data, error } = await supabase
+    // 1. Trouve l'id depuis le username (profiles est lisible par anon)
+    const { data: profileData, error: profileError } = await supabase
       .from('profiles')
-      .select('email')
+      .select('id')
       .ilike('username', trimmed)
       .maybeSingle();
 
-    if (error || !data?.email) {
+    if (profileError || !profileData) {
       throw new Error('Nom d\'utilisateur introuvable.');
     }
-    email = data.email as string;
+
+    // 2. Résout l'email via RPC SECURITY DEFINER
+    const { data: emailData, error: rpcError } = await supabase
+      .rpc('get_email_by_user_id', { p_user_id: profileData.id });
+
+    if (rpcError || !emailData) {
+      throw new Error('Impossible de résoudre cet identifiant. Contactez le support.');
+    }
+    email = emailData as string;
   }
 
   const { data, error } = await supabase.auth.signInWithPassword({ email, password });

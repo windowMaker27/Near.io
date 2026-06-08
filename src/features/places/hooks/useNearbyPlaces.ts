@@ -12,7 +12,6 @@ import { fetchApprovedPlaces } from '@/services/supabaseService';
 import { Coordinates, Place } from '@/types/place';
 import { isGoogleConfigured } from '@/lib/env';
 
-// Cache module-level : survive les re-renders déclenchés par onAuthStateChange
 interface OsmCache {
   lat: number;
   lon: number;
@@ -22,12 +21,16 @@ interface OsmCache {
 }
 let osmCache: OsmCache | null = null;
 const OSM_CACHE_TTL_MS = 5 * 60 * 1000;
+// Seuil minimum de déplacement pour relancer un fetch OSM (évite les micro-updates GPS)
+const OSM_REFETCH_THRESHOLD_M = 50;
+// Debounce : attend que la position se stabilise avant de fetch
+const DEBOUNCE_MS = 3000;
 
 function isCacheValid(cache: OsmCache, lat: number, lon: number, radius: number): boolean {
   if (Date.now() - cache.fetchedAt > OSM_CACHE_TTL_MS) return false;
   if (cache.radius !== radius) return false;
   const d = haversineDistanceMeters(cache.lat, cache.lon, lat, lon);
-  return d < 50;
+  return d < OSM_REFETCH_THRESHOLD_M;
 }
 
 export const useNearbyPlaces = (userLocation?: Coordinates) => {
@@ -36,50 +39,85 @@ export const useNearbyPlaces = (userLocation?: Coordinates) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string>();
   const [targetIndex, setTargetIndex] = useState(0);
-  // Compteur pour forcer un re-fetch (AppState foreground)
   const [refreshTick, setRefreshTick] = useState(0);
+
+  // Coords stables après debounce
+  const [stableCoords, setStableCoords] = useState<{ lat: number; lon: number } | null>(null);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Ref vers le cancel du fetch en cours pour éviter les races
+  const cancelRef = useRef<(() => void) | null>(null);
 
   const lat = userLocation?.latitude;
   const lon = userLocation?.longitude;
   const radius = filters.radiusMeters;
 
-  // Écoute AppState : invalide le cache OSM et force un reload au retour foreground
+  // Debounce : met à jour stableCoords seulement après DEBOUNCE_MS sans changement
+  useEffect(() => {
+    if (lat == null || lon == null) return;
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => {
+      setStableCoords((prev) => {
+        // Ne relance le fetch que si déplacement > seuil ou premier fix
+        if (prev) {
+          const d = haversineDistanceMeters(prev.lat, prev.lon, lat, lon);
+          if (d < OSM_REFETCH_THRESHOLD_M) return prev; // position identique, pas de re-fetch
+        }
+        return { lat, lon };
+      });
+    }, DEBOUNCE_MS);
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+    };
+  }, [lat, lon]);
+
+  // AppState foreground : invalide cache et force reload
   useEffect(() => {
     const handleAppStateChange = (nextState: AppStateStatus) => {
       if (nextState === 'active') {
-        osmCache = null; // invalide le cache pour forcer un nouveau fetch
+        osmCache = null;
         setRefreshTick((t) => t + 1);
+        // Force recalcul des stableCoords
+        if (lat != null && lon != null) {
+          setStableCoords({ lat, lon });
+        }
       }
     };
     const sub = AppState.addEventListener('change', handleAppStateChange);
     return () => sub.remove();
-  }, []);
+  }, [lat, lon]);
 
   const load = useCallback(async (lat: number, lon: number, radius: number) => {
+    // Annule le fetch précédent s'il tourne encore
+    cancelRef.current?.();
     let cancelled = false;
+    cancelRef.current = () => { cancelled = true; };
+
     setLoading(true);
     setError(undefined);
+
     try {
       let osmPlaces: Place[];
       if (osmCache && isCacheValid(osmCache, lat, lon, radius)) {
         osmPlaces = osmCache.places;
       } else {
-        // Fallback sur plusieurs miroirs si le premier échoue
         let osmResult: Place[] = [];
         try {
           osmResult = await fetchNearbyOverpassPlaces(lat, lon, radius);
         } catch (e) {
-          console.warn('[useNearbyPlaces] Overpass principal failed, fallback mock', e);
+          console.warn('[useNearbyPlaces] Overpass failed:', e);
         }
+        if (cancelled) return;
         osmPlaces = osmResult;
         osmCache = { lat, lon, radius, places: osmResult, fetchedAt: Date.now() };
       }
 
+      if (cancelled) return;
+
       const supabaseResult = await fetchApprovedPlaces(lat, lon, radius).catch(() => []);
+      if (cancelled) return;
+
       const userPlaces = supabaseResult.map(normalizeSupabasePlace);
       const merged = deduplicatePlaces([...osmPlaces, ...userPlaces]);
-
-      // Toujours afficher quelque chose — mockPlaces si rien d'autre
       const base = merged.length ? merged : mockPlaces;
 
       const withDistance = base.map((place) => ({
@@ -133,14 +171,13 @@ export const useNearbyPlaces = (userLocation?: Coordinates) => {
     } finally {
       if (!cancelled) setLoading(false);
     }
-    return () => { cancelled = true; };
   }, []);
 
+  // Déclenche load seulement sur stableCoords (post-debounce) ou refreshTick
   useEffect(() => {
-    if (lat == null || lon == null) return;
-    const cancel = load(lat, lon, radius);
-    return () => { cancel?.then((fn) => fn?.()); };
-  }, [lat, lon, radius, refreshTick, load]);
+    if (stableCoords == null) return;
+    load(stableCoords.lat, stableCoords.lon, radius);
+  }, [stableCoords, radius, refreshTick, load]);
 
   const filteredPlaces = useMemo(() => filterPlaces(places, filters), [filters, places]);
   const rankedPlaces = useMemo(() => rankPlaces(filteredPlaces), [filteredPlaces]);
@@ -148,10 +185,8 @@ export const useNearbyPlaces = (userLocation?: Coordinates) => {
   const clampedIndex = Math.min(targetIndex, Math.max(0, rankedPlaces.length - 1));
   const target = rankedPlaces[clampedIndex] ?? null;
 
-  const goToNext = () =>
-    setTargetIndex((i) => Math.min(i + 1, rankedPlaces.length - 1));
-  const goToPrev = () =>
-    setTargetIndex((i) => Math.max(i - 1, 0));
+  const goToNext = () => setTargetIndex((i) => Math.min(i + 1, rankedPlaces.length - 1));
+  const goToPrev = () => setTargetIndex((i) => Math.max(i - 1, 0));
 
   return {
     places: rankedPlaces,
