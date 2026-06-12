@@ -35,6 +35,3 @@ create trigger on_auth_user_created
   after insert on auth.users
   for each row execute procedure public.handle_new_user();
 
--- Note: retirer l'upsert de profil dans authService.ts (signUp)
--- Le trigger s'en charge — le client peut juste appeler supabase.auth.signUp()
--- avec { data: { username } } dans les options.
