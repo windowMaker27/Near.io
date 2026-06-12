@@ -1,4 +1,6 @@
 -- Schema Near.io — à exécuter dans l'éditeur SQL Supabase
+-- Catégories valides : supermarket | convenience | bakery | grocery | organic | halal
+--                      pharmacy | fast_food | restaurant | other | street_vendor | unknown
 
 create table if not exists place_submissions (
   id              uuid primary key default gen_random_uuid(),

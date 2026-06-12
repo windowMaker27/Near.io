@@ -10,9 +10,11 @@ export const fetchNearbyOverpassPlaces = async (
   const query = `
   [out:json][timeout:20];
   (
-    node["shop"~"supermarket|convenience|bakery|greengrocer|deli|organic|halal"](around:${radiusMeters},${latitude},${longitude});
-    way["shop"~"supermarket|convenience|bakery|greengrocer|deli|organic|halal"](around:${radiusMeters},${latitude},${longitude});
-    relation["shop"~"supermarket|convenience|bakery|greengrocer|deli|organic|halal"](around:${radiusMeters},${latitude},${longitude});
+    node["shop"~"supermarket|convenience|bakery|greengrocer|organic|halal"](around:${radiusMeters},${latitude},${longitude});
+    way["shop"~"supermarket|convenience|bakery|greengrocer|organic|halal"](around:${radiusMeters},${latitude},${longitude});
+    relation["shop"~"supermarket|convenience|bakery|greengrocer|organic|halal"](around:${radiusMeters},${latitude},${longitude});
+    node["amenity"~"pharmacy|chemist|fast_food|restaurant"](around:${radiusMeters},${latitude},${longitude});
+    way["amenity"~"pharmacy|chemist|fast_food|restaurant"](around:${radiusMeters},${latitude},${longitude});
   );
   out center tags;
   `;
