@@ -1,6 +1,5 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { haversineDistanceMeters } from '@/features/compass/utils/distance';
-import { fetchNearbyOverpassPlaces } from '@/features/places/api/overpass';
 import { fetchGooglePlaceDetails, searchGooglePlacesText } from '@/features/places/api/googlePlaces';
 import { filterPlaces } from '@/features/places/utils/filterPlaces';
 import { mergeGoogleDetails, normalizeSupabasePlace } from '@/features/places/utils/normalizePlace';
@@ -17,15 +16,10 @@ export const useNearbyPlaces = (userLocation?: Coordinates) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string>();
 
-  // Utilise des primitives comme dépendances pour éviter les re-renders
-  // causés par des nouvelles références d'objet identiques en valeur.
   const lat = userLocation?.latitude;
   const lon = userLocation?.longitude;
+  // radius est une vraie dépendance : changer le slider re-déclenche le fetch
   const radius = filters.radiusMeters;
-
-  // Garde la dernière valeur de radius sans re-déclencher le fetch
-  const radiusRef = useRef(radius);
-  radiusRef.current = radius;
 
   useEffect(() => {
     if (lat == null || lon == null) {
@@ -40,27 +34,13 @@ export const useNearbyPlaces = (userLocation?: Coordinates) => {
       setLoading(true);
       setError(undefined);
       try {
-        const [osmResult, supabaseResult] = await Promise.allSettled([
-          fetchNearbyOverpassPlaces(lat, lon, radius),
-          fetchApprovedPlaces(lat, lon, radius),
-        ]);
+        // Source unique : Supabase DB (plus d'appel Overpass)
+        const dbPlaces = await fetchApprovedPlaces(lat, lon, radius);
+        console.log('[useNearbyPlaces] Supabase:', dbPlaces.length, 'lieux');
 
-        console.log('[useNearbyPlaces] OSM:', osmResult.status,
-          osmResult.status === 'fulfilled' ? osmResult.value.length + ' lieux' : osmResult.reason);
-        console.log('[useNearbyPlaces] Supabase:', supabaseResult.status,
-          supabaseResult.status === 'fulfilled' ? supabaseResult.value.length + ' lieux' : supabaseResult.reason);
+        const normalized: Place[] = dbPlaces.map(normalizeSupabasePlace);
 
-        const osmPlaces: Place[] =
-          osmResult.status === 'fulfilled' ? osmResult.value : [];
-        const userPlaces: Place[] =
-          supabaseResult.status === 'fulfilled'
-            ? supabaseResult.value.map(normalizeSupabasePlace)
-            : [];
-
-        const merged = deduplicatePlaces([...osmPlaces, ...userPlaces]);
-        console.log('[useNearbyPlaces] Total après dédoublonnage:', merged.length);
-
-        const base = merged.length ? merged : mockPlaces;
+        const base = normalized.length ? normalized : mockPlaces;
 
         const withDistance = base.map((place) => ({
           ...place,
@@ -78,7 +58,6 @@ export const useNearbyPlaces = (userLocation?: Coordinates) => {
           const top = ranked.slice(0, 3);
           enriched = await Promise.all(
             ranked.map(async (place) => {
-              if (place.source !== 'osm') return place;
               if (!top.some((item) => item.id === place.id)) return place;
               const results = await searchGooglePlacesText(
                 `${place.name} ${place.shortAddress ?? ''}`.trim(),
@@ -113,7 +92,7 @@ export const useNearbyPlaces = (userLocation?: Coordinates) => {
 
     load();
     return () => { cancelled = true; };
-  // Dépendances primitives : pas de re-render inutile sur nouvelle ref objet
+  // radius est une vraie dépendance : le fetch se relance quand le slider change
   }, [lat, lon, radius]);
 
   const filteredPlaces = useMemo(() => filterPlaces(places, filters), [filters, places]);
@@ -122,42 +101,3 @@ export const useNearbyPlaces = (userLocation?: Coordinates) => {
 
   return { places: rankedPlaces, target, loading, error, isGoogleConfigured };
 };
-
-function deduplicatePlaces(places: Place[]): Place[] {
-  const result: Place[] = [];
-
-  for (const candidate of places) {
-    const isDuplicate = result.some((existing) => {
-      const d = haversineDistanceMeters(
-        existing.coordinates.latitude,
-        existing.coordinates.longitude,
-        candidate.coordinates.latitude,
-        candidate.coordinates.longitude,
-      );
-      if (d > 30) return false;
-      const nameA = existing.name.toLowerCase();
-      const nameB = candidate.name.toLowerCase();
-      return nameA === nameB || nameA.includes(nameB) || nameB.includes(nameA);
-    });
-
-    if (!isDuplicate) {
-      result.push(candidate);
-    } else {
-      const existingIdx = result.findIndex((e) => {
-        const d = haversineDistanceMeters(
-          e.coordinates.latitude, e.coordinates.longitude,
-          candidate.coordinates.latitude, candidate.coordinates.longitude,
-        );
-        return d <= 30;
-      });
-      if (existingIdx !== -1) {
-        const existing = result[existingIdx];
-        const existingScore = existing.qualityScore ?? 0;
-        const candidateScore = candidate.qualityScore ?? 0;
-        if (candidateScore > existingScore) result[existingIdx] = candidate;
-      }
-    }
-  }
-
-  return result;
-}
