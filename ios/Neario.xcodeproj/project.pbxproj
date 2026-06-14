@@ -106,7 +106,7 @@
 				13B07F8E1A680F5B00A75B9A /* Resources */,
 				00DD1BFF1BD5951E006B06BC /* Bundle React Native code and images */,
 				800E24972A6A228C8D4807E9 /* [CP] Copy Pods Resources */,
-				D9C7C8E04E664E79831126C5 /* Remove signature files (Xcode workaround) */,
+				44C6FF3776CA47878E60225D /* Remove signature files (Xcode workaround) */,
 			);
 			buildRules = (
 			);
@@ -169,6 +169,8 @@
 			files = (
 			);
 			inputPaths = (
+				"$(SRCROOT)/.xcode.env",
+				"$(SRCROOT)/.xcode.env.local",
 			);
 			name = "Bundle React Native code and images";
 			outputPaths = (
@@ -221,7 +223,7 @@
 			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-Neario/Pods-Neario-resources.sh\"\n";
 			showEnvVarsInLog = 0;
 		};
-		D9C7C8E04E664E79831126C5 /* Remove signature files (Xcode workaround) */ = {
+		44C6FF3776CA47878E60225D /* Remove signature files (Xcode workaround) */ = {
 			isa = PBXShellScriptBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
