@@ -40,7 +40,7 @@ export default function MapScreen() {
             key={place.id}
             coordinate={place.coordinates}
             title={place.name}
-            pinColor={selectedTarget?.id === place.id ? '#2DD4BF' : '#F59E0B'}
+            pinColor={selectedTarget?.id === place.id ? theme.accent : theme.colorWarning}
             description={place.shortAddress}
           />
         ))}
@@ -76,32 +76,40 @@ const styles = StyleSheet.create({
     top: 0,
     left: 0,
     right: 0,
-    paddingHorizontal: 16,
-    paddingTop: 8,
+    paddingHorizontal: theme.sp4,
+    paddingTop: theme.sp2,
   },
   backBtn: {
     alignSelf: 'flex-start',
     backgroundColor: 'rgba(11,16,32,0.82)',
-    borderRadius: 20,
-    paddingVertical: 8,
-    paddingHorizontal: 16,
+    borderRadius: theme.radiusFull,
+    paddingVertical: theme.sp2,
+    paddingHorizontal: theme.sp4,
     borderWidth: 1,
     borderColor: theme.border,
   },
   backText: {
     color: theme.text,
-    fontSize: 14,
+    fontSize: theme.textMd,
     fontFamily: theme.fontMonoMedium,
   },
-  text: { color: theme.text },
+  text: {
+    color: theme.text,
+    fontFamily: theme.fontMono,
+    fontSize: theme.textBase,
+  },
   overlay: {
     position: 'absolute',
-    left: 16,
-    right: 16,
-    bottom: 24,
+    left: theme.sp4,
+    right: theme.sp4,
+    bottom: theme.sp6,
     backgroundColor: 'rgba(11,16,32,0.72)',
-    borderRadius: 24,
-    padding: 16,
+    borderRadius: theme.radiusLg,
+    padding: theme.sp4,
   },
-  overlayTitle: { color: theme.text, fontSize: 18, fontWeight: '800' },
+  overlayTitle: {
+    color: theme.text,
+    fontSize: theme.textXl,
+    fontFamily: theme.fontMonoBold,
+  },
 });

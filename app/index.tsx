@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Pressable,
   StyleSheet,
@@ -28,7 +28,6 @@ import { PlaceNavigator } from '@/components/PlaceNavigator';
 import { theme } from '@/constants/theme';
 import { formatDistance } from '@/features/compass/utils/distance';
 import { PLACE_TYPE_LABELS } from '@/constants/placeTypes';
-import { useEffect } from 'react';
 
 export default function CompassScreen() {
   const router = useRouter();
@@ -83,7 +82,7 @@ export default function CompassScreen() {
     <SafeAreaView style={s.root}>
       {/* HEADER */}
       <View style={s.header}>
-        <Pressable onPress={() => setBurgerOpen(true)} hitSlop={12} style={s.burger}>
+        <Pressable onPress={() => setBurgerOpen(true)} hitSlop={theme.sp3} style={s.burger}>
           <View style={s.burgerLine} />
           <View style={[s.burgerLine, { width: 16 }]} />
           <View style={s.burgerLine} />
@@ -102,8 +101,8 @@ export default function CompassScreen() {
                 {'  '}
                 <Text style={[
                   s.targetStatus,
-                  target.openingStatus === 'open' && { color: theme.accent },
-                  target.openingStatus === 'closed' && { color: theme.textFaint },
+                  target.openingStatus === 'open' && { color: theme.colorOpen },
+                  target.openingStatus === 'closed' && { color: theme.colorClosed },
                 ]}>
                   {target.openingStatus === 'open'
                     ? `● ouvert${target.closingTime ? ` jusqu'à ${target.closingTime}` : ''}`
@@ -119,7 +118,7 @@ export default function CompassScreen() {
 
         <Pressable
           onPress={() => target && toggleFavorite(target)}
-          hitSlop={12}
+          hitSlop={theme.sp3}
           style={s.heartBtn}
           disabled={!target}
         >
@@ -195,13 +194,13 @@ const s = StyleSheet.create({
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingTop: 12,
-    paddingBottom: 10,
+    paddingHorizontal: theme.pagePad,
+    paddingTop: theme.sp3,
+    paddingBottom: theme.sp2 + 2,
     borderBottomWidth: 1,
     borderBottomColor: theme.border,
   },
-  burger: { gap: 4, paddingRight: 16 },
+  burger: { gap: theme.sp1, paddingRight: theme.sp4 },
   burgerLine: {
     width: 22,
     height: 2,
@@ -211,35 +210,35 @@ const s = StyleSheet.create({
   targetInfo: { flex: 1 },
   targetName: {
     fontFamily: theme.fontMonoBold,
-    fontSize: 15,
+    fontSize: theme.textLg,
     color: theme.text,
   },
   targetMeta: {
     fontFamily: theme.fontMono,
-    fontSize: 11,
+    fontSize: theme.textSm,
     color: theme.textMuted,
     marginTop: 2,
   },
   targetStatus: {
     fontFamily: theme.fontMono,
-    fontSize: 11,
+    fontSize: theme.textSm,
   },
-  heartBtn: { paddingLeft: 16 },
+  heartBtn: { paddingLeft: theme.sp4 },
   heartIcon: {
     fontSize: 24,
     color: theme.textMuted,
   },
   warningBanner: {
-    backgroundColor: '#1A1200',
+    backgroundColor: theme.warningBg,
     paddingVertical: 7,
-    paddingHorizontal: 16,
+    paddingHorizontal: theme.sp4,
     borderBottomWidth: 1,
-    borderBottomColor: '#3A2A00',
+    borderBottomColor: theme.warningBorder,
   },
   warningText: {
     fontFamily: theme.fontMono,
-    fontSize: 11,
-    color: '#C8A020',
+    fontSize: theme.textSm,
+    color: theme.colorWarning,
   },
   compassZone: {
     flex: 1,
@@ -248,8 +247,8 @@ const s = StyleSheet.create({
   },
   distanceRow: {
     alignItems: 'center',
-    paddingBottom: 16,
-    gap: 4,
+    paddingBottom: theme.sp4,
+    gap: theme.sp1,
   },
   distanceValue: {
     fontFamily: theme.fontMonoBold,
@@ -259,15 +258,15 @@ const s = StyleSheet.create({
   },
   instruction: {
     fontFamily: theme.fontMono,
-    fontSize: 13,
+    fontSize: theme.textBase,
     color: theme.accent,
-    letterSpacing: 1,
+    letterSpacing: theme.trackingWide,
     textTransform: 'uppercase',
   },
   bottomBar: {
-    paddingHorizontal: 20,
-    paddingBottom: 24,
-    paddingTop: 8,
+    paddingHorizontal: theme.pagePad,
+    paddingBottom: theme.sp6,
+    paddingTop: theme.sp2,
   },
   mapBtn: {
     backgroundColor: theme.surface,
@@ -279,7 +278,7 @@ const s = StyleSheet.create({
   },
   mapBtnText: {
     fontFamily: theme.fontMonoMedium,
-    fontSize: 14,
+    fontSize: theme.textMd,
     color: theme.text,
     letterSpacing: 0.5,
   },

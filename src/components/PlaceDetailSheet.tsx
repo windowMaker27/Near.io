@@ -35,7 +35,7 @@ export function PlaceDetailSheet({ place, onClose }: Props) {
   const openingLabel = () => {
     if (place.openingStatus === 'open') {
       return (
-        <Text style={[d.statusText, { color: theme.accent }]}>
+        <Text style={[d.statusText, { color: theme.colorOpen }]}>
           ● Ouvert
           {place.closingTime ? (
             <Text style={d.closingTime}> jusqu'à {place.closingTime}</Text>
@@ -44,7 +44,7 @@ export function PlaceDetailSheet({ place, onClose }: Props) {
       );
     }
     if (place.openingStatus === 'closed') {
-      return <Text style={[d.statusText, { color: theme.textFaint }]}>● Fermé</Text>;
+      return <Text style={[d.statusText, { color: theme.colorClosed }]}>● Fermé</Text>;
     }
     return <Text style={[d.statusText, { color: theme.textMuted }]}>● Horaires inconnus</Text>;
   };
@@ -69,7 +69,7 @@ export function PlaceDetailSheet({ place, onClose }: Props) {
               <Text style={s.category}>{PLACE_TYPE_LABELS[place.category]}</Text>
               <SourceBadge place={place} />
             </View>
-            <Pressable onPress={onClose} hitSlop={12}>
+            <Pressable onPress={onClose} hitSlop={theme.sp3}>
               <Text style={s.closeBtn}>✕</Text>
             </Pressable>
           </View>
@@ -106,7 +106,7 @@ export function PlaceDetailSheet({ place, onClose }: Props) {
             </View>
           )}
 
-          {/* Logs communautaires — onClose ferme le sheet si l'utilisateur n'est pas connecté */}
+          {/* Logs communautaires */}
           <PlaceLogsSection placeId={place.id} onCloseParent={onClose} />
         </ScrollView>
       </View>
@@ -125,8 +125,8 @@ const s = StyleSheet.create({
     left: 0,
     right: 0,
     backgroundColor: theme.surface,
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
+    borderTopLeftRadius: theme.radiusLg,
+    borderTopRightRadius: theme.radiusLg,
     borderTopWidth: 1,
     borderTopColor: theme.border,
     maxHeight: '75%',
@@ -137,57 +137,57 @@ const s = StyleSheet.create({
     borderRadius: 2,
     backgroundColor: theme.border,
     alignSelf: 'center',
-    marginTop: 10,
-    marginBottom: 4,
+    marginTop: theme.sp2 + 2,
+    marginBottom: theme.sp1,
   },
-  content: { padding: 20, paddingBottom: 48 },
-  titleRow: { flexDirection: 'row', alignItems: 'flex-start', marginBottom: 12 },
+  content: { padding: theme.pagePad, paddingBottom: theme.sp12 },
+  titleRow: { flexDirection: 'row', alignItems: 'flex-start', marginBottom: theme.sp3 },
   name: {
     fontFamily: theme.fontMonoBold,
-    fontSize: 18,
+    fontSize: theme.textXl,
     color: theme.text,
     flexShrink: 1,
   },
   category: {
     fontFamily: theme.fontMono,
-    fontSize: 12,
+    fontSize: theme.textXs + 2,
     color: theme.textMuted,
     marginTop: 2,
   },
   closeBtn: {
     color: theme.textMuted,
-    fontSize: 16,
+    fontSize: theme.textXl,
     fontFamily: theme.fontMono,
-    paddingLeft: 16,
+    paddingLeft: theme.sp4,
     paddingTop: 2,
   },
   row: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
-    marginBottom: 12,
+    gap: theme.sp2 + 2,
+    marginBottom: theme.sp3,
   },
-  rowIcon: { fontSize: 16, width: 22 },
+  rowIcon: { fontSize: theme.sp4, width: 22 },
   rowText: {
     fontFamily: theme.fontMono,
-    fontSize: 13,
+    fontSize: theme.textBase,
     color: theme.text,
     flexShrink: 1,
   },
   hoursBox: {
-    marginTop: 4,
+    marginTop: theme.sp1,
     backgroundColor: theme.bg,
-    borderRadius: 10,
-    padding: 14,
+    borderRadius: theme.radius,
+    padding: theme.textMd,
     borderWidth: 1,
     borderColor: theme.border,
-    gap: 6,
+    gap: theme.sp1 + 2,
   },
   hoursLabel: {
     fontFamily: theme.fontMono,
-    fontSize: 10,
+    fontSize: theme.textXs,
     color: theme.textFaint,
-    letterSpacing: 1,
+    letterSpacing: theme.trackingWide,
     textTransform: 'uppercase',
     marginBottom: 2,
   },
@@ -195,17 +195,17 @@ const s = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    gap: 12,
+    gap: theme.sp3,
   },
   hoursDayText: {
     fontFamily: theme.fontMono,
-    fontSize: 12,
+    fontSize: theme.textXs + 2,
     color: theme.textMuted,
     flexShrink: 1,
   },
   hoursTimeText: {
     fontFamily: theme.fontMonoBold,
-    fontSize: 12,
+    fontSize: theme.textXs + 2,
     color: theme.text,
     textAlign: 'right',
   },
@@ -214,11 +214,11 @@ const s = StyleSheet.create({
 const d = StyleSheet.create({
   statusText: {
     fontFamily: theme.fontMonoBold,
-    fontSize: 13,
+    fontSize: theme.textBase,
   },
   closingTime: {
     fontFamily: theme.fontMono,
-    fontSize: 13,
+    fontSize: theme.textBase,
     color: theme.textMuted,
   },
 });

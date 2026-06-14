@@ -21,7 +21,6 @@ export default function RegisterScreen() {
   async function handleRegister() {
     setError(null);
 
-    // Validations locales
     if (!username.trim()) { setError('Le nom d\'utilisateur est requis.'); return; }
     if (username.trim().length < 3) { setError('Le nom d\'utilisateur doit faire au moins 3 caractères.'); return; }
     if (!/^[a-zA-Z0-9_]+$/.test(username.trim())) { setError('Le nom d\'utilisateur ne peut contenir que des lettres, chiffres et _.'); return; }
@@ -31,7 +30,6 @@ export default function RegisterScreen() {
 
     setLoading(true);
     try {
-      // Vérification username déjà pris
       const { data: existingUsername } = await supabase
         .from('profiles')
         .select('id')
@@ -46,7 +44,6 @@ export default function RegisterScreen() {
       setProfile(profile);
       router.replace('/');
     } catch (e: any) {
-      // Erreur Supabase Auth pour email déjà enregistré
       if (e.message?.toLowerCase().includes('already registered') ||
           e.message?.toLowerCase().includes('email') ||
           e.code === 'user_already_exists') {
@@ -117,7 +114,7 @@ export default function RegisterScreen() {
           <Text style={styles.link}>Déjà un compte ?  Se connecter</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity onPress={() => router.back()} style={{ marginTop: 8 }}>
+        <TouchableOpacity onPress={() => router.back()} style={{ marginTop: theme.sp2 }}>
           <Text style={styles.linkMuted}>← Retour</Text>
         </TouchableOpacity>
       </KeyboardAvoidingView>
@@ -127,14 +124,24 @@ export default function RegisterScreen() {
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: theme.bg },
-  container: { flex: 1, padding: 28, justifyContent: 'center', gap: 14 },
-  title: { fontFamily: 'JetBrainsMono_700Bold', fontSize: 26, color: theme.text, letterSpacing: 3 },
-  subtitle: { fontFamily: 'JetBrainsMono_400Regular', fontSize: 12, color: theme.textMuted, letterSpacing: 3, marginBottom: 12 },
-  input: { fontFamily: 'JetBrainsMono_400Regular', fontSize: 14, color: theme.text, backgroundColor: theme.surface, borderRadius: 8, paddingHorizontal: 16, paddingVertical: 14, borderWidth: 1, borderColor: theme.border },
-  error: { fontFamily: 'JetBrainsMono_400Regular', fontSize: 12, color: '#ff4444', lineHeight: 18 },
-  btn: { backgroundColor: theme.accent, borderRadius: 8, paddingVertical: 16, alignItems: 'center' },
+  container: { flex: 1, padding: 28, justifyContent: 'center', gap: theme.sp3 + 2 },
+  title: { fontFamily: theme.fontMonoBold, fontSize: theme.text3xl, color: theme.text, letterSpacing: theme.trackingTitle },
+  subtitle: { fontFamily: theme.fontMono, fontSize: theme.textXs + 2, color: theme.textMuted, letterSpacing: theme.trackingTitle, marginBottom: theme.sp3 },
+  input: {
+    fontFamily: theme.fontMono,
+    fontSize: theme.textMd,
+    color: theme.text,
+    backgroundColor: theme.surface,
+    borderRadius: theme.radiusSm,
+    paddingHorizontal: theme.sp4,
+    paddingVertical: theme.textMd,
+    borderWidth: 1,
+    borderColor: theme.border,
+  },
+  error: { fontFamily: theme.fontMono, fontSize: theme.textXs + 2, color: theme.colorDanger, lineHeight: 18 },
+  btn: { backgroundColor: theme.accent, borderRadius: theme.radiusSm, paddingVertical: theme.sp4, alignItems: 'center' },
   btnDisabled: { opacity: 0.5 },
-  btnText: { fontFamily: 'JetBrainsMono_700Bold', fontSize: 14, color: theme.bg, letterSpacing: 2 },
-  link: { fontFamily: 'JetBrainsMono_400Regular', fontSize: 13, color: theme.accent, textAlign: 'center', marginTop: 8 },
-  linkMuted: { fontFamily: 'JetBrainsMono_400Regular', fontSize: 12, color: theme.textMuted, textAlign: 'center' },
+  btnText: { fontFamily: theme.fontMonoBold, fontSize: theme.textMd, color: theme.bg, letterSpacing: theme.trackingXl },
+  link: { fontFamily: theme.fontMono, fontSize: theme.textBase, color: theme.accent, textAlign: 'center', marginTop: theme.sp2 },
+  linkMuted: { fontFamily: theme.fontMono, fontSize: theme.textXs + 2, color: theme.textMuted, textAlign: 'center' },
 });

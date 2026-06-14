@@ -69,7 +69,7 @@ export default function LoginScreen() {
           <Text style={styles.link}>Pas de compte ?  Créer un compte</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity onPress={() => router.back()} style={{ marginTop: 8 }}>
+        <TouchableOpacity onPress={() => router.back()} style={{ marginTop: theme.sp2 }}>
           <Text style={styles.linkMuted}>← Retour</Text>
         </TouchableOpacity>
       </KeyboardAvoidingView>
@@ -79,14 +79,24 @@ export default function LoginScreen() {
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: theme.bg },
-  container: { flex: 1, padding: 28, justifyContent: 'center', gap: 14 },
-  title: { fontFamily: 'JetBrainsMono_700Bold', fontSize: 26, color: theme.text, letterSpacing: 3 },
-  subtitle: { fontFamily: 'JetBrainsMono_400Regular', fontSize: 12, color: theme.textMuted, letterSpacing: 3, marginBottom: 12 },
-  input: { fontFamily: 'JetBrainsMono_400Regular', fontSize: 14, color: theme.text, backgroundColor: theme.surface, borderRadius: 8, paddingHorizontal: 16, paddingVertical: 14, borderWidth: 1, borderColor: theme.border },
-  error: { fontFamily: 'JetBrainsMono_400Regular', fontSize: 12, color: '#ff4444' },
-  btn: { backgroundColor: theme.accent, borderRadius: 8, paddingVertical: 16, alignItems: 'center' },
+  container: { flex: 1, padding: 28, justifyContent: 'center', gap: theme.sp3 + 2 },
+  title: { fontFamily: theme.fontMonoBold, fontSize: theme.text3xl, color: theme.text, letterSpacing: theme.trackingTitle },
+  subtitle: { fontFamily: theme.fontMono, fontSize: theme.textXs + 2, color: theme.textMuted, letterSpacing: theme.trackingTitle, marginBottom: theme.sp3 },
+  input: {
+    fontFamily: theme.fontMono,
+    fontSize: theme.textMd,
+    color: theme.text,
+    backgroundColor: theme.surface,
+    borderRadius: theme.radiusSm,
+    paddingHorizontal: theme.sp4,
+    paddingVertical: theme.textMd,
+    borderWidth: 1,
+    borderColor: theme.border,
+  },
+  error: { fontFamily: theme.fontMono, fontSize: theme.textXs + 2, color: theme.colorDanger },
+  btn: { backgroundColor: theme.accent, borderRadius: theme.radiusSm, paddingVertical: theme.sp4, alignItems: 'center' },
   btnDisabled: { opacity: 0.5 },
-  btnText: { fontFamily: 'JetBrainsMono_700Bold', fontSize: 14, color: theme.bg, letterSpacing: 2 },
-  link: { fontFamily: 'JetBrainsMono_400Regular', fontSize: 13, color: theme.accent, textAlign: 'center', marginTop: 8 },
-  linkMuted: { fontFamily: 'JetBrainsMono_400Regular', fontSize: 12, color: theme.textMuted, textAlign: 'center' },
+  btnText: { fontFamily: theme.fontMonoBold, fontSize: theme.textMd, color: theme.bg, letterSpacing: theme.trackingXl },
+  link: { fontFamily: theme.fontMono, fontSize: theme.textBase, color: theme.accent, textAlign: 'center', marginTop: theme.sp2 },
+  linkMuted: { fontFamily: theme.fontMono, fontSize: theme.textXs + 2, color: theme.textMuted, textAlign: 'center' },
 });

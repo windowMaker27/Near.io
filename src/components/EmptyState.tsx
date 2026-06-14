@@ -14,17 +14,17 @@ export function EmptyState({ title, description }: Props) {
 }
 
 const s = StyleSheet.create({
-  container: { alignItems: 'center', gap: 10, padding: 32 },
+  container: { alignItems: 'center', gap: theme.sp2 + 2, padding: theme.sp8 },
   icon: { fontSize: 40, color: theme.textFaint },
   title: {
     fontFamily: theme.fontMonoBold,
-    fontSize: 16,
+    fontSize: theme.textXl,
     color: theme.text,
     textAlign: 'center',
   },
   desc: {
     fontFamily: theme.fontMono,
-    fontSize: 12,
+    fontSize: theme.textXs + 2,
     color: theme.textMuted,
     textAlign: 'center',
     maxWidth: 260,

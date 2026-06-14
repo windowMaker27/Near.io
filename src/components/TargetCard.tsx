@@ -10,12 +10,12 @@ export function TargetCard({ place }: Props) {
   if (!place) return null;
 
   const statusColor =
-    place.openingStatus === 'open' ? theme.accent
-    : place.openingStatus === 'closed' ? theme.textFaint
+    place.openingStatus === 'open'   ? theme.colorOpen
+    : place.openingStatus === 'closed' ? theme.colorClosed
     : theme.textMuted;
 
   const statusLabel =
-    place.openingStatus === 'open' ? 'Ouvert'
+    place.openingStatus === 'open'   ? 'Ouvert'
     : place.openingStatus === 'closed' ? 'Fermé'
     : 'Horaires inconnus';
 
@@ -46,35 +46,35 @@ const s = StyleSheet.create({
     borderRadius: theme.radius,
     borderWidth: 1,
     borderColor: theme.border,
-    padding: 14,
-    gap: 8,
+    padding: theme.textMd,
+    gap: theme.sp2,
   },
   row: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    gap: 8,
+    gap: theme.sp2,
   },
   name: {
     fontFamily: theme.fontMonoBold,
-    fontSize: 15,
+    fontSize: theme.textLg,
     color: theme.text,
     flex: 1,
   },
   badge: {
     borderWidth: 1,
-    borderRadius: 20,
-    paddingHorizontal: 8,
+    borderRadius: theme.radiusFull,
+    paddingHorizontal: theme.sp2,
     paddingVertical: 3,
   },
   badgeText: {
     fontFamily: theme.fontMono,
-    fontSize: 11,
+    fontSize: theme.textSm,
   },
-  meta: { flexDirection: 'row', gap: 12, flexWrap: 'wrap' },
+  meta: { flexDirection: 'row', gap: theme.sp3, flexWrap: 'wrap' },
   metaText: {
     fontFamily: theme.fontMono,
-    fontSize: 12,
+    fontSize: theme.textXs + 2,
     color: theme.textMuted,
   },
 });
