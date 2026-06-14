@@ -1,32 +1,22 @@
 /**
- * map.tsx — v1.6
- * - Marqueurs custom SVG avec icône de catégorie sur fond accent
- * - Overlay sonar/radar : cercle pulsant centré sur l'user, rayon = filtre
- * - Bottom sheet au tap sur un marqueur (nom, statut, adresse, catégorie)
- * - Apparition progressive des pins au chargement (fade in)
+ * map.tsx — v1.6.1
+ * - latitudeDelta calculé depuis radiusMeters (cercle sonar = zone filtrée exacte)
+ * - Callout natif react-native-maps (non-invasif) au lieu d'un Modal plein-écran
+ * - Overlay sonar correct
  */
-import { useEffect, useRef, useState } from 'react';
-import {
-  Animated,
-  Modal,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native';
-import MapView, { Circle, Marker } from 'react-native-maps';
+import { useEffect, useRef } from 'react';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
+import MapView, { Circle, Marker, Callout } from 'react-native-maps';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAppStore } from '@/store/appStore';
 import { useNearbyPlaces } from '@/features/places/hooks/useNearbyPlaces';
 import { useFiltersStore } from '@/store/filtersStore';
-import { theme } from '@/constants/theme';
+import { useTheme } from '@/hooks/useTheme';
 import { PLACE_TYPE_LABELS } from '@/constants/placeTypes';
-import { PlaceCategory, Place } from '@/types/place';
+import { PlaceCategory } from '@/types/place';
 import { formatDistance } from '@/features/compass/utils/distance';
 
-// ─── Icône de catégorie (emoji simple, rendu dans le callout) ────────────────
 const CATEGORY_ICON: Record<PlaceCategory, string> = {
   supermarket:   '🛒',
   convenience:   '🏪',
@@ -42,138 +32,34 @@ const CATEGORY_ICON: Record<PlaceCategory, string> = {
   unknown:       '📍',
 };
 
-// ─── Pulse sonar ─────────────────────────────────────────────────────────────
-function SonarOverlay({
-  latitude,
-  longitude,
-  radius,
-}: {
-  latitude: number;
-  longitude: number;
-  radius: number;
-}) {
-  const scale = useRef(new Animated.Value(0.1)).current;
-  const opacity = useRef(new Animated.Value(0.6)).current;
-
-  useEffect(() => {
-    const loop = Animated.loop(
-      Animated.parallel([
-        Animated.timing(scale, { toValue: 1, duration: 2400, useNativeDriver: true }),
-        Animated.timing(opacity, { toValue: 0, duration: 2400, useNativeDriver: true }),
-      ]),
-    );
-    loop.start();
-    return () => loop.stop();
-  }, []);
-
-  // Circle react-native-maps (non-animé nativement) — on l'innerve avec un
-  // Circle statique + on re-render pour le fill pulsant via Animated.
-  // Pour l'effet visuel on utilise deux Circles superposés.
-  return (
-    <>
-      {/* Cercle de zone statique */}
-      <Circle
-        center={{ latitude, longitude }}
-        radius={radius}
-        strokeColor={theme.accent + '44'}
-        fillColor={theme.accent + '0A'}
-        strokeWidth={1}
-      />
-      {/* Cercle pulsant intérieur */}
-      <Circle
-        center={{ latitude, longitude }}
-        radius={radius * 0.18}
-        strokeColor={theme.accent + '88'}
-        fillColor={theme.accent + '22'}
-        strokeWidth={1.5}
-      />
-    </>
-  );
+/**
+ * Calcule latitudeDelta pour que la carte affiche exactement 2×radius
+ * (le cercle sonar remplit la zone visible).
+ * 1° de latitude ≈ 111 320 m
+ */
+function radiusToLatDelta(radiusMeters: number, paddingFactor = 2.4): number {
+  return (radiusMeters / 111_320) * paddingFactor;
 }
 
-// ─── Bottom sheet commerce ────────────────────────────────────────────────────
-function PlaceSheet({
-  place,
-  onClose,
-}: {
-  place: Place | null;
-  onClose: () => void;
-}) {
-  if (!place) return null;
-
-  const statusColor =
-    place.openingStatus === 'open'   ? theme.colorOpen
-    : place.openingStatus === 'closed' ? theme.colorClosed
-    : theme.textMuted;
-
-  const statusLabel =
-    place.openingStatus === 'open'   ? `● Ouvert${place.closingTime ? ` · jusqu'à ${place.closingTime}` : ''}`
-    : place.openingStatus === 'closed' ? '● Fermé'
-    : '● Horaires inconnus';
-
-  return (
-    <Modal visible animationType="slide" transparent onRequestClose={onClose}>
-      <Pressable style={ms.backdrop} onPress={onClose} />
-      <View style={ms.sheet}>
-        <View style={ms.handle} />
-        <ScrollView contentContainerStyle={ms.content} showsVerticalScrollIndicator={false}>
-          <View style={ms.titleRow}>
-            <View style={{ flex: 1 }}>
-              <Text style={ms.name}>{place.name}</Text>
-              <Text style={ms.category}>
-                {CATEGORY_ICON[place.category]}  {PLACE_TYPE_LABELS[place.category]}
-              </Text>
-            </View>
-            <Pressable onPress={onClose} hitSlop={theme.sp3}>
-              <Text style={ms.close}>✕</Text>
-            </Pressable>
-          </View>
-
-          <Text style={[ms.status, { color: statusColor }]}>{statusLabel}</Text>
-
-          {place.shortAddress ? (
-            <Text style={ms.address}>📍  {place.shortAddress}</Text>
-          ) : null}
-
-          {place.distanceMeters != null && (
-            <Text style={ms.distance}>{formatDistance(place.distanceMeters)}</Text>
-          )}
-        </ScrollView>
-      </View>
-    </Modal>
-  );
-}
-
-// ─── Screen ───────────────────────────────────────────────────────────────────
 export default function MapScreen() {
   const router = useRouter();
+  const t = useTheme();
   const { userLocation, selectedTarget } = useAppStore();
-  const { places, loading } = useNearbyPlaces(userLocation);
+  const { places } = useNearbyPlaces(userLocation);
   const { filters } = useFiltersStore();
-  const [sheetPlace, setSheetPlace] = useState<Place | null>(null);
-
-  // Fade-in des pins au chargement
-  const pinsOpacity = useRef(new Animated.Value(0)).current;
-  useEffect(() => {
-    if (!loading && places.length > 0) {
-      Animated.timing(pinsOpacity, {
-        toValue: 1,
-        duration: 600,
-        useNativeDriver: true,
-      }).start();
-    }
-  }, [loading, places.length]);
 
   if (!userLocation) {
     return (
-      <SafeAreaView style={s.fallback}>
-        <Pressable onPress={() => router.back()} style={s.backBtn}>
-          <Text style={s.backText}>← Retour</Text>
+      <SafeAreaView style={[s.fallback, { backgroundColor: t.bg }]}>
+        <Pressable onPress={() => router.back()} style={[s.backBtn, { borderColor: t.border }]}>
+          <Text style={[s.backText, { color: t.text, fontFamily: t.fontMonoMedium }]}>← Retour</Text>
         </Pressable>
-        <Text style={s.text}>Position indisponible.</Text>
+        <Text style={[s.text, { color: t.text, fontFamily: t.fontMono }]}>Position indisponible.</Text>
       </SafeAreaView>
     );
   }
+
+  const latDelta = radiusToLatDelta(filters.radiusMeters);
 
   return (
     <View style={s.container}>
@@ -182,125 +68,121 @@ export default function MapScreen() {
         initialRegion={{
           latitude: userLocation.latitude,
           longitude: userLocation.longitude,
-          latitudeDelta: 0.01,
-          longitudeDelta: 0.01,
+          latitudeDelta: latDelta,
+          longitudeDelta: latDelta * 0.6,
         }}
         showsUserLocation
         showsMyLocationButton
       >
-        {/* Overlay sonar */}
-        <SonarOverlay
-          latitude={userLocation.latitude}
-          longitude={userLocation.longitude}
+        {/* Zone de recherche (cercle sonar) */}
+        <Circle
+          center={{ latitude: userLocation.latitude, longitude: userLocation.longitude }}
           radius={filters.radiusMeters}
+          strokeColor={t.accent + '55'}
+          fillColor={t.accent + '0C'}
+          strokeWidth={1.5}
+        />
+        {/* Anneau pulsant intérieur */}
+        <Circle
+          center={{ latitude: userLocation.latitude, longitude: userLocation.longitude }}
+          radius={filters.radiusMeters * 0.15}
+          strokeColor={t.accent + '99'}
+          fillColor={t.accent + '20'}
+          strokeWidth={1.5}
         />
 
-        {/* Marqueurs */}
+        {/* Marqueurs avec Callout natif */}
         {places.map((place) => (
           <Marker
             key={place.id}
             coordinate={place.coordinates}
-            title={place.name}
-            description={CATEGORY_ICON[place.category] + '  ' + (place.shortAddress ?? '')}
             pinColor={
               selectedTarget?.id === place.id
-                ? theme.accent
+                ? t.accent
                 : place.openingStatus === 'open'
-                ? theme.colorOpen
-                : theme.colorClosed
+                ? t.colorOpen
+                : '#888888'
             }
-            onPress={() => setSheetPlace(place)}
-          />
+          >
+            {/* Callout natif — bulle légère au-dessus du pin */}
+            <Callout tooltip={false}>
+              <View style={s.callout}>
+                <Text style={s.calloutName} numberOfLines={2}>{place.name}</Text>
+                <Text style={s.calloutMeta}>
+                  {CATEGORY_ICON[place.category]}  {PLACE_TYPE_LABELS[place.category]}
+                </Text>
+                {place.openingStatus !== 'unknown' && (
+                  <Text style={[
+                    s.calloutStatus,
+                    { color: place.openingStatus === 'open' ? '#3A8F5C' : '#888' },
+                  ]}>
+                    {place.openingStatus === 'open'
+                      ? `● Ouvert${place.closingTime ? ` · ${place.closingTime}` : ''}`
+                      : '● Fermé'}
+                  </Text>
+                )}
+                {place.shortAddress ? (
+                  <Text style={s.calloutAddr} numberOfLines={1}>{place.shortAddress}</Text>
+                ) : null}
+                {place.distanceMeters != null && (
+                  <Text style={s.calloutDist}>{formatDistance(place.distanceMeters)}</Text>
+                )}
+              </View>
+            </Callout>
+          </Marker>
         ))}
       </MapView>
 
       {/* Bouton retour */}
       <SafeAreaView edges={['top']} style={s.topBar}>
-        <Pressable onPress={() => router.back()} style={s.backBtn}>
-          <Text style={s.backText}>← Retour</Text>
+        <Pressable
+          onPress={() => router.back()}
+          style={[s.backBtn, { borderColor: t.border }]}
+        >
+          <Text style={[s.backText, { color: t.text, fontFamily: t.fontMonoMedium }]}>← Retour</Text>
         </Pressable>
       </SafeAreaView>
 
       {/* Overlay cible */}
       {selectedTarget && (
-        <View style={s.overlay}>
-          <Text style={s.overlayTitle} numberOfLines={1}>
+        <View style={[s.overlay, { backgroundColor: t.bg + 'D6', borderColor: t.border }]}>
+          <Text style={[s.overlayTitle, { color: t.text, fontFamily: t.fontMonoBold }]} numberOfLines={1}>
             {selectedTarget.name}
           </Text>
-          <Text style={s.overlaySub}>
+          <Text style={[s.overlaySub, { color: t.textMuted, fontFamily: t.fontMono }]}>
             {CATEGORY_ICON[selectedTarget.category]}  {PLACE_TYPE_LABELS[selectedTarget.category]}
           </Text>
         </View>
       )}
-
-      {/* Bottom sheet tap marker */}
-      <PlaceSheet place={sheetPlace} onClose={() => setSheetPlace(null)} />
     </View>
   );
 }
 
 const s = StyleSheet.create({
   container: { flex: 1 },
-  fallback: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.bg },
-  topBar: {
-    position: 'absolute', top: 0, left: 0, right: 0,
-    paddingHorizontal: theme.sp4, paddingTop: theme.sp2,
-  },
+  fallback: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 16 },
+  topBar: { position: 'absolute', top: 0, left: 0, right: 0, paddingHorizontal: 16, paddingTop: 8 },
   backBtn: {
     alignSelf: 'flex-start',
     backgroundColor: 'rgba(11,16,32,0.82)',
-    borderRadius: theme.radiusFull,
-    paddingVertical: theme.sp2,
-    paddingHorizontal: theme.sp4,
+    borderRadius: 9999,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
     borderWidth: 1,
-    borderColor: theme.border,
   },
-  backText: { color: theme.text, fontSize: theme.textMd, fontFamily: theme.fontMonoMedium },
-  text: { color: theme.text, fontFamily: theme.fontMono, fontSize: theme.textBase },
+  backText: { fontSize: 14 },
+  text: { fontSize: 13 },
   overlay: {
-    position: 'absolute',
-    left: theme.sp4, right: theme.sp4, bottom: theme.sp6,
-    backgroundColor: 'rgba(8,8,8,0.82)',
-    borderRadius: theme.radiusLg,
-    padding: theme.sp4,
-    borderWidth: 1,
-    borderColor: theme.border,
-    gap: theme.sp1,
+    position: 'absolute', left: 16, right: 16, bottom: 24,
+    borderRadius: 20, padding: 16, borderWidth: 1, gap: 4,
   },
-  overlayTitle: {
-    color: theme.text, fontSize: theme.textXl, fontFamily: theme.fontMonoBold,
-  },
-  overlaySub: {
-    color: theme.textMuted, fontSize: theme.textBase, fontFamily: theme.fontMono,
-  },
-});
-
-const ms = StyleSheet.create({
-  backdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.55)' },
-  sheet: {
-    position: 'absolute', bottom: 0, left: 0, right: 0,
-    backgroundColor: theme.surface,
-    borderTopLeftRadius: theme.radiusLg,
-    borderTopRightRadius: theme.radiusLg,
-    borderTopWidth: 1,
-    borderTopColor: theme.border,
-    maxHeight: '55%',
-  },
-  handle: {
-    width: 36, height: 4, borderRadius: 2,
-    backgroundColor: theme.border,
-    alignSelf: 'center',
-    marginTop: theme.sp2 + 2, marginBottom: theme.sp1,
-  },
-  content: { padding: theme.pagePad, paddingBottom: theme.sp10 },
-  titleRow: {
-    flexDirection: 'row', alignItems: 'flex-start',
-    marginBottom: theme.sp3,
-  },
-  name: { fontFamily: theme.fontMonoBold, fontSize: theme.textXl, color: theme.text },
-  category: { fontFamily: theme.fontMono, fontSize: theme.textBase, color: theme.textMuted, marginTop: 3 },
-  close: { fontFamily: theme.fontMono, fontSize: theme.textXl, color: theme.textMuted, paddingLeft: theme.sp4 },
-  status: { fontFamily: theme.fontMonoBold, fontSize: theme.textBase, marginBottom: theme.sp2 },
-  address: { fontFamily: theme.fontMono, fontSize: theme.textBase, color: theme.textMuted, marginBottom: theme.sp1 },
-  distance: { fontFamily: theme.fontMonoBold, fontSize: theme.textMd, color: theme.accent, marginTop: theme.sp2 },
+  overlayTitle: { fontSize: 18 },
+  overlaySub: { fontSize: 13 },
+  // Callout natif (fond blanc iOS/Android natif — pas de surcharge de couleur ici)
+  callout: { padding: 10, maxWidth: 220, gap: 3 },
+  calloutName: { fontWeight: '700', fontSize: 14, color: '#111', marginBottom: 2 },
+  calloutMeta: { fontSize: 12, color: '#555' },
+  calloutStatus: { fontSize: 12, fontWeight: '600', marginTop: 2 },
+  calloutAddr: { fontSize: 11, color: '#777', marginTop: 1 },
+  calloutDist: { fontSize: 12, fontWeight: '700', color: '#E8392A', marginTop: 4 },
 });

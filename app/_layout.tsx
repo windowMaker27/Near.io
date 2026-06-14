@@ -10,8 +10,8 @@ import {
   JetBrainsMono_500Medium,
   JetBrainsMono_700Bold,
 } from '@expo-google-fonts/jetbrains-mono';
-import { theme } from '@/constants/theme';
 import { useAuthInit } from '@/features/auth/useAuth';
+import { useTheme } from '@/hooks/useTheme';
 
 function AppInitializer() {
   useAuthInit();
@@ -20,20 +20,29 @@ function AppInitializer() {
 
 export default function RootLayout() {
   const [fontsLoaded] = Font.useFonts({
-    // Clés alignées avec les noms utilisés dans theme.ts et les écrans
     JetBrainsMono_400Regular,
     JetBrainsMono_500Medium,
     JetBrainsMono_700Bold,
   });
 
+  const t = useTheme();
+
   if (!fontsLoaded) return null;
 
+  // StatusBar : sombre sur fond clair, clair sur fond sombre
+  const statusBarStyle = t.bg === '#F7F6F2' ? 'dark' : 'light';
+
   return (
-    <GestureHandlerRootView style={{ flex: 1, backgroundColor: theme.bg }}>
+    <GestureHandlerRootView style={{ flex: 1, backgroundColor: t.bg }}>
       <SafeAreaProvider>
-        <StatusBar style="light" backgroundColor={theme.bg} />
+        <StatusBar style={statusBarStyle} backgroundColor={t.bg} />
         <AppInitializer />
-        <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: theme.bg } }}>
+        <Stack
+          screenOptions={{
+            headerShown: false,
+            contentStyle: { backgroundColor: t.bg },
+          }}
+        >
           <Stack.Screen name="index" />
           <Stack.Screen name="map" />
           <Stack.Screen name="ar" />

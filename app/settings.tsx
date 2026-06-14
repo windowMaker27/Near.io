@@ -1,37 +1,46 @@
-import { ScrollView, StyleSheet, Text, View, SafeAreaView, Pressable, Switch } from 'react-native';
+import { ScrollView, StyleSheet, Text, View, SafeAreaView, Pressable } from 'react-native';
 import { useRouter } from 'expo-router';
-import { theme } from '@/constants/theme';
+import { useTheme } from '@/hooks/useTheme';
 import { useThemeStore } from '@/store/themeStore';
 import { isGoogleConfigured } from '@/lib/env';
 import Constants from 'expo-constants';
 
 export default function SettingsScreen() {
   const router = useRouter();
+  const t = useTheme();
   const { mode, setMode } = useThemeStore();
 
   return (
-    <SafeAreaView style={s.root}>
-      <View style={s.header}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: t.bg }}>
+      <View style={[s.header, { borderBottomColor: t.border }]}>
         <Pressable onPress={() => router.back()} hitSlop={12}>
-          <Text style={s.back}>‹ Retour</Text>
+          <Text style={{ fontFamily: t.fontMono, fontSize: t.textMd, color: t.accent }}>‹ Retour</Text>
         </Pressable>
-        <Text style={s.title}>Paramètres</Text>
+        <Text style={{ fontFamily: t.fontMonoBold, fontSize: t.textXl, color: t.text }}>Paramètres</Text>
       </View>
-      <ScrollView contentContainerStyle={s.content}>
 
-        {/* ── APPARENCE ─────────────────────────────────── */}
-        <Text style={s.section}>Apparence</Text>
-        <View style={s.card}>
+      <ScrollView contentContainerStyle={s.content}>
+        {/* APPARENCE */}
+        <Text style={[s.section, { color: t.textMuted }]}>Apparence</Text>
+        <View style={[s.card, { backgroundColor: t.surface, borderColor: t.border }]}>
           <View style={s.row}>
-            <Text style={s.rowLabel}>Thème</Text>
-            <View style={s.themeToggleGroup}>
+            <Text style={[s.rowLabel, { color: t.textMuted, fontFamily: t.fontMono }]}>Thème</Text>
+            <View style={s.chipGroup}>
               {(['dark', 'system', 'light'] as const).map((m) => (
                 <Pressable
                   key={m}
-                  style={[s.themeChip, mode === m && s.themeChipActive]}
+                  style={[
+                    s.chip,
+                    { borderColor: t.border },
+                    mode === m && { borderColor: t.accent, backgroundColor: t.accentBg },
+                  ]}
                   onPress={() => setMode(m)}
                 >
-                  <Text style={[s.themeChipLabel, mode === m && s.themeChipLabelActive]}>
+                  <Text style={[
+                    s.chipLabel,
+                    { color: t.textMuted, fontFamily: t.fontMono },
+                    mode === m && { color: t.accent, fontFamily: t.fontMonoBold },
+                  ]}>
                     {m === 'dark' ? 'Sombre' : m === 'light' ? 'Clair' : 'Système'}
                   </Text>
                 </Pressable>
@@ -40,120 +49,62 @@ export default function SettingsScreen() {
           </View>
         </View>
 
-        {/* ── SOURCES ───────────────────────────────────── */}
-        <Text style={s.section}>Sources de données</Text>
-        <View style={s.card}>
-          <Row
-            label="Google Places"
-            value={isGoogleConfigured ? '✓ Configuré' : '✗ Non configuré'}
-            valueColor={isGoogleConfigured ? theme.colorSuccess : theme.textMuted}
-          />
-          <Divider />
-          <Row label="Mode" value={isGoogleConfigured ? 'OSM + Google' : 'OSM uniquement'} />
+        {/* SOURCES */}
+        <Text style={[s.section, { color: t.textMuted }]}>Sources de données</Text>
+        <View style={[s.card, { backgroundColor: t.surface, borderColor: t.border }]}>
+          <View style={s.row}>
+            <Text style={[s.rowLabel, { color: t.textMuted, fontFamily: t.fontMono }]}>Google Places</Text>
+            <Text style={{ fontFamily: t.fontMonoBold, fontSize: t.textXs + 2, color: isGoogleConfigured ? t.colorSuccess : t.textMuted }}>
+              {isGoogleConfigured ? '✓ Configuré' : '✗ Non configuré'}
+            </Text>
+          </View>
+          <View style={[s.divider, { backgroundColor: t.border }]} />
+          <View style={s.row}>
+            <Text style={[s.rowLabel, { color: t.textMuted, fontFamily: t.fontMono }]}>Mode</Text>
+            <Text style={{ fontFamily: t.fontMonoBold, fontSize: t.textXs + 2, color: t.text }}>
+              {isGoogleConfigured ? 'OSM + Google' : 'OSM uniquement'}
+            </Text>
+          </View>
         </View>
 
-        {/* ── APPLICATION ───────────────────────────────── */}
-        <Text style={s.section}>Application</Text>
-        <View style={s.card}>
-          <Row label="Version" value={Constants.expoConfig?.version ?? '—'} />
-          <Divider />
-          <Row label="SDK Expo" value={String(Constants.expoConfig?.sdkVersion ?? '—')} />
-        </View>
-
-        {/* ── ENV ───────────────────────────────────────── */}
-        <Text style={s.section}>Variables d'environnement</Text>
-        <View style={s.card}>
-          <Row
-            label="GOOGLE_PLACES_API_KEY"
-            value={isGoogleConfigured ? '••••••••' : 'Non définie'}
-          />
-          <Divider />
-          <Row
-            label="OVERPASS_URL"
-            value={process.env.EXPO_PUBLIC_OVERPASS_URL ? 'Définie' : 'Défaut'}
-          />
+        {/* APPLICATION */}
+        <Text style={[s.section, { color: t.textMuted }]}>Application</Text>
+        <View style={[s.card, { backgroundColor: t.surface, borderColor: t.border }]}>
+          <View style={s.row}>
+            <Text style={[s.rowLabel, { color: t.textMuted, fontFamily: t.fontMono }]}>Version</Text>
+            <Text style={{ fontFamily: t.fontMonoBold, fontSize: t.textXs + 2, color: t.text }}>{Constants.expoConfig?.version ?? '—'}</Text>
+          </View>
+          <View style={[s.divider, { backgroundColor: t.border }]} />
+          <View style={s.row}>
+            <Text style={[s.rowLabel, { color: t.textMuted, fontFamily: t.fontMono }]}>SDK Expo</Text>
+            <Text style={{ fontFamily: t.fontMonoBold, fontSize: t.textXs + 2, color: t.text }}>{String(Constants.expoConfig?.sdkVersion ?? '—')}</Text>
+          </View>
         </View>
       </ScrollView>
     </SafeAreaView>
   );
 }
 
-function Row({ label, value, valueColor }: { label: string; value: string; valueColor?: string }) {
-  return (
-    <View style={s.row}>
-      <Text style={s.rowLabel}>{label}</Text>
-      <Text style={[s.rowValue, valueColor ? { color: valueColor } : {}]}>{value}</Text>
-    </View>
-  );
-}
-
-function Divider() {
-  return <View style={s.divider} />;
-}
-
 const s = StyleSheet.create({
-  root: { flex: 1, backgroundColor: theme.bg },
   header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: theme.pagePad,
-    paddingTop: theme.sp3,
-    paddingBottom: theme.sp3 + 2,
-    borderBottomWidth: 1,
-    borderBottomColor: theme.border,
-    gap: theme.sp4,
+    flexDirection: 'row', alignItems: 'center',
+    paddingHorizontal: 20, paddingTop: 12, paddingBottom: 14,
+    borderBottomWidth: 1, gap: 16,
   },
-  back: { fontFamily: theme.fontMono, fontSize: theme.textMd, color: theme.accent },
-  title: { fontFamily: theme.fontMonoBold, fontSize: theme.textXl, color: theme.text },
-  content: { padding: theme.pagePad, gap: theme.sp2, paddingBottom: theme.sp12 + theme.sp2 },
+  content: { padding: 20, gap: 8, paddingBottom: 60 },
   section: {
-    fontFamily: theme.fontMono,
-    fontSize: theme.textXs,
-    color: theme.textMuted,
-    letterSpacing: theme.trackingXl,
-    textTransform: 'uppercase',
-    marginTop: theme.sp4,
-    marginBottom: theme.sp2 - 2,
+    fontSize: 10, letterSpacing: 2, textTransform: 'uppercase',
+    marginTop: 16, marginBottom: 6,
   },
-  card: {
-    backgroundColor: theme.surface,
-    borderRadius: theme.radius,
-    borderWidth: 1,
-    borderColor: theme.border,
-    overflow: 'hidden',
-  },
+  card: { borderRadius: 12, borderWidth: 1, overflow: 'hidden' },
   row: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: theme.sp4,
-    paddingVertical: 13,
-    flexWrap: 'wrap',
-    gap: theme.sp2,
+    flexDirection: 'row', justifyContent: 'space-between',
+    alignItems: 'center', paddingHorizontal: 16, paddingVertical: 13,
+    flexWrap: 'wrap', gap: 8,
   },
-  rowLabel: { fontFamily: theme.fontMono, fontSize: theme.textXs + 2, color: theme.textMuted },
-  rowValue: { fontFamily: theme.fontMonoBold, fontSize: theme.textXs + 2, color: theme.text },
-  divider: { height: 1, backgroundColor: theme.border },
-  // Segmented control thème
-  themeToggleGroup: { flexDirection: 'row', gap: theme.sp1, flexShrink: 0 },
-  themeChip: {
-    paddingHorizontal: theme.sp3,
-    paddingVertical: theme.sp1 + 2,
-    borderRadius: theme.radiusFull,
-    borderWidth: 1,
-    borderColor: theme.border,
-  },
-  themeChipActive: {
-    borderColor: theme.accent,
-    backgroundColor: theme.accentBg,
-  },
-  themeChipLabel: {
-    fontFamily: theme.fontMono,
-    fontSize: theme.textXs + 2,
-    color: theme.textMuted,
-  },
-  themeChipLabelActive: {
-    color: theme.accent,
-    fontFamily: theme.fontMonoBold,
-  },
+  rowLabel: { fontSize: 12 },
+  divider: { height: 1 },
+  chipGroup: { flexDirection: 'row', gap: 4 },
+  chip: { paddingHorizontal: 12, paddingVertical: 5, borderRadius: 9999, borderWidth: 1 },
+  chipLabel: { fontSize: 12 },
 });
