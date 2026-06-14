@@ -6,11 +6,11 @@
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
-    "userInterfaceStyle": "dark",
+    "userInterfaceStyle": "automatic",
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
-      "backgroundColor": "#0B1020"
+      "backgroundColor": "#080808"
     },
     "assetBundlePatterns": ["**/*"],
     "ios": {
@@ -18,32 +18,13 @@
       "bundleIdentifier": "io.near.app",
       "infoPlist": {
         "NSLocationWhenInUseUsageDescription": "Near.io utilise votre position pour vous guider vers le commerce alimentaire ouvert le plus proche.",
-        "NSCameraUsageDescription": "Near.io utilise la caméra pour afficher le mode AR directionnel.",
-        "NSAppTransportSecurity": {
-          "NSExceptionDomains": {
-            "supabase.co": {
-              "NSIncludesSubdomains": true,
-              "NSExceptionAllowsInsecureHTTPLoads": false,
-              "NSExceptionRequiresForwardSecrecy": false
-            },
-            "nominatim.openstreetmap.org": {
-              "NSIncludesSubdomains": false,
-              "NSExceptionAllowsInsecureHTTPLoads": false,
-              "NSExceptionRequiresForwardSecrecy": false
-            },
-            "overpass-api.de": {
-              "NSIncludesSubdomains": false,
-              "NSExceptionAllowsInsecureHTTPLoads": false,
-              "NSExceptionRequiresForwardSecrecy": false
-            }
-          }
-        }
+        "NSCameraUsageDescription": "Near.io utilise la caméra pour afficher le mode AR directionnel."
       }
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#0B1020"
+        "backgroundColor": "#080808"
       },
       "package": "io.near.app",
       "permissions": [
@@ -56,10 +37,22 @@
       "expo-router",
       "expo-location",
       "expo-camera",
-      "expo-font"
+      "react-native-reanimated",
+      [
+        "@maplibre/maplibre-react-native",
+        {
+          "ios": {},
+          "android": {}
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true
+    },
+    "extra": {
+      "eas": {
+        "projectId": "near-io-local-dev"
+      }
     }
   }
 }
