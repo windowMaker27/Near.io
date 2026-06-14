@@ -37,7 +37,6 @@
       "expo-router",
       "expo-location",
       "expo-camera",
-      "react-native-reanimated",
       [
         "@maplibre/maplibre-react-native",
         {
