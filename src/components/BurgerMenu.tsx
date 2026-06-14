@@ -47,10 +47,11 @@ export function BurgerMenu({ open, onClose, onSubmitPlace }: Props) {
 
   if (!open) return null;
 
+  // FIX: label inversé — "Se connecter" en premier pour un non-connecté
   const accountLabel = session
     ? (profile?.username ?? 'Mon compte')
-    : 'Créer un compte / Connexion';
-  const accountRoute = session ? '/profile' : '/(auth)/register';
+    : 'Se connecter / Créer un compte';
+  const accountRoute = session ? '/profile' : '/(auth)/login';
 
   return (
     <Pressable style={s.backdrop} onPress={onClose}>
@@ -104,8 +105,8 @@ const s = StyleSheet.create({
     backgroundColor: 'rgba(0,0,0,0.7)',
     zIndex: 100,
     justifyContent: 'flex-start',
-    paddingTop: 60,
-    paddingHorizontal: 20,
+    paddingTop: theme.sp12 + theme.sp3,
+    paddingHorizontal: theme.pagePad,
   },
   menu: {
     backgroundColor: theme.surface,
@@ -113,40 +114,40 @@ const s = StyleSheet.create({
     borderWidth: 1,
     borderColor: theme.border,
     overflow: 'hidden',
-    paddingBottom: 8,
+    paddingBottom: theme.sp2,
   },
   menuTitle: {
-    fontFamily: 'JetBrainsMono_700Bold',
-    fontSize: 11,
+    fontFamily: theme.fontMonoBold,
+    fontSize: theme.textSm,
     color: theme.accent,
-    letterSpacing: 3,
-    padding: 20,
-    paddingBottom: 12,
+    letterSpacing: theme.trackingTitle,
+    padding: theme.pagePad,
+    paddingBottom: theme.sp3,
   },
   divider: {
     height: 1,
     backgroundColor: theme.border,
-    marginHorizontal: 20,
-    marginBottom: 8,
-    marginTop: 4,
+    marginHorizontal: theme.pagePad,
+    marginBottom: theme.sp2,
+    marginTop: theme.sp1,
   },
   menuItem: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingVertical: 14,
-    paddingHorizontal: 20,
-    gap: 16,
+    paddingHorizontal: theme.pagePad,
+    gap: theme.sp4,
   },
   menuIcon: {
     fontSize: 18,
     color: theme.textMuted,
     width: 24,
     textAlign: 'center',
-    fontFamily: 'JetBrainsMono_400Regular',
+    fontFamily: theme.fontMono,
   },
   menuLabel: {
-    fontFamily: 'JetBrainsMono_400Regular',
-    fontSize: 15,
+    fontFamily: theme.fontMono,
+    fontSize: theme.textLg,
     color: theme.text,
   },
 });
