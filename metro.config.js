@@ -2,13 +2,19 @@ const { getDefaultConfig } = require('expo/metro-config');
 const path = require('path');
 
 const config = getDefaultConfig(__dirname);
+const emptyModule = path.resolve(__dirname, 'src/empty-module.js');
 
-// whatwg-url (depandance transitive de @supabase/supabase-js via undici)
-// tente de reedefinir Event.NONE etc. en read-only sur Hermes + New Arch → crash.
-// RN 0.85 expose nativement URL/URLSearchParams, donc on remplace par un stub vide.
-config.resolver.extraNodeModules = {
-  ...config.resolver.extraNodeModules,
-  'whatwg-url': path.resolve(__dirname, 'src/empty-module.js'),
+// extraNodeModules ne capture pas les imports transitifs profonds.
+// resolveRequest intercepte TOUS les imports de whatwg-url peu importe la profondeur.
+const originalResolveRequest = config.resolver.resolveRequest;
+config.resolver.resolveRequest = (context, moduleName, platform) => {
+  if (moduleName === 'whatwg-url' || moduleName.startsWith('whatwg-url/')) {
+    return { type: 'sourceFile', filePath: emptyModule };
+  }
+  if (originalResolveRequest) {
+    return originalResolveRequest(context, moduleName, platform);
+  }
+  return context.resolveRequest(context, moduleName, platform);
 };
 
 module.exports = config;
