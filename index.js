@@ -1,7 +1,5 @@
-// 1. Polyfill DOMException manuellement AVANT tout le reste.
-// Hermes ne l'expose pas globalement. Supabase/undici/node-fetch en ont besoin.
+// DOMException shim — Hermes ne l'expose pas globalement, requis par Supabase
 if (typeof global.DOMException === 'undefined') {
-  // Version minimaliste compatible Hermes
   global.DOMException = class DOMException extends Error {
     constructor(message, name) {
       super(message);
@@ -10,8 +8,7 @@ if (typeof global.DOMException === 'undefined') {
   };
 }
 
-// 2. URL polyfill (doit venir après DOMException)
-import 'react-native-url-polyfill/auto';
+// RN 0.85 + New Architecture + Hermes expose nativement URL, URLSearchParams et fetch.
+// react-native-url-polyfill/auto est inutile et casse Event (read-only props sur Hermes).
 
-// 3. Point d'entrée expo-router
 import 'expo-router/entry';
