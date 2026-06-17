@@ -18,6 +18,8 @@ export const nearMapStyleDark: StyleSpecification = {
       type: 'vector',
       url: TILES_URL,
     },
+    // NOTE: 'route-source' est injecté dynamiquement par ShapeSource dans map.tsx
+    // Ne pas le déclarer ici pour éviter le crash "source already exists"
   },
   layers: [
     // Fond
@@ -40,7 +42,7 @@ export const nearMapStyleDark: StyleSpecification = {
       type: 'fill',
       source: 'ofm',
       'source-layer': 'landcover',
-      filter: ['in', ['get', 'class'], ['literal', ['wood', 'forest']]],
+      filter: ['match', ['get', 'class'], ['wood', 'forest'], true, false],
       paint: { 'fill-color': '#0F1E14', 'fill-opacity': 0.9 },
     },
     // Parcs
@@ -49,7 +51,7 @@ export const nearMapStyleDark: StyleSpecification = {
       type: 'fill',
       source: 'ofm',
       'source-layer': 'landuse',
-      filter: ['in', ['get', 'class'], ['literal', ['park', 'garden', 'grass', 'pitch']]],
+      filter: ['match', ['get', 'class'], ['park', 'garden', 'grass', 'pitch'], true, false],
       paint: { 'fill-color': '#131F16', 'fill-opacity': 0.85 },
     },
     // Zones résidentielles / commerciales (fond discret)
@@ -58,7 +60,7 @@ export const nearMapStyleDark: StyleSpecification = {
       type: 'fill',
       source: 'ofm',
       'source-layer': 'landuse',
-      filter: ['in', ['get', 'class'], ['literal', ['residential', 'commercial', 'industrial']]],
+      filter: ['match', ['get', 'class'], ['residential', 'commercial', 'industrial'], true, false],
       paint: { 'fill-color': '#0E0E0E', 'fill-opacity': 0.6 },
     },
     // Bâtiments
@@ -78,7 +80,7 @@ export const nearMapStyleDark: StyleSpecification = {
       type: 'line',
       source: 'ofm',
       'source-layer': 'transportation',
-      filter: ['in', ['get', 'class'], ['literal', ['path', 'pedestrian', 'footway']]],
+      filter: ['match', ['get', 'class'], ['path', 'pedestrian', 'footway'], true, false],
       paint: {
         'line-color': '#2A2A2A',
         'line-width': 0.8,
@@ -91,7 +93,7 @@ export const nearMapStyleDark: StyleSpecification = {
       type: 'line',
       source: 'ofm',
       'source-layer': 'transportation',
-      filter: ['in', ['get', 'class'], ['literal', ['minor', 'service', 'track', 'residential']]],
+      filter: ['match', ['get', 'class'], ['minor', 'service', 'track', 'residential'], true, false],
       paint: { 'line-color': '#2E2E2E', 'line-width': 1.2 },
     },
     // Routes principales
@@ -100,25 +102,8 @@ export const nearMapStyleDark: StyleSpecification = {
       type: 'line',
       source: 'ofm',
       'source-layer': 'transportation',
-      filter: [
-        'in',
-        ['get', 'class'],
-        ['literal', ['primary', 'secondary', 'tertiary', 'trunk', 'motorway']],
-      ],
+      filter: ['match', ['get', 'class'], ['primary', 'secondary', 'tertiary', 'trunk', 'motorway'], true, false],
       paint: { 'line-color': '#484848', 'line-width': 2 },
-    },
-    // Couche itinéraire (masquée par défaut — activée dynamiquement par RouteLayer)
-    {
-      id: 'route-line',
-      type: 'line',
-      source: 'route-source',
-      paint: {
-        'line-color': '#E8392A',
-        'line-width': 4,
-        'line-cap': 'round',
-        'line-join': 'round',
-      },
-      layout: { visibility: 'none' },
     },
     // Labels (noms de rues, quartiers)
     {
@@ -154,6 +139,9 @@ export const nearMapStyleDark: StyleSpecification = {
         'text-halo-width': 1,
       },
     },
+    // NOTE: pas de couche 'route-line' ici — MapLibre crashe si une layer
+    // référence une source qui n'existe pas encore au chargement du style.
+    // La route est rendue via <ShapeSource> + <LineLayer> dynamiques dans map.tsx.
   ],
 };
 
