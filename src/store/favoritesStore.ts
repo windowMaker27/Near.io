@@ -25,6 +25,7 @@ export const useFavoritesStore = create<FavoritesState>()(
     }),
     {
       name: 'near-io-favorites',
+      // storage est maintenant 100% async — compatible createJSONStorage
       storage: createJSONStorage(() => storage),
     },
   ),

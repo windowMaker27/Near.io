@@ -4,16 +4,9 @@
     "strict": true,
     "baseUrl": ".",
     "paths": {
-      "@/*": [
-        "src/*"
-      ],
-      "@app/*": [
-        "app/*"
-      ]
-    },
-    "types": [
-      "expo-router"
-    ]
+      "@/*": ["src/*"],
+      "@app/*": ["app/*"]
+    }
   },
   "include": [
     "app",
