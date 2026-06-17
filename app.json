@@ -22,7 +22,8 @@
       "deploymentTarget": "16.4",
       "infoPlist": {
         "NSLocationWhenInUseUsageDescription": "Near.io utilise votre position pour vous guider vers le commerce alimentaire ouvert le plus proche.",
-        "NSCameraUsageDescription": "Near.io utilise la cam\u00e9ra pour afficher le mode AR directionnel."
+        "NSCameraUsageDescription": "Near.io utilise la caméra pour afficher le mode AR directionnel.",
+        "ITSAppUsesNonExemptEncryption": false
       }
     },
     "android": {
