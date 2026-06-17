@@ -11,7 +11,7 @@
  * ⚠️  MapLibre est un module natif — nécessite un dev build (expo run:ios / run:android).
  *     En Expo Go ce fichier affiche un écran de fallback informatif.
  */
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useState } from 'react';
 import {
   Pressable,
   StyleSheet,
@@ -24,13 +24,9 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '@/hooks/useTheme';
 
 // ─── Guard natif ─────────────────────────────────────────────────────────────
-// MapLibre requiert un dev build. On tente le require dynamique pour ne pas
-// crasher Metro / Expo Go si le module natif n'est pas enregistré.
 let _MapLibreGL: any = null;
 try {
   _MapLibreGL = require('@maplibre/maplibre-react-native');
-  // setAccessToken doit être appelé seulement si la méthode existe
-  // (v10+ n'en a plus besoin mais la conserve pour compat)
   if (typeof _MapLibreGL?.default?.setAccessToken === 'function') {
     _MapLibreGL.default.setAccessToken(null);
   }
@@ -39,16 +35,14 @@ try {
 }
 const hasNative = _MapLibreGL !== null;
 
-const MapView        = _MapLibreGL?.MapView        ?? _MapLibreGL?.default?.MapView        ?? null;
-const Camera         = _MapLibreGL?.Camera         ?? _MapLibreGL?.default?.Camera         ?? null;
-const FillLayer      = _MapLibreGL?.FillLayer      ?? _MapLibreGL?.default?.FillLayer      ?? null;
-const LineLayer      = _MapLibreGL?.LineLayer      ?? _MapLibreGL?.default?.LineLayer      ?? null;
-const PointAnnotation= _MapLibreGL?.PointAnnotation?? _MapLibreGL?.default?.PointAnnotation?? null;
-const ShapeSource    = _MapLibreGL?.ShapeSource    ?? _MapLibreGL?.default?.ShapeSource    ?? null;
-const UserLocation   = _MapLibreGL?.UserLocation   ?? _MapLibreGL?.default?.UserLocation   ?? null;
-// Callout supprimé dans @maplibre/maplibre-react-native v10 — on utilise notre propre callout custom
+const MapView         = _MapLibreGL?.MapView         ?? _MapLibreGL?.default?.MapView         ?? null;
+const Camera          = _MapLibreGL?.Camera          ?? _MapLibreGL?.default?.Camera          ?? null;
+const FillLayer       = _MapLibreGL?.FillLayer       ?? _MapLibreGL?.default?.FillLayer       ?? null;
+const LineLayer       = _MapLibreGL?.LineLayer       ?? _MapLibreGL?.default?.LineLayer       ?? null;
+const PointAnnotation = _MapLibreGL?.PointAnnotation ?? _MapLibreGL?.default?.PointAnnotation ?? null;
+const ShapeSource     = _MapLibreGL?.ShapeSource     ?? _MapLibreGL?.default?.ShapeSource     ?? null;
+const UserLocation    = _MapLibreGL?.UserLocation    ?? _MapLibreGL?.default?.UserLocation    ?? null;
 
-// ─── Imports conditionnels (évitent le crash si natif absent) ────────────────
 import { useAppStore } from '@/store/appStore';
 import { useNearbyPlaces } from '@/features/places/hooks/useNearbyPlaces';
 import { useFiltersStore } from '@/store/filtersStore';
@@ -165,7 +159,9 @@ function MapScreenNative() {
   const radiusGeoJSON = useRadiusGeoJSON(userLocation, filters.radiusMeters);
   const { route } = useRouteLayer(userLocation, routeTarget?.coordinates);
 
-  const mapStyle = t.bg === '#F7F6F2' ? nearMapStyleLight : nearMapStyleDark;
+  // Détection dark/light robuste — évite la comparaison de chaîne hex fragile
+  const isDark = t.colorScheme === 'dark';
+  const mapStyle = isDark ? nearMapStyleDark : nearMapStyleLight;
 
   const handleMarkerPress = useCallback((place: Place) => {
     setActivePlace(place);
@@ -223,7 +219,6 @@ function MapScreenNative() {
             coordinate={[place.coordinates.longitude, place.coordinates.latitude]}
             onSelected={() => handleMarkerPress(place)}
           >
-            {/* Marqueur custom — pas de MapLibreGL.Callout (supprimé en v10) */}
             <View
               style={[
                 s.pin,

@@ -15,12 +15,12 @@ export async function fetchRouteLine(
   to: { latitude: number; longitude: number },
   signal?: AbortSignal,
 ): Promise<RouteResult | null> {
+  // OSRM attend : départ;destination (ordre corrigé)
   const coords = [
-    `${to.longitude.toFixed(6)},${to.latitude.toFixed(6)}`,
     `${from.longitude.toFixed(6)},${from.latitude.toFixed(6)}`,
+    `${to.longitude.toFixed(6)},${to.latitude.toFixed(6)}`,
   ].join(';');
 
-  // OSRM public — mode foot (walking, adapté à une app de commerces de proximité)
   const url = `https://router.project-osrm.org/route/v1/foot/${coords}?overview=full&geometries=geojson`;
 
   try {
