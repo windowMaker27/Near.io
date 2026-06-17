@@ -1,0 +1,27 @@
+diff --git a/node_modules/react-native/src/private/webapis/dom/events/Event.js b/node_modules/react-native/src/private/webapis/dom/events/Event.js
+index 1111111..2222222 100644
+--- a/node_modules/react-native/src/private/webapis/dom/events/Event.js
++++ b/node_modules/react-native/src/private/webapis/dom/events/Event.js
+@@ -49,14 +49,14 @@ import {setPlatformObject} from '../../webidl/PlatformObjects';
+ 
+ export default class Event {
+-  static +NONE: 0;
+-  static +CAPTURING_PHASE: 1;
+-  static +AT_TARGET: 2;
+-  static +BUBBLING_PHASE: 3;
+-
+-  +NONE: 0;
+-  +CAPTURING_PHASE: 1;
+-  +AT_TARGET: 2;
+-  +BUBBLING_PHASE: 3;
++  // static +NONE: 0; // patched: read-only on Hermes New Arch global.Event
++  // static +CAPTURING_PHASE: 1;
++  // static +AT_TARGET: 2;
++  // static +BUBBLING_PHASE: 3;
++
++  // +NONE: 0; // patched: instance constants also read-only
++  // +CAPTURING_PHASE: 1;
++  // +AT_TARGET: 2;
++  // +BUBBLING_PHASE: 3;
+ 
+   _bubbles: boolean;
