@@ -1,6 +1,5 @@
 const { getDefaultConfig } = require('expo/metro-config');
 const path = require('path');
-const fs = require('fs');
 
 const config = getDefaultConfig(__dirname);
 
@@ -8,14 +7,17 @@ const emptyModule           = path.resolve(__dirname, 'src/empty-module.js');
 const eventTargetNative     = path.resolve(__dirname, 'src/event-target-shim-native.js');
 const abortControllerNative = path.resolve(__dirname, 'src/abort-controller-native.js');
 const wsEventTargetNative   = path.resolve(__dirname, 'src/ws-event-target-native.js');
+const rnEventNative         = path.resolve(__dirname, 'src/rn-event-native.js');
 
-// Chemin absolu vers ws/lib/event-target.js dans node_modules
-let wsEventTargetPath;
-try {
-  wsEventTargetPath = require.resolve('ws/lib/event-target');
-} catch (e) {
-  wsEventTargetPath = null;
-}
+// Chemin absolu exact du fichier RN qui crash
+const RN_EVENT_PATH = path.resolve(
+  __dirname,
+  'node_modules/react-native/src/private/webapis/dom/events/Event.js'
+);
+
+// Chemin absolu de ws/lib/event-target (pour capter les imports relatifs)
+let wsEventTargetPath = null;
+try { wsEventTargetPath = require.resolve('ws/lib/event-target'); } catch (_) {}
 
 const originalResolveRequest = config.resolver.resolveRequest;
 config.resolver.resolveRequest = (context, moduleName, platform) => {
@@ -31,31 +33,30 @@ config.resolver.resolveRequest = (context, moduleName, platform) => {
   if (moduleName === 'abort-controller' || moduleName.startsWith('abort-controller/')) {
     return { type: 'sourceFile', filePath: abortControllerNative };
   }
-  // ws/lib/event-target via chemin absolu (pour capter les imports relatifs './event-target')
-  if (wsEventTargetPath) {
-    // Resoudre d'abord pour obtenir le chemin absolu
-    let resolved;
-    try {
-      resolved = originalResolveRequest
-        ? originalResolveRequest(context, moduleName, platform)
-        : context.resolveRequest(context, moduleName, platform);
-    } catch (e) {
-      resolved = null;
-    }
-    if (
-      resolved &&
-      resolved.type === 'sourceFile' &&
-      resolved.filePath === wsEventTargetPath
-    ) {
-      return { type: 'sourceFile', filePath: wsEventTargetNative };
-    }
-    if (resolved) return resolved;
+
+  // Resoudre d'abord pour obtenir le chemin absolu
+  let resolved = null;
+  try {
+    resolved = originalResolveRequest
+      ? originalResolveRequest(context, moduleName, platform)
+      : context.resolveRequest(context, moduleName, platform);
+  } catch (e) {
+    // laisser remonter l'erreur originale si aucun alias ne correspond
+    throw e;
   }
 
-  if (originalResolveRequest) {
-    return originalResolveRequest(context, moduleName, platform);
+  if (resolved && resolved.type === 'sourceFile') {
+    // react-native Event.js New Arch -> shim sans assignation
+    if (resolved.filePath === RN_EVENT_PATH) {
+      return { type: 'sourceFile', filePath: rnEventNative };
+    }
+    // ws/lib/event-target -> shim sans assignation
+    if (wsEventTargetPath && resolved.filePath === wsEventTargetPath) {
+      return { type: 'sourceFile', filePath: wsEventTargetNative };
+    }
   }
-  return context.resolveRequest(context, moduleName, platform);
+
+  return resolved;
 };
 
 module.exports = config;
