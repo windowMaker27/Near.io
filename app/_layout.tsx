@@ -1,3 +1,4 @@
+import 'react-native-url-polyfill/auto';
 import 'react-native-gesture-handler';
 import { useEffect } from 'react';
 import { Stack } from 'expo-router';
@@ -29,7 +30,6 @@ export default function RootLayout() {
 
   if (!fontsLoaded) return null;
 
-  // StatusBar : sombre sur fond clair, clair sur fond sombre
   const statusBarStyle = t.bg === '#F7F6F2' ? 'dark' : 'light';
 
   return (
