@@ -29,20 +29,24 @@ import { useTheme } from '@/hooks/useTheme';
 let _MapLibreGL: any = null;
 try {
   _MapLibreGL = require('@maplibre/maplibre-react-native');
-  _MapLibreGL.default?.setAccessToken(null);
+  // setAccessToken doit être appelé seulement si la méthode existe
+  // (v10+ n'en a plus besoin mais la conserve pour compat)
+  if (typeof _MapLibreGL?.default?.setAccessToken === 'function') {
+    _MapLibreGL.default.setAccessToken(null);
+  }
 } catch {
   _MapLibreGL = null;
 }
 const hasNative = _MapLibreGL !== null;
 
-const MapLibreGL     = _MapLibreGL?.default      ?? null;
-const Camera         = _MapLibreGL?.Camera        ?? null;
-const FillLayer      = _MapLibreGL?.FillLayer     ?? null;
-const LineLayer      = _MapLibreGL?.LineLayer     ?? null;
-const MapView        = _MapLibreGL?.MapView       ?? null;
-const PointAnnotation= _MapLibreGL?.PointAnnotation ?? null;
-const ShapeSource    = _MapLibreGL?.ShapeSource   ?? null;
-const UserLocation   = _MapLibreGL?.UserLocation  ?? null;
+const MapView        = _MapLibreGL?.MapView        ?? _MapLibreGL?.default?.MapView        ?? null;
+const Camera         = _MapLibreGL?.Camera         ?? _MapLibreGL?.default?.Camera         ?? null;
+const FillLayer      = _MapLibreGL?.FillLayer      ?? _MapLibreGL?.default?.FillLayer      ?? null;
+const LineLayer      = _MapLibreGL?.LineLayer      ?? _MapLibreGL?.default?.LineLayer      ?? null;
+const PointAnnotation= _MapLibreGL?.PointAnnotation?? _MapLibreGL?.default?.PointAnnotation?? null;
+const ShapeSource    = _MapLibreGL?.ShapeSource    ?? _MapLibreGL?.default?.ShapeSource    ?? null;
+const UserLocation   = _MapLibreGL?.UserLocation   ?? _MapLibreGL?.default?.UserLocation   ?? null;
+// Callout supprimé dans @maplibre/maplibre-react-native v10 — on utilise notre propre callout custom
 
 // ─── Imports conditionnels (évitent le crash si natif absent) ────────────────
 import { useAppStore } from '@/store/appStore';
@@ -145,7 +149,6 @@ function MapFallback() {
 // ─── Screen ──────────────────────────────────────────────────────────────────
 export default function MapScreen() {
   if (!hasNative) return <MapFallback />;
-
   return <MapScreenNative />;
 }
 
@@ -220,6 +223,7 @@ function MapScreenNative() {
             coordinate={[place.coordinates.longitude, place.coordinates.latitude]}
             onSelected={() => handleMarkerPress(place)}
           >
+            {/* Marqueur custom — pas de MapLibreGL.Callout (supprimé en v10) */}
             <View
               style={[
                 s.pin,
@@ -237,7 +241,6 @@ function MapScreenNative() {
             >
               <Text style={s.pinEmoji}>{CATEGORY_ICON[place.category] ?? '📍'}</Text>
             </View>
-            <MapLibreGL.Callout title="" />
           </PointAnnotation>
         ))}
       </MapView>
