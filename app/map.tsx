@@ -1,15 +1,6 @@
 /**
- * app/map.tsx — v2 MapLibre
- *
- * Carte 100% custom Near.io :
- * - Style vectoriel (fond, eau, forêts, bâtiments, routes) via OpenFreeMap (gratuit)
- * - Marqueurs annotés avec PointAnnotation + callout custom
- * - Overlay sonar : cercle exact = rayon filtre, calculé en vrai GeoJSON
- * - Tracé d'itinéraire piéton via OSRM (gratuit, sans clé)
- * - Light / dark mode via useTheme()
- *
- * ⚠️  MapLibre est un module natif — nécessite un dev build (expo run:ios / run:android).
- *     En Expo Go ce fichier affiche un écran de fallback informatif.
+ * app/map.tsx — v2 MapLibre (DEBUG BUILD)
+ * Logs activés pour isoler le crash. Retirer les console.log avant prod.
  */
 import { useCallback, useState } from 'react';
 import {
@@ -24,16 +15,28 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '@/hooks/useTheme';
 
 // ─── Guard natif ─────────────────────────────────────────────────────────────
+console.log('[MAP] ▶ module load start');
+
 let _MapLibreGL: any = null;
 try {
+  console.log('[MAP] trying require @maplibre/maplibre-react-native...');
   _MapLibreGL = require('@maplibre/maplibre-react-native');
+  console.log('[MAP] require OK — keys:', Object.keys(_MapLibreGL ?? {}));
+  console.log('[MAP] .default keys:', Object.keys(_MapLibreGL?.default ?? {}));
+
   if (typeof _MapLibreGL?.default?.setAccessToken === 'function') {
     _MapLibreGL.default.setAccessToken(null);
+    console.log('[MAP] setAccessToken(null) OK');
+  } else {
+    console.log('[MAP] setAccessToken not found (v10+ OK)');
   }
-} catch {
+} catch (e) {
+  console.error('[MAP] require FAILED:', e);
   _MapLibreGL = null;
 }
+
 const hasNative = _MapLibreGL !== null;
+console.log('[MAP] hasNative:', hasNative);
 
 const MapView         = _MapLibreGL?.MapView         ?? _MapLibreGL?.default?.MapView         ?? null;
 const Camera          = _MapLibreGL?.Camera          ?? _MapLibreGL?.default?.Camera          ?? null;
@@ -42,6 +45,16 @@ const LineLayer       = _MapLibreGL?.LineLayer       ?? _MapLibreGL?.default?.Li
 const PointAnnotation = _MapLibreGL?.PointAnnotation ?? _MapLibreGL?.default?.PointAnnotation ?? null;
 const ShapeSource     = _MapLibreGL?.ShapeSource     ?? _MapLibreGL?.default?.ShapeSource     ?? null;
 const UserLocation    = _MapLibreGL?.UserLocation    ?? _MapLibreGL?.default?.UserLocation    ?? null;
+
+console.log('[MAP] components resolved:', {
+  MapView:    !!MapView,
+  Camera:     !!Camera,
+  FillLayer:  !!FillLayer,
+  LineLayer:  !!LineLayer,
+  PointAnnotation: !!PointAnnotation,
+  ShapeSource: !!ShapeSource,
+  UserLocation: !!UserLocation,
+});
 
 import { useAppStore } from '@/store/appStore';
 import { useNearbyPlaces } from '@/features/places/hooks/useNearbyPlaces';
@@ -52,6 +65,8 @@ import { nearMapStyleDark, nearMapStyleLight } from '@/features/maplibre/style/n
 import { PLACE_TYPE_LABELS } from '@/constants/placeTypes';
 import { formatDistance } from '@/features/compass/utils/distance';
 import type { Place } from '@/types/place';
+
+console.log('[MAP] ✅ all imports done');
 
 const CATEGORY_ICON: Record<string, string> = {
   supermarket: '🛒', convenience: '🏪', bakery: '🥐',
@@ -116,10 +131,11 @@ function PlaceCallout({
   );
 }
 
-// ─── Fallback Expo Go ────────────────────────────────────────────────────────
+// ─── Fallback ──────────────────────────────────────────────────────────────────
 function MapFallback() {
   const router = useRouter();
   const t = useTheme();
+  console.log('[MAP] rendering MapFallback (no native module)');
   return (
     <SafeAreaView style={[s.fallback, { backgroundColor: t.bg }]}>
       <Text style={{ color: t.accent, fontSize: 40, marginBottom: 16 }}>🗺</Text>
@@ -142,6 +158,7 @@ function MapFallback() {
 
 // ─── Screen ──────────────────────────────────────────────────────────────────
 export default function MapScreen() {
+  console.log('[MAP] MapScreen render — hasNative:', hasNative);
   if (!hasNative) return <MapFallback />;
   return <MapScreenNative />;
 }
@@ -159,20 +176,29 @@ function MapScreenNative() {
   const radiusGeoJSON = useRadiusGeoJSON(userLocation, filters.radiusMeters);
   const { route } = useRouteLayer(userLocation, routeTarget?.coordinates);
 
-  // Détection dark/light robuste — évite la comparaison de chaîne hex fragile
-  const isDark = t.colorScheme === 'dark';
+  // theme.bg est stable : '#080808' (dark) ou '#F7F6F2' (light)
+  const isDark = t.bg === '#080808';
   const mapStyle = isDark ? nearMapStyleDark : nearMapStyleLight;
 
+  console.log('[MAP] MapScreenNative render — isDark:', isDark, '| userLocation:', !!userLocation, '| places:', places.length, '| filters.radiusMeters:', filters.radiusMeters);
+  console.log('[MAP] radiusGeoJSON:', !!radiusGeoJSON, '| route:', !!route);
+  console.log('[MAP] mapStyle version:', mapStyle.version, '| layers:', mapStyle.layers.length, '| sources:', Object.keys(mapStyle.sources));
+
   const handleMarkerPress = useCallback((place: Place) => {
+    console.log('[MAP] marker pressed:', place.id, place.name);
     setActivePlace(place);
     setRouteTarget(null);
   }, []);
 
   const handleRequestRoute = useCallback(() => {
-    if (activePlace) setRouteTarget(activePlace);
+    if (activePlace) {
+      console.log('[MAP] route requested to:', activePlace.id);
+      setRouteTarget(activePlace);
+    }
   }, [activePlace]);
 
   if (!userLocation) {
+    console.warn('[MAP] no userLocation — showing fallback');
     return (
       <SafeAreaView style={[s.fallback, { backgroundColor: t.bg }]}>
         <Text style={{ color: t.text, fontFamily: t.fontMono, fontSize: t.textBase }}>
@@ -182,6 +208,8 @@ function MapScreenNative() {
     );
   }
 
+  console.log('[MAP] rendering MapView with centerCoordinate:', [userLocation.longitude, userLocation.latitude]);
+
   return (
     <View style={s.container}>
       <MapView
@@ -189,6 +217,8 @@ function MapScreenNative() {
         mapStyle={mapStyle as any}
         logoEnabled={false}
         attributionEnabled={false}
+        onDidFinishLoadingMap={() => console.log('[MAP] ✅ onDidFinishLoadingMap')}
+        onDidFailLoadingMap={(e: any) => console.error('[MAP] ❌ onDidFailLoadingMap:', e)}
       >
         <Camera
           defaultSettings={{
@@ -196,10 +226,16 @@ function MapScreenNative() {
             zoomLevel: 15,
           }}
         />
-        <UserLocation visible renderMode="native" showsUserHeadingIndicator />
+        <UserLocation
+          visible
+          renderMode="native"
+          showsUserHeadingIndicator
+          onUpdate={(loc: any) => console.log('[MAP] UserLocation update:', loc?.coords?.latitude, loc?.coords?.longitude)}
+        />
 
         {radiusGeoJSON && (
-          <ShapeSource id="radius-source" shape={radiusGeoJSON as any}>
+          <ShapeSource id="radius-source" shape={radiusGeoJSON as any}
+            onPress={() => console.log('[MAP] radius source pressed')}>
             <FillLayer id="radius-fill" style={{ fillColor: t.accent, fillOpacity: 0.07 }} />
             <LineLayer id="radius-border" style={{ lineColor: t.accent, lineWidth: 1.5, lineOpacity: 0.5 }} />
           </ShapeSource>
@@ -276,7 +312,6 @@ function MapScreenNative() {
   );
 }
 
-// ─── Styles ──────────────────────────────────────────────────────────────────
 const s = StyleSheet.create({
   container: { flex: 1 },
   fallback: { flex: 1, alignItems: 'center', justifyContent: 'center' },
