@@ -99,6 +99,9 @@ export default function MapScreen() {
   };
 
   const selectedId = tooltip?.id ?? '';
+  // Les expressions MapLibre n'acceptent que des literals — on résout t.accent avant
+  const accentHex: string = t.accent;
+  const bgHex: string = t.bg;
 
   const recenter = async () => {
     if (cameraRef.current && coords) {
@@ -140,7 +143,7 @@ export default function MapScreen() {
               id="user-location-dot"
               style={{
                 circleRadius: 7,
-                circleColor: t.accent,
+                circleColor: accentHex,
                 circleStrokeWidth: 2,
                 circleStrokeColor: '#FFFFFF',
               }}
@@ -153,10 +156,10 @@ export default function MapScreen() {
             <CircleLayer
               id="places-dot"
               style={{
-                circleRadius: ['case', ['==', ['get', 'id'], selectedId], 11, 8],
-                circleColor: ['match', ['get', 'status'], 'open', t.colorOpen, t.colorClosed],
-                circleStrokeWidth: ['case', ['==', ['get', 'id'], selectedId], 2.5, 1.5],
-                circleStrokeColor: ['case', ['==', ['get', 'id'], selectedId], t.accent, t.bg],
+                circleRadius: ['case', ['==', ['get', 'id'], selectedId], 11, 8] as any,
+                circleColor: ['match', ['get', 'status'], 'open', t.colorOpen, t.colorClosed] as any,
+                circleStrokeWidth: ['case', ['==', ['get', 'id'], selectedId], 2.5, 1.5] as any,
+                circleStrokeColor: ['case', ['==', ['get', 'id'], selectedId], accentHex, bgHex] as any,
               }}
             />
           </ShapeSource>
@@ -171,7 +174,7 @@ export default function MapScreen() {
       </Pressable>
 
       <Pressable
-        style={[styles.recenterBtn, { bottom: insets.bottom + 24, backgroundColor: t.accent, ...t.shadowMd }]}
+        style={[styles.recenterBtn, { bottom: insets.bottom + 24, backgroundColor: accentHex, ...t.shadowMd }]}
         onPress={recenter}
       >
         <Text style={styles.recenterIcon}>◎</Text>
@@ -217,13 +220,10 @@ export default function MapScreen() {
           )}
           <View style={styles.tooltipActions}>
             <Pressable
-              style={[styles.tooltipBtnSecondary, { borderColor: t.border }]}
+              style={[styles.tooltipBtnPrimary, { backgroundColor: accentHex }]}
               onPress={() => setDetailVisible(true)}
             >
-              <Text style={[styles.tooltipBtnText, { color: t.text, fontFamily: t.fontMonoMedium }]}>Voir +</Text>
-            </Pressable>
-            <Pressable style={[styles.tooltipBtnPrimary, { backgroundColor: t.accent }]}>
-              <Text style={[styles.tooltipBtnText, { color: '#fff', fontFamily: t.fontMonoMedium }]}>S'y rendre</Text>
+              <Text style={[styles.tooltipBtnText, { color: '#fff', fontFamily: t.fontMonoMedium }]}>Voir +</Text>
             </Pressable>
           </View>
         </Animated.View>
@@ -262,13 +262,9 @@ const styles = StyleSheet.create({
   tooltipStatus: { fontSize: 12 },
   tooltipDist: { fontSize: 12 },
   tooltipHours: { fontSize: 11, marginTop: 2 },
-  tooltipActions: { flexDirection: 'row', gap: 10, marginTop: 10 },
-  tooltipBtnSecondary: {
-    flex: 1, paddingVertical: 10, borderRadius: 10, borderWidth: 1,
-    alignItems: 'center', justifyContent: 'center',
-  },
+  tooltipActions: { marginTop: 10 },
   tooltipBtnPrimary: {
-    flex: 1, paddingVertical: 10, borderRadius: 10,
+    paddingVertical: 10, borderRadius: 10,
     alignItems: 'center', justifyContent: 'center',
   },
   tooltipBtnText: { fontSize: 13, letterSpacing: 0.3 },
