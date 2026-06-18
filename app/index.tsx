@@ -20,6 +20,7 @@ import { BurgerMenu } from '@/components/BurgerMenu';
 import { SubmitPlaceModal } from '@/components/SubmitPlaceModal';
 import { PlaceDetailSheet } from '@/components/PlaceDetailSheet';
 import { PlaceNavigator } from '@/components/PlaceNavigator';
+import { SplashLoader } from '@/components/SplashLoader';
 import { useTheme } from '@/hooks/useTheme';
 import { formatDistance } from '@/features/compass/utils/distance';
 import { PLACE_TYPE_LABELS } from '@/constants/placeTypes';
@@ -44,6 +45,7 @@ export default function CompassScreen() {
   const [burgerOpen, setBurgerOpen] = useState(false);
   const [submitModalOpen, setSubmitModalOpen] = useState(false);
   const [detailVisible, setDetailVisible] = useState(false);
+  const [splashDone, setSplashDone] = useState(false);
 
   useEffect(() => { setSelectedTarget(target); }, [setSelectedTarget, target]);
 
@@ -171,38 +173,20 @@ export default function CompassScreen() {
       </View>
 
       <FilterDrawer />
-      <PlaceNavigator
-        currentIndex={targetIndex}
-        total={totalPlaces}
-        onNext={goToNext}
-        onPrev={goToPrev}
-      />
-      <BurgerMenu
-        open={burgerOpen}
-        onClose={() => setBurgerOpen(false)}
-        onSubmitPlace={() => setSubmitModalOpen(true)}
-      />
-      <SubmitPlaceModal
-        visible={submitModalOpen}
-        onClose={() => setSubmitModalOpen(false)}
-      />
-      {/* visible + place passeśs séparément — requis par PlaceDetailSheet */}
-      <PlaceDetailSheet
-        visible={detailVisible}
-        place={target ?? null}
-        onClose={() => setDetailVisible(false)}
-      />
+      <PlaceNavigator currentIndex={targetIndex} total={totalPlaces} onNext={goToNext} onPrev={goToPrev} />
+      <BurgerMenu open={burgerOpen} onClose={() => setBurgerOpen(false)} onSubmitPlace={() => setSubmitModalOpen(true)} />
+      <SubmitPlaceModal visible={submitModalOpen} onClose={() => setSubmitModalOpen(false)} />
+      <PlaceDetailSheet visible={detailVisible} place={target ?? null} onClose={() => setDetailVisible(false)} />
+
+      {/* SPLASH — par-dessus tout, disparaît après l'animation */}
+      {!splashDone && <SplashLoader onDone={() => setSplashDone(true)} />}
     </SafeAreaView>
   );
 }
 
 const s = StyleSheet.create({
   root: { flex: 1 },
-  header: {
-    flexDirection: 'row', alignItems: 'center',
-    paddingHorizontal: 20, paddingTop: 12, paddingBottom: 10,
-    borderBottomWidth: 1,
-  },
+  header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, paddingTop: 12, paddingBottom: 10, borderBottomWidth: 1 },
   burger: { gap: 4, paddingRight: 16 },
   burgerLine: { width: 22, height: 2, borderRadius: 2 },
   targetInfo: { flex: 1 },

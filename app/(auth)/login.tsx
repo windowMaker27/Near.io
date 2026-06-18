@@ -4,11 +4,12 @@ import {
   StyleSheet, SafeAreaView, ActivityIndicator, KeyboardAvoidingView, Platform,
 } from 'react-native';
 import { router } from 'expo-router';
-import { theme } from '@/constants/theme';
+import { useTheme } from '@/hooks/useTheme';
 import { signIn } from '@/features/auth/authService';
 import { useAuthStore } from '@/store/authStore';
 
 export default function LoginScreen() {
+  const t = useTheme();
   const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -30,73 +31,63 @@ export default function LoginScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.safe}>
-      <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
-        <Text style={styles.title}>NEAR.IO</Text>
-        <Text style={styles.subtitle}>CONNEXION</Text>
+    <SafeAreaView style={[s.safe, { backgroundColor: t.bg }]}>
+      <KeyboardAvoidingView style={s.container} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+        <Text style={[s.title, { color: t.text, fontFamily: t.fontMonoBold }]}>NEAR.IO</Text>
+        <Text style={[s.subtitle, { color: t.textMuted, fontFamily: t.fontMono }]}>CONNEXION</Text>
 
         <TextInput
-          style={styles.input}
+          style={[s.input, { color: t.text, backgroundColor: t.surface, borderColor: t.border, fontFamily: t.fontMono }]}
           placeholder="Email ou nom d'utilisateur"
-          placeholderTextColor={theme.textMuted}
+          placeholderTextColor={t.textMuted}
           value={identifier}
           onChangeText={setIdentifier}
           autoCapitalize="none"
           autoComplete="username"
         />
         <TextInput
-          style={styles.input}
+          style={[s.input, { color: t.text, backgroundColor: t.surface, borderColor: t.border, fontFamily: t.fontMono }]}
           placeholder="Mot de passe"
-          placeholderTextColor={theme.textMuted}
+          placeholderTextColor={t.textMuted}
           value={password}
           onChangeText={setPassword}
           secureTextEntry
         />
 
-        {error && <Text style={styles.error}>{error}</Text>}
+        {error && <Text style={[s.error, { color: t.colorDanger, fontFamily: t.fontMono }]}>{error}</Text>}
 
         <TouchableOpacity
-          style={[styles.btn, loading && styles.btnDisabled]}
+          style={[s.btn, { backgroundColor: t.accent }, loading && s.btnDisabled]}
           onPress={handleLogin}
           disabled={loading}
         >
           {loading
-            ? <ActivityIndicator color={theme.bg} />
-            : <Text style={styles.btnText}>SE CONNECTER</Text>}
+            ? <ActivityIndicator color={t.bg} />
+            : <Text style={[s.btnText, { color: t.bg, fontFamily: t.fontMonoBold }]}>SE CONNECTER</Text>}
         </TouchableOpacity>
 
         <TouchableOpacity onPress={() => router.push('/(auth)/register')}>
-          <Text style={styles.link}>Pas de compte ?  Créer un compte</Text>
+          <Text style={[s.link, { color: t.accent, fontFamily: t.fontMono }]}>Pas de compte ?  Créer un compte</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity onPress={() => router.back()} style={{ marginTop: theme.sp2 }}>
-          <Text style={styles.linkMuted}>← Retour</Text>
+        <TouchableOpacity onPress={() => router.back()} style={{ marginTop: 8 }}>
+          <Text style={[s.linkMuted, { color: t.textMuted, fontFamily: t.fontMono }]}>← Retour</Text>
         </TouchableOpacity>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
 
-const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: theme.bg },
-  container: { flex: 1, padding: 28, justifyContent: 'center', gap: theme.sp3 + 2 },
-  title: { fontFamily: theme.fontMonoBold, fontSize: theme.text3xl, color: theme.text, letterSpacing: theme.trackingTitle },
-  subtitle: { fontFamily: theme.fontMono, fontSize: theme.textXs + 2, color: theme.textMuted, letterSpacing: theme.trackingTitle, marginBottom: theme.sp3 },
-  input: {
-    fontFamily: theme.fontMono,
-    fontSize: theme.textMd,
-    color: theme.text,
-    backgroundColor: theme.surface,
-    borderRadius: theme.radiusSm,
-    paddingHorizontal: theme.sp4,
-    paddingVertical: theme.textMd,
-    borderWidth: 1,
-    borderColor: theme.border,
-  },
-  error: { fontFamily: theme.fontMono, fontSize: theme.textXs + 2, color: theme.colorDanger },
-  btn: { backgroundColor: theme.accent, borderRadius: theme.radiusSm, paddingVertical: theme.sp4, alignItems: 'center' },
+const s = StyleSheet.create({
+  safe: { flex: 1 },
+  container: { flex: 1, padding: 28, justifyContent: 'center', gap: 14 },
+  title: { fontSize: 28, letterSpacing: 6 },
+  subtitle: { fontSize: 11, letterSpacing: 4, marginBottom: 12 },
+  input: { fontSize: 14, borderRadius: 6, paddingHorizontal: 16, paddingVertical: 14, borderWidth: 1 },
+  error: { fontSize: 12 },
+  btn: { borderRadius: 6, paddingVertical: 16, alignItems: 'center' },
   btnDisabled: { opacity: 0.5 },
-  btnText: { fontFamily: theme.fontMonoBold, fontSize: theme.textMd, color: theme.bg, letterSpacing: theme.trackingXl },
-  link: { fontFamily: theme.fontMono, fontSize: theme.textBase, color: theme.accent, textAlign: 'center', marginTop: theme.sp2 },
-  linkMuted: { fontFamily: theme.fontMono, fontSize: theme.textXs + 2, color: theme.textMuted, textAlign: 'center' },
+  btnText: { fontSize: 14, letterSpacing: 3 },
+  link: { fontSize: 13, textAlign: 'center', marginTop: 8 },
+  linkMuted: { fontSize: 11, textAlign: 'center' },
 });
