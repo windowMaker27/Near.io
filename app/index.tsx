@@ -164,7 +164,7 @@ export default function CompassScreen() {
       <View style={s.bottomBar}>
         <Pressable
           style={[s.mapBtn, { backgroundColor: t.surface, borderColor: t.border }]}
-          onPress={() => router.push('/map')}
+          onPress={() => router.push(target ? `/map?placeId=${target.id}` : '/map')}
         >
           <Text style={[s.mapBtnText, { color: t.text, fontFamily: t.fontMonoMedium }]}>Afficher sur la carte</Text>
         </Pressable>
