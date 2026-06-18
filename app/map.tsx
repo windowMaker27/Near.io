@@ -45,7 +45,11 @@ export default function MapScreen() {
         type: 'Point',
         coordinates: [p.coordinates.longitude, p.coordinates.latitude],
       },
-      properties: { name: p.name, isOpen: p.isOpen ?? false },
+      properties: {
+        name: p.name,
+        // Passe une string pour éviter la sérialisation booléenne GeoJSON
+        status: p.openingStatus,
+      },
     })),
   };
 
@@ -57,7 +61,6 @@ export default function MapScreen() {
         animationDuration: 500,
       });
     } else {
-      // fallback : refetch position
       const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
       const c: [number, number] = [loc.coords.longitude, loc.coords.latitude];
       setCoords(c);
@@ -87,7 +90,12 @@ export default function MapScreen() {
               id="places-dot"
               style={{
                 circleRadius: 8,
-                circleColor: ['case', ['==', ['get', 'isOpen'], true], t.colorOpen, t.colorClosed],
+                circleColor: [
+                  'match',
+                  ['get', 'status'],
+                  'open', t.colorOpen,
+                  t.colorClosed,
+                ],
                 circleStrokeWidth: 1.5,
                 circleStrokeColor: t.bg,
               }}
@@ -96,7 +104,6 @@ export default function MapScreen() {
         )}
       </MapView>
 
-      {/* Bouton retour */}
       <Pressable
         style={[styles.backBtn, { top: insets.top + 12, backgroundColor: t.surface, borderColor: t.border }]}
         onPress={() => router.back()}
@@ -106,12 +113,10 @@ export default function MapScreen() {
         </Text>
       </Pressable>
 
-      {/* Bouton recentrer */}
       <Pressable
         style={[styles.recenterBtn, { bottom: insets.bottom + 24, backgroundColor: t.accent, ...t.shadowMd }]}
         onPress={recenter}
       >
-        {/* Icône navigation SVG inline via Text unicode */}
         <Text style={styles.recenterIcon}>◎</Text>
       </Pressable>
     </View>
