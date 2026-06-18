@@ -8,6 +8,7 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { theme } from '@/constants/theme';
+import { useTheme } from '@/hooks/useTheme';
 import { useAuthStore } from '@/store/authStore';
 
 type Props = {
@@ -25,6 +26,7 @@ const NAV_ITEMS = [
 
 export function BurgerMenu({ open, onClose, onSubmitPlace }: Props) {
   const router = useRouter();
+  const t = useTheme();
   const opacity = useRef(new Animated.Value(0)).current;
   const translateY = useRef(new Animated.Value(-20)).current;
   const session = useAuthStore((s) => s.session);
@@ -47,7 +49,6 @@ export function BurgerMenu({ open, onClose, onSubmitPlace }: Props) {
 
   if (!open) return null;
 
-  // FIX: label inversé — "Se connecter" en premier pour un non-connecté
   const accountLabel = session
     ? (profile?.username ?? 'Mon compte')
     : 'Se connecter / Créer un compte';
@@ -55,22 +56,24 @@ export function BurgerMenu({ open, onClose, onSubmitPlace }: Props) {
 
   return (
     <Pressable style={s.backdrop} onPress={onClose}>
-      <Animated.View style={[s.menu, { opacity, transform: [{ translateY }] }]}>
-        <Text style={s.menuTitle}>NEAR.IO</Text>
-        <View style={s.divider} />
+      <Animated.View style={[
+        s.menu,
+        { opacity, transform: [{ translateY }], backgroundColor: t.surface, borderColor: t.border },
+      ]}>
+        <Text style={[s.menuTitle, { color: t.accent }]}>NEAR.IO</Text>
+        <View style={[s.divider, { backgroundColor: t.border }]} />
 
-        {/* Compte */}
         <Pressable
           style={s.menuItem}
           onPress={() => { onClose(); router.push(accountRoute as any); }}
         >
-          <Text style={s.menuIcon}>◉</Text>
-          <Text style={[s.menuLabel, session && { color: theme.accent }]}>
+          <Text style={[s.menuIcon, { color: t.textMuted, fontFamily: t.fontMono }]}>◉</Text>
+          <Text style={[s.menuLabel, { color: session ? t.accent : t.text, fontFamily: t.fontMono }]}>
             {accountLabel}
           </Text>
         </Pressable>
 
-        <View style={s.divider} />
+        <View style={[s.divider, { backgroundColor: t.border }]} />
 
         {NAV_ITEMS.map((item) => (
           <Pressable
@@ -78,20 +81,19 @@ export function BurgerMenu({ open, onClose, onSubmitPlace }: Props) {
             style={s.menuItem}
             onPress={() => { onClose(); router.push(item.route); }}
           >
-            <Text style={s.menuIcon}>{item.icon}</Text>
-            <Text style={s.menuLabel}>{item.label}</Text>
+            <Text style={[s.menuIcon, { color: t.textMuted, fontFamily: t.fontMono }]}>{item.icon}</Text>
+            <Text style={[s.menuLabel, { color: t.text, fontFamily: t.fontMono }]}>{item.label}</Text>
           </Pressable>
         ))}
 
-        <View style={s.divider} />
+        <View style={[s.divider, { backgroundColor: t.border }]} />
 
-        {/* Proposer un commerce */}
         <Pressable
           style={s.menuItem}
           onPress={() => { onClose(); onSubmitPlace(); }}
         >
-          <Text style={s.menuIcon}>＋</Text>
-          <Text style={s.menuLabel}>Proposer un commerce</Text>
+          <Text style={[s.menuIcon, { color: t.textMuted, fontFamily: t.fontMono }]}>＋</Text>
+          <Text style={[s.menuLabel, { color: t.text, fontFamily: t.fontMono }]}>Proposer un commerce</Text>
         </Pressable>
       </Animated.View>
     </Pressable>
@@ -109,24 +111,20 @@ const s = StyleSheet.create({
     paddingHorizontal: theme.pagePad,
   },
   menu: {
-    backgroundColor: theme.surface,
     borderRadius: theme.radiusLg,
     borderWidth: 1,
-    borderColor: theme.border,
     overflow: 'hidden',
     paddingBottom: theme.sp2,
   },
   menuTitle: {
     fontFamily: theme.fontMonoBold,
     fontSize: theme.textSm,
-    color: theme.accent,
     letterSpacing: theme.trackingTitle,
     padding: theme.pagePad,
     paddingBottom: theme.sp3,
   },
   divider: {
     height: 1,
-    backgroundColor: theme.border,
     marginHorizontal: theme.pagePad,
     marginBottom: theme.sp2,
     marginTop: theme.sp1,
@@ -140,14 +138,10 @@ const s = StyleSheet.create({
   },
   menuIcon: {
     fontSize: 18,
-    color: theme.textMuted,
     width: 24,
     textAlign: 'center',
-    fontFamily: theme.fontMono,
   },
   menuLabel: {
-    fontFamily: theme.fontMono,
     fontSize: theme.textLg,
-    color: theme.text,
   },
 });

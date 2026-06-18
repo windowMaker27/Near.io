@@ -10,18 +10,18 @@ import {
 } from 'react-native';
 import { useFiltersStore } from '@/store/filtersStore';
 import { theme } from '@/constants/theme';
+import { useTheme } from '@/hooks/useTheme';
 import { PLACE_TYPE_LABELS } from '@/constants/placeTypes';
 import { PlaceCategory } from '@/types/place';
 import { formatDistance } from '@/features/compass/utils/distance';
 
 const DRAWER_WIDTH = 280;
-
 const RADIUS_OPTIONS = [100, 300, 500, 1000, 2000, 3000];
 
 export function FilterDrawer() {
+  const t = useTheme();
   const [open, setOpen] = useState(false);
   const translateX = useRef(new Animated.Value(-DRAWER_WIDTH)).current;
-
   const { filters, setRadius, toggleOpenOnly, toggleCategory, reset } = useFiltersStore();
 
   const openDrawer = () => {
@@ -49,51 +49,50 @@ export function FilterDrawer() {
 
   return (
     <>
-      {/* Handle gauche */}
       {!open && (
-        <Pressable style={s.handle} onPress={openDrawer}>
-          <Text style={s.handleIcon}>›</Text>
-          <Text style={s.handleLabel}>Filtres</Text>
+        <Pressable
+          style={[s.handle, { backgroundColor: t.surface, borderColor: t.border }]}
+          onPress={openDrawer}
+        >
+          <Text style={[s.handleIcon, { color: t.accent, fontFamily: t.fontMonoBold }]}>›</Text>
+          <Text style={[s.handleLabel, { color: t.textMuted, fontFamily: t.fontMono }]}>Filtres</Text>
         </Pressable>
       )}
 
-      {/* Backdrop */}
       {open && <Pressable style={s.backdrop} onPress={closeDrawer} />}
 
-      {/* Drawer */}
-      <Animated.View style={[s.drawer, { transform: [{ translateX }] }]}>
-        <View style={s.drawerHeader}>
-          <Text style={s.drawerTitle}>Filtres</Text>
+      <Animated.View
+        style={[s.drawer, { transform: [{ translateX }], backgroundColor: t.surface, borderRightColor: t.border }]}
+      >
+        <View style={[s.drawerHeader, { borderBottomColor: t.border }]}>
+          <Text style={[s.drawerTitle, { color: t.text, fontFamily: t.fontMonoBold }]}>Filtres</Text>
           <Pressable onPress={closeDrawer} hitSlop={12}>
-            <Text style={s.closeBtn}>✕</Text>
+            <Text style={[s.closeBtn, { color: t.textMuted, fontFamily: t.fontMono }]}>✕</Text>
           </Pressable>
         </View>
 
         <ScrollView style={s.drawerContent} showsVerticalScrollIndicator={false}>
-
-          {/* Toggle ouverts uniquement */}
           <Pressable style={s.toggleRow} onPress={toggleOpenOnly}>
-            <Text style={s.toggleLabel}>Ouverts uniquement</Text>
-            <View style={[s.toggle, filters.openOnly && s.toggleOn]}>
-              <View style={[s.toggleThumb, filters.openOnly && s.toggleThumbOn]} />
+            <Text style={[s.toggleLabel, { color: t.text, fontFamily: t.fontMono }]}>Ouverts uniquement</Text>
+            <View style={[s.toggle, { backgroundColor: t.border }, filters.openOnly && { backgroundColor: t.accentDim }]}>
+              <View style={[s.toggleThumb, { backgroundColor: t.textMuted }, filters.openOnly && { backgroundColor: t.accent, alignSelf: 'flex-end' as const }]} />
             </View>
           </Pressable>
 
-          <View style={s.divider} />
+          <View style={[s.divider, { backgroundColor: t.border }]} />
 
-          {/* Rayon */}
-          <Text style={s.sectionLabel}>Rayon de recherche</Text>
-          <Text style={s.radiusValue}>{formatDistance(filters.radiusMeters)}</Text>
+          <Text style={[s.sectionLabel, { color: t.textMuted, fontFamily: t.fontMono }]}>Rayon de recherche</Text>
+          <Text style={[s.radiusValue, { color: t.accent, fontFamily: t.fontMonoBold }]}>{formatDistance(filters.radiusMeters)}</Text>
           <View style={s.radiusRow}>
             {RADIUS_OPTIONS.map((r) => {
               const active = filters.radiusMeters === r;
               return (
                 <Pressable
                   key={r}
-                  style={[s.radiusChip, active && s.radiusChipActive]}
+                  style={[s.chip, { borderColor: active ? t.accent : t.border, backgroundColor: active ? t.accentDim : 'transparent' }]}
                   onPress={() => setRadius(r)}
                 >
-                  <Text style={[s.radiusChipLabel, active && s.radiusChipLabelActive]}>
+                  <Text style={[s.chipLabel, { color: active ? t.text : t.textMuted, fontFamily: t.fontMono }]}>
                     {formatDistance(r)}
                   </Text>
                 </Pressable>
@@ -101,20 +100,19 @@ export function FilterDrawer() {
             })}
           </View>
 
-          <View style={s.divider} />
+          <View style={[s.divider, { backgroundColor: t.border }]} />
 
-          {/* Catégories */}
-          <Text style={s.sectionLabel}>Catégories</Text>
+          <Text style={[s.sectionLabel, { color: t.textMuted, fontFamily: t.fontMono }]}>Catégories</Text>
           <View style={s.categories}>
             {categories.map((cat) => {
               const active = filters.categories.includes(cat);
               return (
                 <Pressable
                   key={cat}
-                  style={[s.catChip, active && s.catChipActive]}
+                  style={[s.chip, { borderColor: active ? t.accent : t.border, backgroundColor: active ? t.accentDim : 'transparent' }]}
                   onPress={() => toggleCategory(cat)}
                 >
-                  <Text style={[s.catLabel, active && s.catLabelActive]}>
+                  <Text style={[s.chipLabel, { color: active ? t.text : t.textMuted, fontFamily: t.fontMono }]}>
                     {PLACE_TYPE_LABELS[cat]}
                   </Text>
                 </Pressable>
@@ -122,10 +120,10 @@ export function FilterDrawer() {
             })}
           </View>
 
-          <View style={s.divider} />
+          <View style={[s.divider, { backgroundColor: t.border }]} />
 
-          <Pressable style={s.resetBtn} onPress={reset}>
-            <Text style={s.resetLabel}>Réinitialiser</Text>
+          <Pressable style={[s.resetBtn, { borderColor: t.border }]} onPress={reset}>
+            <Text style={[s.resetLabel, { color: t.textMuted, fontFamily: t.fontMono }]}>Réinitialiser</Text>
           </Pressable>
         </ScrollView>
       </Animated.View>
@@ -138,27 +136,19 @@ const s = StyleSheet.create({
     position: 'absolute',
     left: 0,
     top: '80%',
-    backgroundColor: theme.surface,
     borderTopRightRadius: 8,
     borderBottomRightRadius: 8,
     borderWidth: 1,
     borderLeftWidth: 0,
-    borderColor: theme.border,
     paddingVertical: 20,
     paddingHorizontal: 6,
     alignItems: 'center',
     gap: 4,
     zIndex: 10,
   },
-  handleIcon: {
-    color: theme.accent,
-    fontSize: 18,
-    fontFamily: theme.fontMonoBold,
-  },
+  handleIcon: { fontSize: 18 },
   handleLabel: {
-    color: theme.textMuted,
     fontSize: 9,
-    fontFamily: theme.fontMono,
     letterSpacing: 1,
     textTransform: 'uppercase',
     transform: [{ rotate: '90deg' }],
@@ -174,9 +164,7 @@ const s = StyleSheet.create({
     position: 'absolute',
     top: 0, bottom: 0, left: 0,
     width: DRAWER_WIDTH,
-    backgroundColor: theme.surface,
     borderRightWidth: 1,
-    borderRightColor: theme.border,
     zIndex: 30,
     paddingTop: 56,
   },
@@ -187,18 +175,9 @@ const s = StyleSheet.create({
     paddingHorizontal: 20,
     paddingBottom: 16,
     borderBottomWidth: 1,
-    borderBottomColor: theme.border,
   },
-  drawerTitle: {
-    fontFamily: theme.fontMonoBold,
-    fontSize: 16,
-    color: theme.text,
-  },
-  closeBtn: {
-    color: theme.textMuted,
-    fontSize: 16,
-    fontFamily: theme.fontMono,
-  },
+  drawerTitle: { fontSize: 16 },
+  closeBtn: { fontSize: 16 },
   drawerContent: { flex: 1, paddingHorizontal: 20 },
   toggleRow: {
     flexDirection: 'row',
@@ -206,102 +185,43 @@ const s = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 16,
   },
-  toggleLabel: {
-    fontFamily: theme.fontMono,
-    fontSize: 13,
-    color: theme.text,
-  },
+  toggleLabel: { fontSize: 13 },
   toggle: {
     width: 44,
     height: 24,
     borderRadius: 12,
-    backgroundColor: theme.border,
     justifyContent: 'center',
     paddingHorizontal: 3,
   },
-  toggleOn: { backgroundColor: theme.accentDim },
   toggleThumb: {
     width: 18,
     height: 18,
     borderRadius: 9,
-    backgroundColor: theme.textMuted,
   },
-  toggleThumbOn: {
-    backgroundColor: theme.accent,
-    alignSelf: 'flex-end',
-  },
-  divider: {
-    height: 1,
-    backgroundColor: theme.border,
-    marginVertical: 8,
-  },
+  divider: { height: 1, marginVertical: 8 },
   sectionLabel: {
-    fontFamily: theme.fontMono,
     fontSize: 10,
-    color: theme.textMuted,
     letterSpacing: 1.5,
     textTransform: 'uppercase',
     marginTop: 12,
     marginBottom: 6,
   },
-  radiusValue: {
-    fontFamily: theme.fontMonoBold,
-    fontSize: 22,
-    color: theme.accent,
-    marginBottom: 8,
-  },
-  radiusRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-    marginBottom: 4,
-  },
-  radiusChip: {
+  radiusValue: { fontSize: 22, marginBottom: 8 },
+  radiusRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 4 },
+  chip: {
     borderWidth: 1,
-    borderColor: theme.border,
     borderRadius: 20,
     paddingHorizontal: 12,
     paddingVertical: 6,
   },
-  radiusChipActive: {
-    borderColor: theme.accent,
-    backgroundColor: theme.accentDim,
-  },
-  radiusChipLabel: {
-    fontFamily: theme.fontMono,
-    fontSize: 12,
-    color: theme.textMuted,
-  },
-  radiusChipLabelActive: { color: theme.text },
+  chipLabel: { fontSize: 12 },
   categories: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 4 },
-  catChip: {
-    borderWidth: 1,
-    borderColor: theme.border,
-    borderRadius: 20,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-  },
-  catChipActive: {
-    borderColor: theme.accent,
-    backgroundColor: theme.accentDim,
-  },
-  catLabel: {
-    fontFamily: theme.fontMono,
-    fontSize: 12,
-    color: theme.textMuted,
-  },
-  catLabelActive: { color: theme.text },
   resetBtn: {
     marginVertical: 20,
     paddingVertical: 12,
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: theme.border,
     borderRadius: theme.radius,
   },
-  resetLabel: {
-    fontFamily: theme.fontMono,
-    fontSize: 13,
-    color: theme.textMuted,
-  },
+  resetLabel: { fontSize: 13 },
 });

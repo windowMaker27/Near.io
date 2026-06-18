@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { Animated, StyleSheet, View, Text } from 'react-native';
-import { theme } from '@/constants/theme';
+import { useTheme } from '@/hooks/useTheme';
 
 type Props = {
   deltaAngle?: number;
@@ -8,6 +8,7 @@ type Props = {
 };
 
 export function CompassDial({ deltaAngle }: Props) {
+  const t = useTheme();
   const rotation = useRef(new Animated.Value(0)).current;
   const prevAngle = useRef(0);
 
@@ -34,16 +35,23 @@ export function CompassDial({ deltaAngle }: Props) {
 
   const aligned = deltaAngle != null && Math.abs(deltaAngle) < 15;
 
+  // Fond gris en mode clair, surface sombre en mode sombre
+  const isDark = t.bg === '#080808';
+  const ringBg = isDark ? t.surface : '#E8E8E8';
+
   return (
     <View style={s.container}>
-      {/* Outer ring */}
-      <View style={[s.ring, aligned && s.ringAligned]}>
-        {/* Cardinal ticks */}
+      <View style={[
+        s.ring,
+        { backgroundColor: ringBg, borderColor: aligned ? t.accent : t.border },
+        aligned && { shadowColor: t.accent, shadowOpacity: 0.4, shadowRadius: 12, shadowOffset: { width: 0, height: 0 }, elevation: 8 },
+      ]}>
         {[0, 45, 90, 135, 180, 225, 270, 315].map((deg) => (
           <View
             key={deg}
             style={[
               s.tick,
+              { backgroundColor: t.textFaint },
               {
                 transform: [
                   { rotate: `${deg}deg` },
@@ -54,21 +62,19 @@ export function CompassDial({ deltaAngle }: Props) {
           />
         ))}
 
-        {/* Rotating arrow */}
         <Animated.View style={[s.arrowContainer, { transform: [{ rotate: spin }] }]}>
-          {/* North — accent red */}
-          <View style={s.arrowNorth} />
-          {/* South — dim */}
-          <View style={s.arrowSouth} />
+          <View style={[s.arrowNorth, { borderBottomColor: t.accent }]} />
+          <View style={[s.arrowSouth, { borderTopColor: t.textFaint }]} />
         </Animated.View>
 
-        {/* Center dot */}
-        <View style={[s.centerDot, aligned && s.centerDotAligned]} />
+        <View style={[
+          s.centerDot,
+          { backgroundColor: aligned ? t.accent : t.text },
+        ]} />
       </View>
 
-      {/* Degree label */}
       {deltaAngle != null && (
-        <Text style={s.degLabel}>
+        <Text style={[s.degLabel, { color: t.textMuted, fontFamily: t.fontMono }]}>
           {deltaAngle > 0 ? '+' : ''}{Math.round(deltaAngle)}°
         </Text>
       )}
@@ -87,24 +93,13 @@ const s = StyleSheet.create({
     height: DIAL_SIZE,
     borderRadius: DIAL_SIZE / 2,
     borderWidth: 1,
-    borderColor: theme.border,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: theme.surface,
-  },
-  ringAligned: {
-    borderColor: theme.accent,
-    shadowColor: theme.accent,
-    shadowOpacity: 0.4,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 0 },
-    elevation: 8,
   },
   tick: {
     position: 'absolute',
     width: 1,
     height: 8,
-    backgroundColor: theme.textFaint,
   },
   arrowContainer: {
     alignItems: 'center',
@@ -120,7 +115,6 @@ const s = StyleSheet.create({
     borderBottomWidth: ARROW_H,
     borderLeftColor: 'transparent',
     borderRightColor: 'transparent',
-    borderBottomColor: theme.accent,
   },
   arrowSouth: {
     width: 0,
@@ -130,20 +124,12 @@ const s = StyleSheet.create({
     borderTopWidth: ARROW_H,
     borderLeftColor: 'transparent',
     borderRightColor: 'transparent',
-    borderTopColor: theme.textFaint,
   },
   centerDot: {
     position: 'absolute',
     width: 10,
     height: 10,
     borderRadius: 5,
-    backgroundColor: theme.text,
   },
-  centerDotAligned: { backgroundColor: theme.accent },
-  degLabel: {
-    fontFamily: theme.fontMono,
-    fontSize: 13,
-    color: theme.textMuted,
-    letterSpacing: 1,
-  },
+  degLabel: { fontSize: 13, letterSpacing: 1 },
 });
