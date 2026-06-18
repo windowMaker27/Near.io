@@ -6,12 +6,14 @@ const _ML = require('@maplibre/maplibre-react-native');
 const MapView = _ML?.MapView ?? _ML?.default?.MapView;
 const Camera  = _ML?.Camera  ?? _ML?.default?.Camera;
 
+const PARIS: [number, number] = [2.3488, 48.8534];
+
 export default function MapScreen() {
   const t = useTheme();
   const isDark = t.bg === '#080808';
   const mapStyle = isDark ? nearMapStyleDark : nearMapStyleLight;
 
-  console.log('[MAP] step 5 — rendering Camera @ Paris');
+  console.log('[MAP] step 5b — Camera via defaultSettings');
 
   return (
     <View style={s.container}>
@@ -24,9 +26,10 @@ export default function MapScreen() {
         onDidFailLoadingMap={(e: any) => console.error('[MAP] ❌ map fail:', JSON.stringify(e))}
       >
         <Camera
-          centerCoordinate={[2.3488, 48.8534]}
-          zoomLevel={13}
-          animationMode="none"
+          defaultSettings={{
+            centerCoordinate: PARIS,
+            zoomLevel: 13,
+          }}
         />
       </MapView>
     </View>
