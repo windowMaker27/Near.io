@@ -12,6 +12,10 @@ import {
 } from '@expo-google-fonts/jetbrains-mono';
 import { useAuthInit } from '@/features/auth/useAuth';
 import { useTheme } from '@/hooks/useTheme';
+import MapLibre from '@maplibre/maplibre-react-native';
+
+// MapLibre requiert setAccessToken même sans Mapbox — chaîne vide pour OFM
+MapLibre.setAccessToken('');
 
 function AppInitializer() {
   useAuthInit();
