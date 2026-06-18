@@ -1,8 +1,8 @@
 /**
  * PlaceDetailSheet
  * Bottom sheet affichant les détails d'un lieu.
+ * - visible contrôle le Modal natif (layer) indépendamment de place
  * - Handle draggable (PanResponder) pour fermer en swipant vers le bas
- * - Backdrop pressable pour fermer
  */
 import {
   Modal,
@@ -14,7 +14,7 @@ import {
   View,
   Animated,
 } from 'react-native';
-import { useRef } from 'react';
+import { useRef, useEffect } from 'react';
 import { theme } from '@/constants/theme';
 import { Place } from '@/types/place';
 import { PLACE_TYPE_LABELS } from '@/constants/placeTypes';
@@ -24,12 +24,28 @@ import { PlaceLogsSection } from '@/features/auth/PlaceLogsSection';
 import { SourceBadge } from '@/features/auth/SourceBadge';
 
 type Props = {
+  visible: boolean;
   place: Place | null;
   onClose: () => void;
 };
 
-export function PlaceDetailSheet({ place, onClose }: Props) {
+export function PlaceDetailSheet({ visible, place, onClose }: Props) {
   const translateY = useRef(new Animated.Value(0)).current;
+
+  // Reset la position quand on rouvre
+  useEffect(() => {
+    if (visible) translateY.setValue(0);
+  }, [visible]);
+
+  const dismiss = () => {
+    Animated.timing(translateY, {
+      toValue: 600,
+      duration: 220,
+      useNativeDriver: true,
+    }).start(({ finished }) => {
+      if (finished) onClose();
+    });
+  };
 
   const panResponder = useRef(
     PanResponder.create({
@@ -40,15 +56,7 @@ export function PlaceDetailSheet({ place, onClose }: Props) {
       },
       onPanResponderRelease: (_, g) => {
         if (g.dy > 80 || g.vy > 0.5) {
-          // On anime jusqu'en bas puis on ferme — pas de setValue(0) avant onClose
-          // pour éviter le flash à la position initiale
-          Animated.timing(translateY, {
-            toValue: 600,
-            duration: 220,
-            useNativeDriver: true,
-          }).start(({ finished }) => {
-            if (finished) onClose();
-          });
+          dismiss();
         } else {
           Animated.spring(translateY, {
             toValue: 0,
@@ -61,9 +69,8 @@ export function PlaceDetailSheet({ place, onClose }: Props) {
     })
   ).current;
 
-  if (!place) return null;
-
   const openingLabel = () => {
+    if (!place) return null;
     if (place.openingStatus === 'open') {
       return (
         <Text style={[d.statusText, { color: theme.colorOpen }]}>
@@ -80,69 +87,65 @@ export function PlaceDetailSheet({ place, onClose }: Props) {
     return <Text style={[d.statusText, { color: theme.textMuted }]}>● Horaires inconnus</Text>;
   };
 
-  const hoursGroups = formatOpeningHours(place.openingHoursText, place.osmOpeningHours);
+  const hoursGroups = place ? formatOpeningHours(place.openingHoursText, place.osmOpeningHours) : null;
 
   return (
-    <Modal visible animationType="slide" transparent onRequestClose={onClose}>
-      <Pressable style={s.backdrop} onPress={onClose} />
+    <Modal visible={visible} animationType="slide" transparent onRequestClose={dismiss}>
+      <Pressable style={s.backdrop} onPress={dismiss} />
       <Animated.View style={[s.sheet, { transform: [{ translateY }] }]}>
-        {/* Handle draggable */}
         <View style={s.handleZone} {...panResponder.panHandlers}>
           <View style={s.handle} />
         </View>
 
-        <ScrollView
-          contentContainerStyle={s.content}
-          showsVerticalScrollIndicator={false}
-          scrollEventThrottle={16}
-        >
-          {/* Titre + fermeture */}
-          <View style={s.titleRow}>
-            <View style={{ flex: 1 }}>
-              <Text style={s.name}>{place.name}</Text>
-              <Text style={s.category}>{PLACE_TYPE_LABELS[place.category]}</Text>
-              <SourceBadge place={place} />
+        {place && (
+          <ScrollView
+            contentContainerStyle={s.content}
+            showsVerticalScrollIndicator={false}
+            scrollEventThrottle={16}
+          >
+            <View style={s.titleRow}>
+              <View style={{ flex: 1 }}>
+                <Text style={s.name}>{place.name}</Text>
+                <Text style={s.category}>{PLACE_TYPE_LABELS[place.category]}</Text>
+                <SourceBadge place={place} />
+              </View>
+              <Pressable onPress={dismiss} hitSlop={theme.sp3}>
+                <Text style={s.closeBtn}>✕</Text>
+              </Pressable>
             </View>
-            <Pressable onPress={onClose} hitSlop={theme.sp3}>
-              <Text style={s.closeBtn}>✕</Text>
-            </Pressable>
-          </View>
 
-          {/* Distance + adresse */}
-          {place.distanceMeters != null && (
+            {place.distanceMeters != null && (
+              <View style={s.row}>
+                <Text style={s.rowIcon}>📍</Text>
+                <Text style={s.rowText}>
+                  {formatDistance(place.distanceMeters)}
+                  {place.shortAddress ? `  ·  ${place.shortAddress}` : ''}
+                </Text>
+              </View>
+            )}
+
             <View style={s.row}>
-              <Text style={s.rowIcon}>📍</Text>
-              <Text style={s.rowText}>
-                {formatDistance(place.distanceMeters)}
-                {place.shortAddress ? `  ·  ${place.shortAddress}` : ''}
-              </Text>
+              <Text style={s.rowIcon}>🕐</Text>
+              <View>{openingLabel()}</View>
             </View>
-          )}
 
-          {/* Statut ouverture */}
-          <View style={s.row}>
-            <Text style={s.rowIcon}>🕐</Text>
-            <View>{openingLabel()}</View>
-          </View>
+            {hoursGroups && hoursGroups.length > 0 && (
+              <View style={s.hoursBox}>
+                <Text style={s.hoursLabel}>HORAIRES</Text>
+                {hoursGroups.map((group, i) => (
+                  <View key={i} style={s.hoursRow}>
+                    <Text style={s.hoursDayText}>{group.label}</Text>
+                    {group.hours ? (
+                      <Text style={s.hoursTimeText}>{group.hours}</Text>
+                    ) : null}
+                  </View>
+                ))}
+              </View>
+            )}
 
-          {/* Horaires formatés */}
-          {hoursGroups && hoursGroups.length > 0 && (
-            <View style={s.hoursBox}>
-              <Text style={s.hoursLabel}>HORAIRES</Text>
-              {hoursGroups.map((group, i) => (
-                <View key={i} style={s.hoursRow}>
-                  <Text style={s.hoursDayText}>{group.label}</Text>
-                  {group.hours ? (
-                    <Text style={s.hoursTimeText}>{group.hours}</Text>
-                  ) : null}
-                </View>
-              ))}
-            </View>
-          )}
-
-          {/* Logs communautaires */}
-          <PlaceLogsSection placeId={place.id} onCloseParent={onClose} />
-        </ScrollView>
+            <PlaceLogsSection placeId={place.id} onCloseParent={dismiss} />
+          </ScrollView>
+        )}
       </Animated.View>
     </Modal>
   );

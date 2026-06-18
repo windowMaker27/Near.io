@@ -113,7 +113,6 @@ export default function MapScreen() {
     }
   };
 
-  // Ferme le modal si ouvert, sinon remonte
   const handleBack = () => {
     if (detailVisible) {
       setDetailVisible(false);
@@ -238,7 +237,8 @@ export default function MapScreen() {
       )}
 
       <PlaceDetailSheet
-        place={detailVisible ? tooltip : null}
+        visible={detailVisible}
+        place={tooltip}
         onClose={() => setDetailVisible(false)}
       />
     </View>
