@@ -1,13 +1,13 @@
 /**
- * SplashLoader — écran de démarrage avec barre de progression.
- * S'affiche ~1.8s puis appelle onDone pour laisser place à l'app.
- * Utilise useTheme pour s'adapter au mode clair/sombre.
+ * SplashLoader — écran de démarrage plein écran avec barre de progression.
+ * Rendu en dehors du SafeAreaView via absoluteFillObject + zIndex élevé.
  */
 import { useEffect, useRef } from 'react';
 import { Animated, Easing, StyleSheet, Text, View } from 'react-native';
 import { useTheme } from '@/hooks/useTheme';
 
-const DURATION = 1800;
+const DURATION = 2600; // durée barre (ms)
+const FADE_DURATION = 300;
 
 type Props = { onDone: () => void };
 
@@ -17,17 +17,15 @@ export function SplashLoader({ onDone }: Props) {
   const fadeOut = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
-    // Phase 1 : remplissage de la barre (0 → 1)
     Animated.timing(progress, {
       toValue: 1,
       duration: DURATION,
       easing: Easing.bezier(0.25, 0.1, 0.25, 1),
-      useNativeDriver: false, // width% ne supporte pas nativeDriver
+      useNativeDriver: false,
     }).start(() => {
-      // Phase 2 : fade out de l'écran entier
       Animated.timing(fadeOut, {
         toValue: 0,
-        duration: 280,
+        duration: FADE_DURATION,
         useNativeDriver: true,
       }).start(() => onDone());
     });
@@ -42,8 +40,7 @@ export function SplashLoader({ onDone }: Props) {
     <Animated.View style={[s.root, { backgroundColor: t.bg, opacity: fadeOut }]}>
       <Text style={[s.logo, { color: t.text, fontFamily: t.fontMonoBold }]}>NEAR.IO</Text>
       <Text style={[s.tagline, { color: t.textMuted, fontFamily: t.fontMono }]}>INITIALISATION</Text>
-
-      <View style={[s.track, { borderColor: t.border }]}>
+      <View style={s.track}>
         <Animated.View style={[s.bar, { width: barWidth, backgroundColor: t.accent }]} />
       </View>
     </Animated.View>
@@ -52,8 +49,9 @@ export function SplashLoader({ onDone }: Props) {
 
 const s = StyleSheet.create({
   root: {
-    ...StyleSheet.absoluteFillObject,
-    zIndex: 999,
+    position: 'absolute',
+    top: 0, left: 0, right: 0, bottom: 0,
+    zIndex: 9999,
     alignItems: 'center',
     justifyContent: 'center',
     gap: 12,
@@ -63,11 +61,9 @@ const s = StyleSheet.create({
   track: {
     width: 200,
     height: 2,
-    borderWidth: 0,
-    backgroundColor: 'transparent',
     borderRadius: 2,
     overflow: 'hidden',
-    borderBottomWidth: 1,
+    backgroundColor: 'transparent',
   },
   bar: { height: 2, borderRadius: 2 },
 });

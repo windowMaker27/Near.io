@@ -77,115 +77,119 @@ export default function CompassScreen() {
   const fav = target ? isFavorite(target.id) : false;
 
   return (
-    <SafeAreaView style={[s.root, { backgroundColor: t.bg }]}>
-      {/* HEADER */}
-      <View style={[s.header, { borderBottomColor: t.border }]}>
-        <Pressable onPress={() => setBurgerOpen(true)} hitSlop={t.sp3} style={s.burger}>
-          <View style={[s.burgerLine, { backgroundColor: t.text }]} />
-          <View style={[s.burgerLine, { backgroundColor: t.text, width: 16 }]} />
-          <View style={[s.burgerLine, { backgroundColor: t.text }]} />
-        </Pressable>
+    // View racine sans safe area — le splash peut couvrir tout l'écran
+    <View style={s.root}>
+      <SafeAreaView style={[s.safeArea, { backgroundColor: t.bg }]}>
+        {/* HEADER */}
+        <View style={[s.header, { borderBottomColor: t.border }]}>
+          <Pressable onPress={() => setBurgerOpen(true)} hitSlop={t.sp3} style={s.burger}>
+            <View style={[s.burgerLine, { backgroundColor: t.text }]} />
+            <View style={[s.burgerLine, { backgroundColor: t.text, width: 16 }]} />
+            <View style={[s.burgerLine, { backgroundColor: t.text }]} />
+          </Pressable>
 
-        <Pressable
-          style={s.targetInfo}
-          onPress={() => target && setDetailVisible(true)}
-          disabled={!target}
-        >
-          {target ? (
-            <>
-              <Text style={[s.targetName, { color: t.text, fontFamily: t.fontMonoBold }]} numberOfLines={1}>
-                {target.name}
-              </Text>
-              <Text style={[s.targetMeta, { color: t.textMuted, fontFamily: t.fontMono }]}>
-                {PLACE_TYPE_LABELS[target.category]}
-                {'  '}
-                <Text style={[
-                  s.targetStatus,
-                  { fontFamily: t.fontMono },
-                  target.openingStatus === 'open' && { color: t.colorOpen },
-                  target.openingStatus === 'closed' && { color: t.colorClosed },
-                ]}>
-                  {target.openingStatus === 'open'
-                    ? `● ouvert${target.closingTime ? ` jusqu'à ${target.closingTime}` : ''}`
-                    : target.openingStatus === 'closed' ? '● fermé'
-                    : '● ?'}
+          <Pressable
+            style={s.targetInfo}
+            onPress={() => target && setDetailVisible(true)}
+            disabled={!target}
+          >
+            {target ? (
+              <>
+                <Text style={[s.targetName, { color: t.text, fontFamily: t.fontMonoBold }]} numberOfLines={1}>
+                  {target.name}
                 </Text>
-              </Text>
-            </>
-          ) : (
-            <Text style={[s.targetName, { color: t.text, fontFamily: t.fontMonoBold }]}>Aucune cible</Text>
-          )}
-        </Pressable>
+                <Text style={[s.targetMeta, { color: t.textMuted, fontFamily: t.fontMono }]}>
+                  {PLACE_TYPE_LABELS[target.category]}
+                  {'  '}
+                  <Text style={[
+                    s.targetStatus,
+                    { fontFamily: t.fontMono },
+                    target.openingStatus === 'open' && { color: t.colorOpen },
+                    target.openingStatus === 'closed' && { color: t.colorClosed },
+                  ]}>
+                    {target.openingStatus === 'open'
+                      ? `● ouvert${target.closingTime ? ` jusqu'à ${target.closingTime}` : ''}`
+                      : target.openingStatus === 'closed' ? '● fermé'
+                      : '● ?'}
+                  </Text>
+                </Text>
+              </>
+            ) : (
+              <Text style={[s.targetName, { color: t.text, fontFamily: t.fontMonoBold }]}>Aucune cible</Text>
+            )}
+          </Pressable>
 
-        <Pressable
-          onPress={() => target && toggleFavorite(target)}
-          hitSlop={t.sp3}
-          style={s.heartBtn}
-          disabled={!target}
-        >
-          <Text style={[s.heartIcon, { color: fav ? t.accent : t.textMuted }]}>
-            {fav ? '♥' : '♡'}
-          </Text>
-        </Pressable>
-      </View>
-
-      {/* HEADING WARNING */}
-      {!headingAvailable && (
-        <View style={[s.warningBanner, { backgroundColor: t.warningBg, borderBottomColor: t.warningBorder }]}>
-          <Text style={[s.warningText, { color: t.colorWarning, fontFamily: t.fontMono }]}>
-            ⚠ Orientation simulée — capteur indisponible dans Expo Go
-          </Text>
+          <Pressable
+            onPress={() => target && toggleFavorite(target)}
+            hitSlop={t.sp3}
+            style={s.heartBtn}
+            disabled={!target}
+          >
+            <Text style={[s.heartIcon, { color: fav ? t.accent : t.textMuted }]}>
+              {fav ? '♥' : '♡'}
+            </Text>
+          </Pressable>
         </View>
-      )}
 
-      {/* COMPASS */}
-      <View style={s.compassZone}>
-        {target ? (
-          <CompassDial deltaAngle={deltaAngle} instruction={instruction} />
-        ) : (
-          <EmptyState
-            title="Aucun commerce trouvé"
-            description="Augmentez le rayon dans les filtres."
-          />
+        {/* HEADING WARNING */}
+        {!headingAvailable && (
+          <View style={[s.warningBanner, { backgroundColor: t.warningBg, borderBottomColor: t.warningBorder }]}>
+            <Text style={[s.warningText, { color: t.colorWarning, fontFamily: t.fontMono }]}>
+              ⚠ Orientation simulée — capteur indisponible dans Expo Go
+            </Text>
+          </View>
         )}
-      </View>
 
-      {/* DISTANCE */}
-      {target && (
-        <View style={s.distanceRow}>
-          <Text style={[s.distanceValue, { color: t.text, fontFamily: t.fontMonoBold }]}>
-            {target.distanceMeters != null ? formatDistance(target.distanceMeters) : '---'}
-          </Text>
-          {instruction ? (
-            <Text style={[s.instruction, { color: t.accent, fontFamily: t.fontMono }]}>{instruction}</Text>
-          ) : null}
+        {/* COMPASS */}
+        <View style={s.compassZone}>
+          {target ? (
+            <CompassDial deltaAngle={deltaAngle} instruction={instruction} />
+          ) : (
+            <EmptyState
+              title="Aucun commerce trouvé"
+              description="Augmentez le rayon dans les filtres."
+            />
+          )}
         </View>
-      )}
 
-      {/* BOTTOM ACTION */}
-      <View style={s.bottomBar}>
-        <Pressable
-          style={[s.mapBtn, { backgroundColor: t.surface, borderColor: t.border }]}
-          onPress={() => router.push(target ? `/map?placeId=${target.id}` : '/map')}
-        >
-          <Text style={[s.mapBtnText, { color: t.text, fontFamily: t.fontMonoMedium }]}>Afficher sur la carte</Text>
-        </Pressable>
-      </View>
+        {/* DISTANCE */}
+        {target && (
+          <View style={s.distanceRow}>
+            <Text style={[s.distanceValue, { color: t.text, fontFamily: t.fontMonoBold }]}>
+              {target.distanceMeters != null ? formatDistance(target.distanceMeters) : '---'}
+            </Text>
+            {instruction ? (
+              <Text style={[s.instruction, { color: t.accent, fontFamily: t.fontMono }]}>{instruction}</Text>
+            ) : null}
+          </View>
+        )}
 
-      <FilterDrawer />
-      <PlaceNavigator currentIndex={targetIndex} total={totalPlaces} onNext={goToNext} onPrev={goToPrev} />
-      <BurgerMenu open={burgerOpen} onClose={() => setBurgerOpen(false)} onSubmitPlace={() => setSubmitModalOpen(true)} />
-      <SubmitPlaceModal visible={submitModalOpen} onClose={() => setSubmitModalOpen(false)} />
-      <PlaceDetailSheet visible={detailVisible} place={target ?? null} onClose={() => setDetailVisible(false)} />
+        {/* BOTTOM ACTION */}
+        <View style={s.bottomBar}>
+          <Pressable
+            style={[s.mapBtn, { backgroundColor: t.surface, borderColor: t.border }]}
+            onPress={() => router.push(target ? `/map?placeId=${target.id}` : '/map')}
+          >
+            <Text style={[s.mapBtnText, { color: t.text, fontFamily: t.fontMonoMedium }]}>Afficher sur la carte</Text>
+          </Pressable>
+        </View>
 
-      {/* SPLASH — par-dessus tout, disparaît après l'animation */}
+        <FilterDrawer />
+        <PlaceNavigator currentIndex={targetIndex} total={totalPlaces} onNext={goToNext} onPrev={goToPrev} />
+        <BurgerMenu open={burgerOpen} onClose={() => setBurgerOpen(false)} onSubmitPlace={() => setSubmitModalOpen(true)} />
+        <SubmitPlaceModal visible={submitModalOpen} onClose={() => setSubmitModalOpen(false)} />
+        <PlaceDetailSheet visible={detailVisible} place={target ?? null} onClose={() => setDetailVisible(false)} />
+      </SafeAreaView>
+
+      {/* SPLASH en dehors du SafeAreaView — couvre tout l'écran */}
       {!splashDone && <SplashLoader onDone={() => setSplashDone(true)} />}
-    </SafeAreaView>
+    </View>
   );
 }
 
 const s = StyleSheet.create({
   root: { flex: 1 },
+  safeArea: { flex: 1 },
   header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, paddingTop: 12, paddingBottom: 10, borderBottomWidth: 1 },
   burger: { gap: 4, paddingRight: 16 },
   burgerLine: { width: 22, height: 2, borderRadius: 2 },
