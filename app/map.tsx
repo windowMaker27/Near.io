@@ -98,6 +98,8 @@ export default function MapScreen() {
     }] : [],
   };
 
+  const selectedId = tooltip?.id ?? '';
+
   const recenter = async () => {
     if (cameraRef.current && coords) {
       cameraRef.current.setCamera({ centerCoordinate: coords, zoomLevel: 14, animationDuration: 500 });
@@ -132,7 +134,6 @@ export default function MapScreen() {
           <Camera ref={cameraRef} centerCoordinate={coords} zoomLevel={14} animationMode="none" />
         )}
 
-        {/* Marqueur user — sous les commerces */}
         {coords && (
           <ShapeSource id="user-location" shape={userGeojson}>
             <CircleLayer
@@ -147,16 +148,15 @@ export default function MapScreen() {
           </ShapeSource>
         )}
 
-        {/* Marqueurs commerces — au-dessus */}
         {places.length > 0 && (
           <ShapeSource id="places" shape={geojson} onPress={handleFeaturePress}>
             <CircleLayer
               id="places-dot"
               style={{
-                circleRadius: ['case', ['==', ['get', 'id'], tooltip?.id ?? ''], 11, 8],
+                circleRadius: ['case', ['==', ['get', 'id'], selectedId], 11, 8],
                 circleColor: ['match', ['get', 'status'], 'open', t.colorOpen, t.colorClosed],
-                circleStrokeWidth: 1.5,
-                circleStrokeColor: t.bg,
+                circleStrokeWidth: ['case', ['==', ['get', 'id'], selectedId], 2.5, 1.5],
+                circleStrokeColor: ['case', ['==', ['get', 'id'], selectedId], t.accent, t.bg],
               }}
             />
           </ShapeSource>
