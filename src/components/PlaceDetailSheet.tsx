@@ -1,21 +1,20 @@
 /**
  * PlaceDetailSheet
- * Bottom sheet affichant les détails d'un lieu :
- * - Nom, catégorie, badge source (OSM / Communauté / Admin)
- * - Adresse
- * - Statut d'ouverture + heure de fermeture
- * - Horaires formatés par groupes de jours
- * - Distance
- * - Logs communautaires
+ * Bottom sheet affichant les détails d'un lieu.
+ * - Handle draggable (PanResponder) pour fermer en swipant vers le bas
+ * - Backdrop pressable pour fermer
  */
 import {
   Modal,
+  PanResponder,
   Pressable,
   ScrollView,
   StyleSheet,
   Text,
   View,
+  Animated,
 } from 'react-native';
+import { useRef } from 'react';
 import { theme } from '@/constants/theme';
 import { Place } from '@/types/place';
 import { PLACE_TYPE_LABELS } from '@/constants/placeTypes';
@@ -30,6 +29,37 @@ type Props = {
 };
 
 export function PlaceDetailSheet({ place, onClose }: Props) {
+  const translateY = useRef(new Animated.Value(0)).current;
+
+  const panResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: (_, g) => Math.abs(g.dy) > 5,
+      onPanResponderMove: (_, g) => {
+        if (g.dy > 0) translateY.setValue(g.dy);
+      },
+      onPanResponderRelease: (_, g) => {
+        if (g.dy > 80 || g.vy > 0.5) {
+          Animated.timing(translateY, {
+            toValue: 600,
+            duration: 220,
+            useNativeDriver: true,
+          }).start(() => {
+            translateY.setValue(0);
+            onClose();
+          });
+        } else {
+          Animated.spring(translateY, {
+            toValue: 0,
+            useNativeDriver: true,
+            tension: 80,
+            friction: 10,
+          }).start();
+        }
+      },
+    })
+  ).current;
+
   if (!place) return null;
 
   const openingLabel = () => {
@@ -54,13 +84,16 @@ export function PlaceDetailSheet({ place, onClose }: Props) {
   return (
     <Modal visible animationType="slide" transparent onRequestClose={onClose}>
       <Pressable style={s.backdrop} onPress={onClose} />
-      <View style={s.sheet}>
-        {/* Handle */}
-        <View style={s.handle} />
+      <Animated.View style={[s.sheet, { transform: [{ translateY }] }]}>
+        {/* Handle draggable */}
+        <View style={s.handleZone} {...panResponder.panHandlers}>
+          <View style={s.handle} />
+        </View>
 
         <ScrollView
           contentContainerStyle={s.content}
           showsVerticalScrollIndicator={false}
+          scrollEventThrottle={16}
         >
           {/* Titre + fermeture */}
           <View style={s.titleRow}>
@@ -109,7 +142,7 @@ export function PlaceDetailSheet({ place, onClose }: Props) {
           {/* Logs communautaires */}
           <PlaceLogsSection placeId={place.id} onCloseParent={onClose} />
         </ScrollView>
-      </View>
+      </Animated.View>
     </Modal>
   );
 }
@@ -131,14 +164,16 @@ const s = StyleSheet.create({
     borderTopColor: theme.border,
     maxHeight: '75%',
   },
+  // Zone de touch élargie autour du handle pour capter le PanResponder
+  handleZone: {
+    alignItems: 'center',
+    paddingVertical: 12,
+  },
   handle: {
     width: 36,
     height: 4,
     borderRadius: 2,
     backgroundColor: theme.border,
-    alignSelf: 'center',
-    marginTop: theme.sp2 + 2,
-    marginBottom: theme.sp1,
   },
   content: { padding: theme.pagePad, paddingBottom: theme.sp12 },
   titleRow: { flexDirection: 'row', alignItems: 'flex-start', marginBottom: theme.sp3 },

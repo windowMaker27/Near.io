@@ -99,7 +99,6 @@ export default function MapScreen() {
   };
 
   const selectedId = tooltip?.id ?? '';
-  // Les expressions MapLibre n'acceptent que des literals — on résout t.accent avant
   const accentHex: string = t.accent;
   const bgHex: string = t.bg;
 
@@ -111,6 +110,15 @@ export default function MapScreen() {
       const c: [number, number] = [loc.coords.longitude, loc.coords.latitude];
       setCoords(c);
       setUserLocation({ latitude: loc.coords.latitude, longitude: loc.coords.longitude });
+    }
+  };
+
+  // Ferme le modal si ouvert, sinon remonte
+  const handleBack = () => {
+    if (detailVisible) {
+      setDetailVisible(false);
+    } else {
+      router.back();
     }
   };
 
@@ -168,7 +176,7 @@ export default function MapScreen() {
 
       <Pressable
         style={[styles.backBtn, { top: insets.top + 12, backgroundColor: t.surface, borderColor: t.border }]}
-        onPress={() => router.back()}
+        onPress={handleBack}
       >
         <Text style={[styles.backLabel, { color: t.text, fontFamily: t.fontMono }]}>← Retour</Text>
       </Pressable>
