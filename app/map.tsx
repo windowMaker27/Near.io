@@ -44,7 +44,6 @@ export default function MapScreen() {
 
   const { places } = useNearbyPlaces(userLocation);
 
-  // Ouverture auto depuis boussole
   useEffect(() => {
     if (placeId && places.length > 0) {
       const found = places.find((p) => p.id === placeId);
@@ -85,8 +84,18 @@ export default function MapScreen() {
       type: 'Feature',
       id: p.id,
       geometry: { type: 'Point', coordinates: [p.coordinates.longitude, p.coordinates.latitude] },
-      properties: { name: p.name, status: p.openingStatus },
+      properties: { id: p.id, name: p.name, status: p.openingStatus },
     })),
+  };
+
+  const userGeojson: GeoJSON.FeatureCollection = {
+    type: 'FeatureCollection',
+    features: coords ? [{
+      type: 'Feature',
+      id: 'user-location',
+      geometry: { type: 'Point', coordinates: coords },
+      properties: {},
+    }] : [],
   };
 
   const recenter = async () => {
@@ -122,6 +131,23 @@ export default function MapScreen() {
         {coords && (
           <Camera ref={cameraRef} centerCoordinate={coords} zoomLevel={14} animationMode="none" />
         )}
+
+        {/* Marqueur user — sous les commerces */}
+        {coords && (
+          <ShapeSource id="user-location" shape={userGeojson}>
+            <CircleLayer
+              id="user-location-dot"
+              style={{
+                circleRadius: 7,
+                circleColor: t.accent,
+                circleStrokeWidth: 2,
+                circleStrokeColor: '#FFFFFF',
+              }}
+            />
+          </ShapeSource>
+        )}
+
+        {/* Marqueurs commerces — au-dessus */}
         {places.length > 0 && (
           <ShapeSource id="places" shape={geojson} onPress={handleFeaturePress}>
             <CircleLayer
@@ -137,7 +163,6 @@ export default function MapScreen() {
         )}
       </MapView>
 
-      {/* Bouton retour */}
       <Pressable
         style={[styles.backBtn, { top: insets.top + 12, backgroundColor: t.surface, borderColor: t.border }]}
         onPress={() => router.back()}
@@ -145,7 +170,6 @@ export default function MapScreen() {
         <Text style={[styles.backLabel, { color: t.text, fontFamily: t.fontMono }]}>← Retour</Text>
       </Pressable>
 
-      {/* Bouton recentrer */}
       <Pressable
         style={[styles.recenterBtn, { bottom: insets.bottom + 24, backgroundColor: t.accent, ...t.shadowMd }]}
         onPress={recenter}
@@ -153,7 +177,6 @@ export default function MapScreen() {
         <Text style={styles.recenterIcon}>◎</Text>
       </Pressable>
 
-      {/* Tooltip */}
       {tooltip && (
         <Animated.View
           style={[
@@ -163,20 +186,20 @@ export default function MapScreen() {
               backgroundColor: t.surface,
               borderColor: t.border,
               ...t.shadowMd,
-              transform: [{ scale: tooltipAnim }, { translateY: tooltipAnim.interpolate({ inputRange: [0, 1], outputRange: [20, 0] }) }],
+              transform: [
+                { scale: tooltipAnim },
+                { translateY: tooltipAnim.interpolate({ inputRange: [0, 1], outputRange: [20, 0] }) },
+              ],
               opacity: tooltipAnim,
             },
           ]}
         >
-          {/* Nom + catégorie */}
           <Text style={[styles.tooltipName, { color: t.text, fontFamily: t.fontMonoBold }]} numberOfLines={1}>
             {tooltip.name}
           </Text>
           <Text style={[styles.tooltipCategory, { color: t.textMuted, fontFamily: t.fontMono }]}>
             {PLACE_TYPE_LABELS[tooltip.category]}
           </Text>
-
-          {/* Statut + distance */}
           <View style={styles.tooltipRow}>
             <Text style={[styles.tooltipStatus, { color: statusColor(tooltip), fontFamily: t.fontMono }]}>
               {statusLabel(tooltip)}
@@ -187,15 +210,11 @@ export default function MapScreen() {
               </Text>
             )}
           </View>
-
-          {/* Horaires courts */}
           {tooltip.closingTime && tooltip.openingStatus === 'open' && (
             <Text style={[styles.tooltipHours, { color: t.textMuted, fontFamily: t.fontMono }]}>
               Ferme à {tooltip.closingTime}
             </Text>
           )}
-
-          {/* Actions */}
           <View style={styles.tooltipActions}>
             <Pressable
               style={[styles.tooltipBtnSecondary, { borderColor: t.border }]}
