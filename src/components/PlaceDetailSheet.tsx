@@ -40,13 +40,14 @@ export function PlaceDetailSheet({ place, onClose }: Props) {
       },
       onPanResponderRelease: (_, g) => {
         if (g.dy > 80 || g.vy > 0.5) {
+          // On anime jusqu'en bas puis on ferme — pas de setValue(0) avant onClose
+          // pour éviter le flash à la position initiale
           Animated.timing(translateY, {
             toValue: 600,
             duration: 220,
             useNativeDriver: true,
-          }).start(() => {
-            translateY.setValue(0);
-            onClose();
+          }).start(({ finished }) => {
+            if (finished) onClose();
           });
         } else {
           Animated.spring(translateY, {
@@ -164,7 +165,6 @@ const s = StyleSheet.create({
     borderTopColor: theme.border,
     maxHeight: '75%',
   },
-  // Zone de touch élargie autour du handle pour capter le PanResponder
   handleZone: {
     alignItems: 'center',
     paddingVertical: 12,
