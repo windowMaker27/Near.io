@@ -3,9 +3,7 @@ import MapLibre from '@maplibre/maplibre-react-native';
 import { useTheme } from '@/hooks/useTheme';
 import { nearMapStyleDark, nearMapStyleLight } from '@/features/maplibre/style/nearMapStyle';
 
-const { MapView, Camera } = MapLibre;
-
-const PARIS: [number, number] = [2.3488, 48.8534];
+const { MapView } = MapLibre;
 
 export default function MapScreen() {
   const t = useTheme();
@@ -19,13 +17,8 @@ export default function MapScreen() {
         mapStyle={mapStyle as any}
         logoEnabled={false}
         attributionEnabled={false}
-      >
-        <Camera
-          centerCoordinate={PARIS}
-          zoomLevel={13}
-          animationMode="none"
-        />
-      </MapView>
+        onDidFinishLoadingMap={() => console.log('[MAP] ✅ loaded')}
+      />
     </View>
   );
 }
