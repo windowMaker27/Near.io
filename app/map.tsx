@@ -1,12 +1,10 @@
-import { useRef, useEffect, Dimensions } from 'react';
+import { useRef } from 'react';
+import { StyleSheet } from 'react-native';
 import MapLibre from '@maplibre/maplibre-react-native';
 import { useTheme } from '@/hooks/useTheme';
 import { nearMapStyleDark, nearMapStyleLight } from '@/features/maplibre/style/nearMapStyle';
 
 const { MapView } = MapLibre;
-const { width, height } = Dimensions.get('screen');
-
-const PARIS: [number, number] = [2.3488, 48.8534];
 
 export default function MapScreen() {
   const t = useTheme();
@@ -17,14 +15,13 @@ export default function MapScreen() {
   return (
     <MapView
       ref={mapRef}
-      style={{ width, height }}
+      style={StyleSheet.absoluteFillObject}
       mapStyle={mapStyle as any}
       logoEnabled={false}
       attributionEnabled={false}
       onDidFinishLoadingMap={() => {
-        console.log('[MAP] ✅ loaded');
         mapRef.current?.setCamera({
-          centerCoordinate: PARIS,
+          centerCoordinate: [2.3488, 48.8534],
           zoomLevel: 14,
           animationDuration: 0,
         });
