@@ -3,7 +3,8 @@ import { type StyleSpecification } from '@maplibre/maplibre-react-native';
 // Tuiles vectorielles OpenFreeMap — 100% gratuit, sans clé API
 const TILES_URL = 'https://tiles.openfreemap.org/planet';
 const GLYPHS_URL = 'https://tiles.openfreemap.org/fonts/{fontstack}/{range}.pbf';
-const SPRITE_URL = 'https://tiles.openfreemap.org/styles/bright/sprite';
+// NOTE: pas de sprite — le style Near.io n'utilise aucune icône symbol (fill + line + text uniquement)
+// L'URL sprite OFM bright retourne 404, supprimée pour éviter les erreurs MapLibre.
 
 // ─────────────────────────────────────────────────────────────────────────────
 // DARK
@@ -12,14 +13,11 @@ export const nearMapStyleDark: StyleSpecification = {
   version: 8,
   name: 'Near.io Dark',
   glyphs: GLYPHS_URL,
-  sprite: SPRITE_URL,
   sources: {
     ofm: {
       type: 'vector',
       url: TILES_URL,
     },
-    // NOTE: 'route-source' est injecté dynamiquement par ShapeSource dans map.tsx
-    // Ne pas le déclarer ici pour éviter le crash "source already exists"
   },
   layers: [
     { id: 'background', type: 'background', paint: { 'background-color': '#080808' } },
@@ -63,7 +61,6 @@ export const nearMapStyleDark: StyleSpecification = {
     },
     {
       id: 'place-label', type: 'symbol', source: 'ofm',
-      // OFM schema : 'place_label' (pas 'place')
       'source-layer': 'place_label',
       layout: {
         'text-field': ['coalesce', ['get', 'name:fr'], ['get', 'name']],
@@ -90,14 +87,11 @@ export const nearMapStyleDark: StyleSpecification = {
         'text-halo-width': 1,
       },
     },
-    // NOTE: pas de couche 'route-line' ici — MapLibre crashe si une layer
-    // référence une source qui n'existe pas encore au chargement du style.
-    // La route est rendue via <ShapeSource> + <LineLayer> dynamiques dans map.tsx.
   ],
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
-// LIGHT (fond beige chaud, même structure)
+// LIGHT
 // ─────────────────────────────────────────────────────────────────────────────
 export const nearMapStyleLight: StyleSpecification = {
   ...nearMapStyleDark,
