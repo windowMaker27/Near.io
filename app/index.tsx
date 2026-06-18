@@ -186,8 +186,10 @@ export default function CompassScreen() {
         visible={submitModalOpen}
         onClose={() => setSubmitModalOpen(false)}
       />
+      {/* visible + place passeśs séparément — requis par PlaceDetailSheet */}
       <PlaceDetailSheet
-        place={detailVisible ? target ?? null : null}
+        visible={detailVisible}
+        place={target ?? null}
         onClose={() => setDetailVisible(false)}
       />
     </SafeAreaView>

@@ -12,7 +12,7 @@ import {
   Platform,
   Pressable,
 } from 'react-native';
-import { theme } from '@/constants/theme';
+import { useTheme } from '@/hooks/useTheme';
 import { usePlaceLogs } from './usePlaceLogs';
 import { useAuthStore } from '@/store/authStore';
 import { router } from 'expo-router';
@@ -27,12 +27,13 @@ function formatLogDate(iso: string): string {
 }
 
 function LogItem({ log }: { log: PlaceLog }) {
+  const t = useTheme();
   return (
-    <View style={styles.logRow}>
-      <Text style={styles.logText}>
-        <Text style={styles.logMeta}>{formatLogDate(log.createdAt)}</Text>
-        <Text style={styles.logAt}>@{log.username}</Text>
-        <Text style={styles.logSep}>&gt; </Text>
+    <View style={s.logRow}>
+      <Text style={[s.logText, { color: t.text, fontFamily: t.fontMono }]}>
+        <Text style={{ color: t.textMuted }}>{formatLogDate(log.createdAt)}</Text>
+        <Text style={{ color: t.accent }}>@{log.username}</Text>
+        <Text style={{ color: t.textMuted }}>&gt; </Text>
         <Text>{log.content}</Text>
       </Text>
     </View>
@@ -45,6 +46,7 @@ type Props = {
 };
 
 export function PlaceLogsSection({ placeId, onCloseParent }: Props) {
+  const t = useTheme();
   const { logs, isLoading, isPosting, addLog } = usePlaceLogs(placeId);
   const { session } = useAuthStore();
   const [modalVisible, setModalVisible] = useState(false);
@@ -72,22 +74,20 @@ export function PlaceLogsSection({ placeId, onCloseParent }: Props) {
   }
 
   return (
-    <View style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.title}>LOGS</Text>
-        <TouchableOpacity
-          onPress={handleAddPress}
-          hitSlop={10}
-          accessibilityLabel="Ajouter un log"
-        >
-          <Text style={styles.addBtnText}>+</Text>
+    <View style={s.container}>
+      <View style={s.header}>
+        <Text style={[s.title, { color: t.textMuted, fontFamily: t.fontMonoBold }]}>LOGS</Text>
+        <TouchableOpacity onPress={handleAddPress} hitSlop={10} accessibilityLabel="Ajouter un log">
+          <Text style={[s.addBtnText, { color: t.accent, fontFamily: t.fontMono }]}>+</Text>
         </TouchableOpacity>
       </View>
 
       {isLoading ? (
-        <ActivityIndicator color={theme.accent} style={{ marginVertical: 12 }} />
+        <ActivityIndicator color={t.accent} style={{ marginVertical: 12 }} />
       ) : logs.length === 0 ? (
-        <Text style={styles.empty}>Aucun log — soyez le premier à signaler quelque chose.</Text>
+        <Text style={[s.empty, { color: t.textMuted, fontFamily: t.fontMono }]}>
+          Aucun log — soyez le premier à signaler quelque chose.
+        </Text>
       ) : (
         <FlatList
           data={logs}
@@ -99,36 +99,36 @@ export function PlaceLogsSection({ placeId, onCloseParent }: Props) {
 
       <Modal visible={modalVisible} transparent animationType="fade">
         <KeyboardAvoidingView
-          style={styles.modalOverlay}
+          style={s.modalOverlay}
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         >
           <Pressable style={StyleSheet.absoluteFill} onPress={() => setModalVisible(false)} />
-          <View style={styles.modalBox}>
-            <Text style={styles.modalTitle}>Nouveau log</Text>
+          <View style={[s.modalBox, { backgroundColor: t.surface }]}>
+            <Text style={[s.modalTitle, { color: t.text, fontFamily: t.fontMonoBold }]}>Nouveau log</Text>
             <TextInput
-              style={styles.input}
+              style={[s.input, { color: t.text, backgroundColor: t.bg, borderColor: t.border, fontFamily: t.fontMono }]}
               placeholder="Que voulez-vous signaler ?"
-              placeholderTextColor={theme.textMuted}
+              placeholderTextColor={t.textMuted}
               value={draft}
-              onChangeText={(t) => setDraft(t.slice(0, MAX_CHARS))}
+              onChangeText={(v) => setDraft(v.slice(0, MAX_CHARS))}
               multiline
               maxLength={MAX_CHARS}
               autoFocus
             />
-            <Text style={styles.charCount}>{draft.length}/{MAX_CHARS}</Text>
-            {postError && <Text style={styles.errorText}>{postError}</Text>}
-            <View style={styles.modalActions}>
-              <TouchableOpacity onPress={() => setModalVisible(false)} style={styles.cancelBtn}>
-                <Text style={styles.cancelBtnText}>Annuler</Text>
+            <Text style={[s.charCount, { color: t.textMuted, fontFamily: t.fontMono }]}>{draft.length}/{MAX_CHARS}</Text>
+            {postError && <Text style={s.errorText}>{postError}</Text>}
+            <View style={s.modalActions}>
+              <TouchableOpacity onPress={() => setModalVisible(false)} style={s.cancelBtn}>
+                <Text style={[s.cancelBtnText, { color: t.textMuted, fontFamily: t.fontMonoMedium }]}>Annuler</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 onPress={handleSubmit}
-                style={[styles.submitBtn, (!draft.trim() || isPosting) && styles.submitBtnDisabled]}
+                style={[s.submitBtn, { backgroundColor: t.accent }, (!draft.trim() || isPosting) && s.submitBtnDisabled]}
                 disabled={!draft.trim() || isPosting}
               >
                 {isPosting
-                  ? <ActivityIndicator color={theme.bg} size="small" />
-                  : <Text style={styles.submitBtnText}>Envoyer</Text>}
+                  ? <ActivityIndicator color={t.bg} size="small" />
+                  : <Text style={[s.submitBtnText, { color: t.bg, fontFamily: t.fontMonoBold }]}>Envoyer</Text>}
               </TouchableOpacity>
             </View>
           </View>
@@ -138,32 +138,24 @@ export function PlaceLogsSection({ placeId, onCloseParent }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+const s = StyleSheet.create({
   container: { marginTop: 24 },
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 },
-  title: { fontFamily: 'JetBrainsMono_700Bold', fontSize: 11, color: theme.textMuted, letterSpacing: 2 },
-  addBtnText: {
-    fontSize: 26,
-    lineHeight: 28,
-    color: theme.accent,
-    fontFamily: 'JetBrainsMono_400Regular',
-  },
-  empty: { fontFamily: 'JetBrainsMono_400Regular', fontSize: 12, color: theme.textMuted, fontStyle: 'italic' },
+  title: { fontSize: 11, letterSpacing: 2 },
+  addBtnText: { fontSize: 26, lineHeight: 28 },
+  empty: { fontSize: 12, fontStyle: 'italic' },
   logRow: { marginBottom: 6 },
-  logText: { fontFamily: 'JetBrainsMono_400Regular', fontSize: 12, color: theme.text, lineHeight: 18 },
-  logMeta: { color: theme.textMuted },
-  logAt: { color: theme.accent },
-  logSep: { color: theme.textMuted },
+  logText: { fontSize: 12, lineHeight: 18 },
   modalOverlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.6)' },
-  modalBox: { backgroundColor: theme.surface, borderTopLeftRadius: 16, borderTopRightRadius: 16, padding: 20, paddingBottom: 36 },
-  modalTitle: { fontFamily: 'JetBrainsMono_700Bold', fontSize: 13, color: theme.text, marginBottom: 14, letterSpacing: 1 },
-  input: { fontFamily: 'JetBrainsMono_400Regular', fontSize: 13, color: theme.text, backgroundColor: theme.bg, borderRadius: 8, padding: 12, minHeight: 80, textAlignVertical: 'top', borderWidth: 1, borderColor: theme.border },
-  charCount: { fontFamily: 'JetBrainsMono_400Regular', fontSize: 11, color: theme.textMuted, textAlign: 'right', marginTop: 4 },
-  errorText: { fontFamily: 'JetBrainsMono_400Regular', fontSize: 12, color: '#ff4444', marginTop: 6 },
+  modalBox: { borderTopLeftRadius: 16, borderTopRightRadius: 16, padding: 20, paddingBottom: 36 },
+  modalTitle: { fontSize: 13, marginBottom: 14, letterSpacing: 1 },
+  input: { fontSize: 13, borderRadius: 8, padding: 12, minHeight: 80, textAlignVertical: 'top', borderWidth: 1 },
+  charCount: { fontSize: 11, textAlign: 'right', marginTop: 4 },
+  errorText: { fontSize: 12, color: '#ff4444', marginTop: 6 },
   modalActions: { flexDirection: 'row', justifyContent: 'flex-end', gap: 10, marginTop: 14 },
   cancelBtn: { paddingHorizontal: 16, paddingVertical: 10 },
-  cancelBtnText: { fontFamily: 'JetBrainsMono_500Medium', fontSize: 13, color: theme.textMuted },
-  submitBtn: { backgroundColor: theme.accent, paddingHorizontal: 20, paddingVertical: 10, borderRadius: 8, minWidth: 90, alignItems: 'center' },
+  cancelBtnText: { fontSize: 13 },
+  submitBtn: { paddingHorizontal: 20, paddingVertical: 10, borderRadius: 8, minWidth: 90, alignItems: 'center' },
   submitBtnDisabled: { opacity: 0.4 },
-  submitBtnText: { fontFamily: 'JetBrainsMono_700Bold', fontSize: 13, color: theme.bg },
+  submitBtnText: { fontSize: 13 },
 });
