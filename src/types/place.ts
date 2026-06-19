@@ -7,6 +7,8 @@ export type PlaceCategory =
   | 'grocery'
   | 'fast_food'
   | 'restaurant'
+  | 'pharmacy'
+  | 'street_vendor'
   | 'other'
   | 'unknown';
 

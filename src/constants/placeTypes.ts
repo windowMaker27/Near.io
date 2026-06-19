@@ -7,6 +7,8 @@ export const PLACE_TYPE_LABELS: Record<PlaceCategory, string> = {
   grocery:       'Épicerie / Alimentation générale',
   fast_food:     'Fast-food',
   restaurant:    'Restaurant',
+  pharmacy:      'Pharmacie',
+  street_vendor: 'Marché / Ambulant',
   other:         'Autres',
   unknown:       'Commerce',
 };
@@ -20,6 +22,8 @@ export const OSM_TAG_TO_CATEGORY: Record<string, PlaceCategory> = {
   deli:         'grocery',
   fast_food:    'fast_food',
   restaurant:   'restaurant',
+  pharmacy:     'pharmacy',
+  chemist:      'pharmacy',
 };
 
 export const SUBMITTABLE_CATEGORIES: PlaceCategory[] = [
@@ -29,5 +33,7 @@ export const SUBMITTABLE_CATEGORIES: PlaceCategory[] = [
   'supermarket',
   'fast_food',
   'restaurant',
+  'pharmacy',
+  'street_vendor',
   'other',
 ];
