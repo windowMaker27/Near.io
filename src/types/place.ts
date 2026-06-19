@@ -5,14 +5,9 @@ export type PlaceCategory =
   | 'convenience'
   | 'bakery'
   | 'grocery'
-  | 'pharmacy'
   | 'fast_food'
   | 'restaurant'
-  | 'cafe'
-  | 'butcher'
-  | 'florist'
   | 'other'
-  | 'street_vendor'
   | 'unknown';
 
 export type Coordinates = {
@@ -32,14 +27,12 @@ export type Place = {
   shortAddress?: string;
   isFavorite?: boolean;
   openingStatus: OpeningStatus;
-  /** Heure de fermeture du jour courant, ex: "20h" ou "20h30" */
   closingTime?: string;
   openingHoursText?: string[];
   osmOpeningHours?: string;
   bearingFromUser?: number;
   qualityScore?: number;
   lastUpdatedAt?: number;
-  /** Rôle de l'auteur de l'ajout (uniquement pour source === 'user') */
   authorRole?: 'user' | 'admin';
 };
 
