@@ -61,6 +61,12 @@
           "androidAppId": "ca-app-pub-7688202552948414~8808213287",
           "iosAppId": "ca-app-pub-7688202552948414~8808213287"
         }
+      ],
+      [
+        "react-native-purchases",
+        {
+          "iosApiKey": "REVENUECAT_IOS_KEY_PLACEHOLDER"
+        }
       ]
     ],
     "experiments": {
