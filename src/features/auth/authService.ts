@@ -19,7 +19,7 @@ function translateAuthError(message: string): string {
   if (m.includes('invalid login credentials') || m.includes('invalid credentials'))
     return 'Identifiant ou mot de passe incorrect.';
   if (m.includes('email not confirmed'))
-    return 'Votre adresse email n'est pas encore confirmée.';
+    return "Votre adresse email n'est pas encore confirmée.";
   if (m.includes('user not found'))
     return 'Aucun compte associé à cet identifiant.';
   if (m.includes('too many requests') || m.includes('rate limit'))
@@ -30,7 +30,7 @@ function translateAuthError(message: string): string {
     return 'Mot de passe trop faible.';
   if (m.includes('already registered') || m.includes('already exists') || m.includes('user_already_exists'))
     return 'Cette adresse email est déjà associée à un compte.';
-  return message; // fallback : message original
+  return message;
 }
 
 async function fetchProfileWithRetry(userId: string, attempts = 5): Promise<UserProfile> {
@@ -82,7 +82,7 @@ export async function signIn({ identifier, password }: SignInParams): Promise<Us
       .maybeSingle();
 
     if (profileError || !profileData) {
-      throw new Error('Nom d\'utilisateur introuvable.');
+      throw new Error("Nom d'utilisateur introuvable.");
     }
 
     const { data: emailData, error: rpcError } = await supabase
