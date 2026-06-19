@@ -171,9 +171,9 @@ export default function MapScreen() {
   const sweepFill = isDark ? 'rgba(231,76,60,0.18)' : 'rgba(231,76,60,0.12)';
 
   const statusLabel = (p: Place) => {
-    if (p.openingStatus === 'open') return `● Ouvert${p.closingTime ? ` jusqu'à ${p.closingTime}` : ''}`;
-    if (p.openingStatus === 'closed') return '● Fermé';
-    return '● Horaires inconnus';
+    if (p.openingStatus === 'open') return `\u25cf Ouvert${p.closingTime ? ` jusqu'\u00e0 ${p.closingTime}` : ''}`;
+    if (p.openingStatus === 'closed') return '\u25cf Ferm\u00e9';
+    return '\u25cf Horaires inconnus';
   };
   const statusColor = (p: Place) =>
     p.openingStatus === 'open' ? t.colorOpen
@@ -187,6 +187,9 @@ export default function MapScreen() {
         mapStyle={mapStyle as any}
         logoEnabled={false}
         attributionEnabled={false}
+        compassEnabled
+        compassViewPosition={2}
+        compassViewMargins={{ x: 20, y: insets.bottom + 100 }}
         onPress={handleMapPress}
       >
         {coords && (
