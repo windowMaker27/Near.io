@@ -1,49 +1,45 @@
 /**
- * AdBanner — placeholder publicitaire horizontal (bannière).
+ * AdBanner — bannière publicitaire AdMob (BannerAd).
  *
- * Usage :
- *   <AdBanner slot="compass_top" />   → entre header et boussole (320×50)
- *   <AdBanner slot="compass_bottom" /> → entre boussole et distance  (320×50)
+ * Slots disponibles : 'compass_top' | 'compass_bottom'
  *
- * Pour brancher un vrai SDK (ex: Google AdMob via react-native-google-mobile-ads) :
- *   1. Remplacer le <View> placeholder par <BannerAd unitId={AD_UNIT_IDS[slot]} size={BannerAdSize.BANNER} />
- *   2. Supprimer les styles placeholder (dashed border, label)
+ * En dev (__DEV__ === true) : utilise l'ID de test Google pour éviter
+ * les violations de politique AdMob.
+ * En prod : utilise les IDs de production définis dans adUnits.ts.
+ *
+ * Pour brancher complètement :
+ *   1. `npx expo install react-native-google-mobile-ads`
+ *   2. Ajouter le plugin dans app.json (déjà fait via ce commit)
+ *   3. Rebuild EAS : `eas build --profile development`
  */
-import { StyleSheet, Text, View } from 'react-native';
-import { useTheme } from '@/hooks/useTheme';
+import { StyleSheet, View } from 'react-native';
+// import { BannerAd, BannerAdSize, TestIds } from 'react-native-google-mobile-ads';
+import { AD_UNIT_IDS, AdSlot } from '@/constants/adUnits';
 
-type AdBannerSlot = 'compass_top' | 'compass_bottom';
+// ID de test officiel Google (à utiliser en dev)
+const TEST_BANNER_ID = 'ca-app-pub-3940256099942544/6300978111';
 
 interface Props {
-  slot: AdBannerSlot;
+  slot: Extract<AdSlot, 'compass_top' | 'compass_bottom'>;
 }
 
 export function AdBanner({ slot }: Props) {
-  const t = useTheme();
+  const unitId = __DEV__ ? TEST_BANNER_ID : AD_UNIT_IDS[slot];
 
-  return (
-    <View style={[s.container, { borderColor: t.border, backgroundColor: t.surface }]}>
-      <Text style={[s.label, { color: t.textMuted, fontFamily: t.fontMono }]}>
-        PUB — {slot}
-      </Text>
-    </View>
-  );
+  // TODO : décommenter quand react-native-google-mobile-ads est installé
+  // return (
+  //   <BannerAd
+  //     unitId={unitId}
+  //     size={BannerAdSize.BANNER}
+  //     requestOptions={{ requestNonPersonalizedAdsOnly: false }}
+  //   />
+  // );
+
+  // Placeholder visuel jusqu'à l'installation du SDK
+  return <View style={s.placeholder} />;
 }
 
 const s = StyleSheet.create({
-  container: {
-    width: '100%',
-    height: 52,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderTopWidth: 1,
-    borderBottomWidth: 1,
-    borderStyle: 'dashed',
-  },
-  label: {
-    fontSize: 10,
-    letterSpacing: 1,
-    textTransform: 'uppercase',
-    opacity: 0.5,
-  },
+  // Hauteur standard du format BANNER AdMob (320×50 → 50dp)
+  placeholder: { width: '100%', height: 50 },
 });
