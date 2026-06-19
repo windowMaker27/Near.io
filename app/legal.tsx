@@ -12,17 +12,17 @@ const DATA_LAST_UPDATED = '2026-06-18';
 const CREDITS: { source: string; detail: string; url?: string }[] = [
   {
     source: 'OpenStreetMap',
-    detail: 'Données cartographiques © les contributeurs OpenStreetMap, sous licence ODbL.',
+    detail: "Donn\u00e9es cartographiques \u00a9 les contributeurs OpenStreetMap, sous licence ODbL.",
     url: 'https://www.openstreetmap.org/copyright',
   },
   {
     source: 'MapLibre GL',
-    detail: 'Moteur de rendu cartographique open-source utilisé pour l'affichage des cartes.',
+    detail: "Moteur de rendu cartographique open-source utilis\u00e9 pour l'affichage des cartes.",
     url: 'https://maplibre.org',
   },
   {
     source: 'Icons8',
-    detail: 'L'icône de recentrage (radar) est fournie par Icons8.',
+    detail: "L'ic\u00f4ne de recentrage (radar) est fournie par Icons8.",
     url: 'https://icons8.com',
   },
 ];
@@ -34,7 +34,6 @@ export default function LegalScreen() {
 
   return (
     <SafeAreaView style={[s.root, { backgroundColor: t.bg }]}>
-      {/* Header */}
       <View style={[s.header, { borderBottomColor: t.border }]}>
         <Pressable onPress={() => router.back()} hitSlop={12} style={s.backBtn}>
           <Text style={[s.backLabel, { color: t.textMuted, fontFamily: t.fontMono }]}>← Retour</Text>
@@ -43,7 +42,6 @@ export default function LegalScreen() {
         <View style={s.backBtn} />
       </View>
 
-      {/* Tab selector */}
       <View style={[s.tabBar, { borderBottomColor: t.border, backgroundColor: t.surface }]}>
         <Pressable
           style={[s.tab, tab === 'credits' && { borderBottomColor: t.accent, borderBottomWidth: 2 }]}
@@ -63,7 +61,6 @@ export default function LegalScreen() {
         </Pressable>
       </View>
 
-      {/* Content */}
       <ScrollView contentContainerStyle={s.scroll} showsVerticalScrollIndicator={false}>
         {tab === 'credits' ? <CreditsTab t={t} /> : <PrivacyTab t={t} />}
       </ScrollView>
@@ -77,7 +74,6 @@ function CreditsTab({ t }: { t: ReturnType<typeof useTheme> }) {
       <Text style={[s.sectionNote, { color: t.textMuted, fontFamily: t.fontMono }]}>
         Données mises à jour le {DATA_LAST_UPDATED}.
       </Text>
-
       {CREDITS.map((item, i) => (
         <View key={i} style={[s.card, { backgroundColor: t.surface, borderColor: t.border }]}>
           <Text style={[s.cardSource, { color: t.text, fontFamily: t.fontMonoBold }]}>
@@ -100,59 +96,51 @@ function CreditsTab({ t }: { t: ReturnType<typeof useTheme> }) {
 function PrivacyTab({ t }: { t: ReturnType<typeof useTheme> }) {
   const sections: { title: string; body: string }[] = [
     {
-      title: '1. Éditeur de l'application',
-      body: 'L'application Near.io est développée et éditée à titre personnel. Pour toute question relative à vos données, vous pouvez contacter l'éditeur à l'adresse : near.io.wm@gmail.com.',
+      title: "1. \u00c9diteur de l'application",
+      body: "L'application Near.io est d\u00e9velopp\u00e9e et \u00e9dit\u00e9e \u00e0 titre personnel. Pour toute question relative \u00e0 vos donn\u00e9es, vous pouvez contacter l'\u00e9diteur \u00e0 l'adresse\u00a0: near.io.wm@gmail.com.",
     },
     {
-      title: '2. Données collectées',
-      body:
-        'Near.io collecte et traite les données suivantes :\n\n• Localisation géographique (latitude / longitude) : utilisée exclusivement pour déterminer les commerces à proximité et orienter la boussole. Cette donnée n'est ni stockée sur nos serveurs, ni transmise à des tiers.\n\n• Compte utilisateur (e-mail, nom d'utilisateur) : collecté lors de la création d'un compte via Supabase Auth, utilisé pour les fonctionnalités de favoris et de contribution.\n\n• Favoris et préférences : stockés dans la base de données Supabase associée à votre compte, dans le seul but de vous proposer une expérience personnalisée.',
+      title: "2. Donn\u00e9es collect\u00e9es",
+      body: "Near.io collecte et traite les donn\u00e9es suivantes\u00a0:\n\n\u2022 Localisation g\u00e9ographique (latitude / longitude)\u00a0: utilis\u00e9e exclusivement pour d\u00e9terminer les commerces \u00e0 proximit\u00e9 et orienter la boussole. Cette donn\u00e9e n'est ni stock\u00e9e sur nos serveurs, ni transmise \u00e0 des tiers.\n\n\u2022 Compte utilisateur (e-mail, nom d'utilisateur)\u00a0: collect\u00e9 lors de la cr\u00e9ation d'un compte via Supabase Auth, utilis\u00e9 pour les fonctionnalit\u00e9s de favoris et de contribution.\n\n\u2022 Favoris et pr\u00e9f\u00e9rences\u00a0: stock\u00e9s dans la base de donn\u00e9es Supabase associ\u00e9e \u00e0 votre compte, dans le seul but de vous proposer une exp\u00e9rience personnalis\u00e9e.",
     },
     {
-      title: '3. Données de localisation',
-      body:
-        'L'accès à la localisation est demandé uniquement en premier plan (foreground). Near.io ne suit jamais votre position en arrière-plan. Vous pouvez révoquer cette autorisation à tout moment dans les paramètres de votre appareil ; certaines fonctionnalités (boussole, carte, commerces à proximité) seront alors indisponibles.',
+      title: "3. Donn\u00e9es de localisation",
+      body: "L'acc\u00e8s \u00e0 la localisation est demand\u00e9 uniquement en premier plan (foreground). Near.io ne suit jamais votre position en arri\u00e8re-plan. Vous pouvez r\u00e9voquer cette autorisation \u00e0 tout moment dans les param\u00e8tres de votre appareil\u00a0; certaines fonctionnalit\u00e9s (boussole, carte, commerces \u00e0 proximit\u00e9) seront alors indisponibles.",
     },
     {
-      title: '4. Hébergement des données',
-      body:
-        'Les données de compte et de favoris sont hébergées sur Supabase (supabase.com), plateforme conforme au RGPD. Les serveurs sont localisés dans l'Union européenne (région eu-west-3, Paris).',
+      title: "4. H\u00e9bergement des donn\u00e9es",
+      body: "Les donn\u00e9es de compte et de favoris sont h\u00e9berg\u00e9es sur Supabase (supabase.com), plateforme conforme au RGPD. Les serveurs sont localis\u00e9s dans l'Union europ\u00e9enne (r\u00e9gion eu-west-3, Paris).",
     },
     {
-      title: '5. Partage des données',
-      body:
-        'Near.io ne vend, ne loue et ne partage aucune donnée personnelle avec des tiers à des fins commerciales. Les données ne sont transmises qu'aux prestataires techniques strictement nécessaires au fonctionnement de l'application (Supabase).',
+      title: "5. Partage des donn\u00e9es",
+      body: "Near.io ne vend, ne loue et ne partage aucune donn\u00e9e personnelle avec des tiers \u00e0 des fins commerciales. Les donn\u00e9es ne sont transmises qu'aux prestataires techniques strictement n\u00e9cessaires au fonctionnement de l'application (Supabase).",
     },
     {
-      title: '6. Durée de conservation',
-      body:
-        'Les données de compte sont conservées tant que le compte est actif. Vous pouvez demander la suppression de votre compte et de l'ensemble de vos données à tout moment en écrivant à near.io.wm@gmail.com. La suppression est effectuée sous 30 jours.',
+      title: "6. Dur\u00e9e de conservation",
+      body: "Les donn\u00e9es de compte sont conserv\u00e9es tant que le compte est actif. Vous pouvez demander la suppression de votre compte et de l'ensemble de vos donn\u00e9es \u00e0 tout moment en \u00e9crivant \u00e0 near.io.wm@gmail.com. La suppression est effectu\u00e9e sous 30 jours.",
     },
     {
-      title: '7. Vos droits (RGPD)',
-      body:
-        'Conformément au Règlement Général sur la Protection des Données (RGPD), vous disposez des droits suivants :\n\n• Droit d'accès : obtenir une copie de vos données.\n• Droit de rectification : corriger des données inexactes.\n• Droit à l'effacement : demander la suppression de vos données.\n• Droit à la portabilité : recevoir vos données dans un format structuré.\n• Droit d'opposition : vous opposer au traitement de vos données.\n\nPour exercer ces droits, contactez : near.io.wm@gmail.com.',
+      title: "7. Vos droits (RGPD)",
+      body: "Conform\u00e9ment au R\u00e8glement G\u00e9n\u00e9ral sur la Protection des Donn\u00e9es (RGPD), vous disposez des droits suivants\u00a0:\n\n\u2022 Droit d'acc\u00e8s\u00a0: obtenir une copie de vos donn\u00e9es.\n\u2022 Droit de rectification\u00a0: corriger des donn\u00e9es inexactes.\n\u2022 Droit \u00e0 l'effacement\u00a0: demander la suppression de vos donn\u00e9es.\n\u2022 Droit \u00e0 la portabilit\u00e9\u00a0: recevoir vos donn\u00e9es dans un format structur\u00e9.\n\u2022 Droit d'opposition\u00a0: vous opposer au traitement de vos donn\u00e9es.\n\nPour exercer ces droits, contactez\u00a0: near.io.wm@gmail.com.",
     },
     {
-      title: '8. Sécurité',
-      body:
-        'Les communications entre l'application et les serveurs Supabase sont chiffrées via HTTPS/TLS. Les mots de passe ne sont jamais stockés en clair.',
+      title: "8. S\u00e9curit\u00e9",
+      body: "Les communications entre l'application et les serveurs Supabase sont chiffr\u00e9es via HTTPS/TLS. Les mots de passe ne sont jamais stock\u00e9s en clair.",
     },
     {
-      title: '9. Modifications de la politique',
-      body:
-        'Cette politique de confidentialité peut être mise à jour. En cas de modification substantielle, une notification sera affichée dans l'application. La date de dernière mise à jour est indiquée en bas de cette page.',
+      title: "9. Modifications de la politique",
+      body: "Cette politique de confidentialit\u00e9 peut \u00eatre mise \u00e0 jour. En cas de modification substantielle, une notification sera affich\u00e9e dans l'application. La date de derni\u00e8re mise \u00e0 jour est indiqu\u00e9e en bas de cette page.",
     },
     {
-      title: '10. Contact',
-      body: 'Pour toute question relative à la confidentialité de vos données : near.io.wm@gmail.com.',
+      title: "10. Contact",
+      body: "Pour toute question relative \u00e0 la confidentialit\u00e9 de vos donn\u00e9es\u00a0: near.io.wm@gmail.com.",
     },
   ];
 
   return (
     <View style={s.section}>
       <Text style={[s.privacyIntro, { color: t.textMuted, fontFamily: t.fontMono }]}>
-        Dernière mise à jour : {DATA_LAST_UPDATED}
+        Derni\u00e8re mise \u00e0 jour\u00a0: {DATA_LAST_UPDATED}
       </Text>
       {sections.map((sec, i) => (
         <View key={i} style={s.privacyBlock}>
