@@ -6,8 +6,10 @@ import { useAppStore } from '@/store/appStore';
 import { useTargetBearing } from '@/features/compass/hooks/useTargetBearing';
 import { getDirectionInstruction } from '@/features/compass/utils/direction';
 import { ALIGNMENT_THRESHOLD } from '@/constants/thresholds';
+import { useTheme } from '@/hooks/useTheme';
 
 export default function ARScreen() {
+  const t = useTheme();
   const [permission, requestPermission] = useCameraPermissions();
   const { userLocation, userHeading, selectedTarget } = useAppStore();
   const { deltaAngle } = useTargetBearing(userLocation, userHeading, selectedTarget);
@@ -23,9 +25,9 @@ export default function ARScreen() {
 
   if (!permission?.granted) {
     return (
-      <View style={styles.fallback}>
-        <Text style={styles.title}>Caméra requise</Text>
-        <Text style={styles.text}>
+      <View style={[styles.fallback, { backgroundColor: t.bg }]}>
+        <Text style={[styles.title, { color: t.text, fontFamily: t.fontMonoBold }]}>Caméra requise</Text>
+        <Text style={[styles.text, { color: t.textMuted, fontFamily: t.fontMono }]}>
           Le mode AR utilise un overlay directionnel sur le flux caméra.
         </Text>
       </View>
@@ -48,11 +50,10 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#000' },
   fallback: {
     flex: 1,
-    backgroundColor: '#0B1020',
     justifyContent: 'center',
     padding: 24,
     gap: 10,
   },
-  title: { color: '#F4F7FB', fontSize: 24, fontWeight: '800' },
-  text: { color: '#9AA5BD', lineHeight: 22 },
+  title: { fontSize: 22 },
+  text: { lineHeight: 22 },
 });
