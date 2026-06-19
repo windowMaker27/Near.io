@@ -5,11 +5,11 @@
     "scheme": "neario",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
+    "icon": "./assets/images/icon.png",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": false,
     "splash": {
-      "image": "./assets/splash-icon.png",
+      "image": "./assets/images/splash.png",
       "resizeMode": "contain",
       "backgroundColor": "#080808"
     },
@@ -17,12 +17,13 @@
       "**/*"
     ],
     "ios": {
-      "supportsTablet": true,
+      "supportsTablet": false,
       "bundleIdentifier": "io.near.app",
+      "buildNumber": "1",
       "deploymentTarget": "16.4",
       "infoPlist": {
         "NSLocationWhenInUseUsageDescription": "Near.io utilise votre position pour vous guider vers le commerce alimentaire ouvert le plus proche.",
-        "NSCameraUsageDescription": "Near.io utilise la cam\u00e9ra pour afficher le mode AR directionnel.",
+        "NSCameraUsageDescription": "Near.io utilise la caméra pour afficher le mode AR directionnel.",
         "ITSAppUsesNonExemptEncryption": false
       }
     },

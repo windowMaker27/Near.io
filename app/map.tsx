@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Animated, Dimensions, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Animated, Dimensions, Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import MapLibre from '@maplibre/maplibre-react-native';
@@ -33,11 +33,9 @@ export default function MapScreen() {
 
   const [coords, setCoords] = useState<[number, number] | null>(null);
   const [userLocation, setUserLocation] = useState<Coordinates | undefined>();
-  // Chaque incrément force Camera à re-render avec les coords fraîches → recentrage fiable
   const [recenterKey, setRecenterKey] = useState(0);
 
   const [tooltip, setTooltip] = useState<Place | null>(null);
-  // selectedId géré séparément pour le switch sans dépendre de tooltip
   const [selectedId, setSelectedId] = useState('');
   const [detailPlace, setDetailPlace] = useState<Place | null>(null);
   const [detailVisible, setDetailVisible] = useState(false);
@@ -112,7 +110,6 @@ export default function MapScreen() {
     const found = places.find((p) => p.id === id);
     if (!found) return;
     if (detailVisibleRef.current) {
-      // Switch direct : met à jour place ET selectedId sans fermer le sheet
       setDetailPlace(found);
       setSelectedId(found.id);
     } else {
@@ -134,8 +131,6 @@ export default function MapScreen() {
     setTimeout(() => setDetailPlace(null), 300);
   };
 
-  // Recentrage : incrémenter recenterKey force un nouveau rendu de <Camera>
-  // avec les coords fraîches depuis coordsRef → animationMode flyTo déclenché
   const recenter = () => {
     if (!coordsRef.current) return;
     setCoords([...coordsRef.current]);
@@ -194,11 +189,6 @@ export default function MapScreen() {
         attributionEnabled={false}
         onPress={handleMapPress}
       >
-        {/*
-          Camera conditionnelle sur coords (centrage initial propre à l'ouverture).
-          recenterKey force un démontage/remontage avec animationMode flyTo
-          uniquement quand l'user appuie sur recentrer.
-        */}
         {coords && (
           recenterKey === 0 ? (
             <Camera
@@ -265,7 +255,11 @@ export default function MapScreen() {
         style={[styles.recenterBtn, { top: insets.top + 12, backgroundColor: t.surface, borderColor: t.border }]}
         onPress={recenter}
       >
-        <Text style={[styles.recenterIcon, { color: accentHex }]}>◎</Text>
+        <Image
+          source={require('@/assets/images/radar-button.png')}
+          style={styles.recenterIcon}
+          resizeMode="contain"
+        />
       </Pressable>
 
       {tooltip && !detailVisible && (
@@ -330,11 +324,11 @@ const styles = StyleSheet.create({
   },
   recenterBtn: {
     position: 'absolute', right: 16,
-    width: 40, height: 40, borderRadius: 20,
+    width: 48, height: 48, borderRadius: 24,
     borderWidth: 1,
     alignItems: 'center', justifyContent: 'center',
   },
-  recenterIcon: { fontSize: 20, lineHeight: 24 },
+  recenterIcon: { width: 28, height: 28 },
   backLabel: { fontSize: 13, letterSpacing: 0.5 },
   tooltip: {
     position: 'absolute', left: 16, right: 16,
