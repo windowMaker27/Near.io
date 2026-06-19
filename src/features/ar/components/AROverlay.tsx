@@ -1,4 +1,4 @@
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { useTheme } from '@/hooks/useTheme';
 import { formatDistance } from '@/features/compass/utils/distance';
 import { Place } from '@/types/place';
@@ -14,13 +14,14 @@ export const AROverlay = ({
   aligned: boolean;
 }) => {
   const t = useTheme();
+  const { width, height } = useWindowDimensions();
 
   const statusLabel = () => {
     if (!target) return null;
     if (target.openingStatus === 'open')
-      return `● Ouvert${target.closingTime ? ` jusqu'à ${target.closingTime}` : ''}`;
-    if (target.openingStatus === 'closed') return '● Fermé';
-    return '● Horaires inconnus';
+      return `\u25cf Ouvert${target.closingTime ? ` jusqu'\u00e0 ${target.closingTime}` : ''}`;
+    if (target.openingStatus === 'closed') return '\u25cf Ferm\u00e9';
+    return '\u25cf Horaires inconnus';
   };
 
   const statusColor = () => {
@@ -30,16 +31,20 @@ export const AROverlay = ({
     return t.textMuted;
   };
 
-  // Fond semi-transparent adapté au thème
   const cardBg = t.bg === '#080808'
     ? 'rgba(8,8,8,0.78)'
     : 'rgba(247,246,242,0.84)';
   const cardBorder = t.border;
 
+  // Centre exact de l'écran moins la moitié du réticule
+  const RETICLE_SIZE = 190;
+  const reticleTop = (height - RETICLE_SIZE) / 2;
+  const reticleLeft = (width - RETICLE_SIZE) / 2;
+
   return (
-    <View style={styles.container} pointerEvents="none">
+    <View style={StyleSheet.absoluteFill} pointerEvents="none">
       {/* Carte info haut */}
-      <View style={[styles.topCard, { backgroundColor: cardBg, borderColor: cardBorder }]}>
+      <View style={[styles.topCard, { backgroundColor: cardBg, borderColor: cardBorder, marginTop: 60, marginHorizontal: 20 }]}>
         <Text style={[styles.title, { color: t.text, fontFamily: t.fontMonoBold }]} numberOfLines={1}>
           {target?.name ?? 'Aucune cible'}
         </Text>
@@ -78,34 +83,35 @@ export const AROverlay = ({
         </Text>
       </View>
 
-      {/* Réticule central */}
-      <View style={[
-        styles.reticle,
-        { borderColor: aligned ? t.colorOpen : t.accent },
-      ]} />
+      {/* Réticule — centré via position absolute calculée */}
+      <View
+        style={[
+          styles.reticle,
+          {
+            borderColor: aligned ? t.colorOpen : t.accent,
+            position: 'absolute',
+            top: reticleTop,
+            left: reticleLeft,
+          },
+        ]}
+      />
 
       {/* Pill bas */}
-      <View style={[styles.bottomPill, { backgroundColor: cardBg, borderColor: cardBorder }]}>
-        <Text style={[styles.bottomText, { color: aligned ? t.colorOpen : t.text, fontFamily: t.fontMonoBold }]}>
-          {aligned ? "Dans l'axe ✓" : 'Ajustez votre direction'}
-        </Text>
+      <View style={[styles.bottomPill, { backgroundColor: cardBg, borderColor: cardBorder, marginBottom: 60, alignSelf: 'center', position: 'absolute', bottom: 0, left: 0, right: 0, alignItems: 'center' }]}>
+        <View style={[styles.pillInner, { backgroundColor: cardBg, borderColor: cardBorder }]}>
+          <Text style={[styles.bottomText, { color: aligned ? t.colorOpen : t.text, fontFamily: t.fontMonoBold }]}>
+            {aligned ? "Dans l'axe ✓" : 'Ajustez votre direction'}
+          </Text>
+        </View>
       </View>
     </View>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
-    ...StyleSheet.absoluteFillObject,
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 60,
-    paddingHorizontal: 20,
-  },
   topCard: {
     borderRadius: 20,
     padding: 16,
-    minWidth: '88%',
     borderWidth: 1,
     gap: 4,
   },
@@ -146,6 +152,10 @@ const styles = StyleSheet.create({
     backgroundColor: 'transparent',
   },
   bottomPill: {
+    paddingHorizontal: 0,
+    paddingVertical: 0,
+  },
+  pillInner: {
     paddingHorizontal: 18,
     paddingVertical: 12,
     borderRadius: 999,

@@ -38,7 +38,10 @@ export default function LegalScreen() {
         <Pressable onPress={() => router.back()} hitSlop={12} style={s.backBtn}>
           <Text style={[s.backLabel, { color: t.textMuted, fontFamily: t.fontMono }]}>← Retour</Text>
         </Pressable>
-        <Text style={[s.headerTitle, { color: t.text, fontFamily: t.fontMonoBold }]}>Mentions légales</Text>
+        <View style={s.headerCenter}>
+          <Text style={[s.headerTitle, { color: t.text, fontFamily: t.fontMonoBold }]}>Mentions légales</Text>
+          <Text style={[s.headerSub, { color: t.textMuted, fontFamily: t.fontMono }]}>app by /windowMaker27</Text>
+        </View>
         <View style={s.backBtn} />
       </View>
 
@@ -165,7 +168,9 @@ const s = StyleSheet.create({
   },
   backBtn: { minWidth: 64 },
   backLabel: { fontSize: theme.textSm },
+  headerCenter: { alignItems: 'center', gap: 2 },
   headerTitle: { fontSize: theme.textBase },
+  headerSub: { fontSize: 11 },
   tabBar: { flexDirection: 'row', borderBottomWidth: 1 },
   tab: { flex: 1, alignItems: 'center', paddingVertical: 13 },
   tabLabel: { fontSize: theme.textSm },

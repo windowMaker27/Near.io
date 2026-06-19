@@ -13,9 +13,6 @@ const MAX_ACCURACY_DEG = 20;
 
 /**
  * Intervalle de re-souscription forcée (ms).
- * iOS met le magnétomètre en veille après immobilité, ce qui
- * fait dériver le heading. Un unsub/resub force une recalibration
- * — c'est ce que fait l'appli Plans en interne.
  */
 const RESUB_INTERVAL_MS = 30_000;
 
@@ -24,14 +21,31 @@ export const useHeading = () => {
   const [headingAvailable, setHeadingAvailable] = useState(true);
   const previous = useRef<number | undefined>();
   const setUserHeading = useAppStore((s) => s.setUserHeading);
+  // Flag pour ne démarrer qu'après que la permission location est accordée
+  const [permReady, setPermReady] = useState(false);
+
+  // Attend la permission location avant de souscrire au heading
+  useEffect(() => {
+    (async () => {
+      const { status } = await Location.getForegroundPermissionsAsync();
+      if (status === 'granted') {
+        setPermReady(true);
+        return;
+      }
+      // Si pas encore accordée, demande et attend le résultat
+      const { status: newStatus } = await Location.requestForegroundPermissionsAsync();
+      if (newStatus === 'granted') setPermReady(true);
+    })();
+  }, []);
 
   useEffect(() => {
+    if (!permReady) return;
+
     let cancelled = false;
     let locationSub: Location.LocationSubscription | undefined;
     let resubTimer: ReturnType<typeof setTimeout>;
 
     const subscribe = async () => {
-      // Nettoie l'ancienne souscription avant de recréer
       locationSub?.remove();
       locationSub = undefined;
 
@@ -54,7 +68,6 @@ export const useHeading = () => {
         setHeadingAvailable(false);
       }
 
-      // Planifie la prochaine recalibration si pas annulé
       if (!cancelled) {
         resubTimer = setTimeout(() => {
           if (!cancelled) subscribe();
@@ -69,7 +82,7 @@ export const useHeading = () => {
       clearTimeout(resubTimer);
       locationSub?.remove();
     };
-  }, [setUserHeading]);
+  }, [permReady, setUserHeading]);
 
   return { heading, headingAvailable };
 };

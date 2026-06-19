@@ -13,6 +13,26 @@ export type SignInParams = {
   password: string;
 };
 
+/** Traduit les messages d'erreur Supabase Auth en français. */
+function translateAuthError(message: string): string {
+  const m = message.toLowerCase();
+  if (m.includes('invalid login credentials') || m.includes('invalid credentials'))
+    return 'Identifiant ou mot de passe incorrect.';
+  if (m.includes('email not confirmed'))
+    return 'Votre adresse email n'est pas encore confirmée.';
+  if (m.includes('user not found'))
+    return 'Aucun compte associé à cet identifiant.';
+  if (m.includes('too many requests') || m.includes('rate limit'))
+    return 'Trop de tentatives. Réessayez dans quelques instants.';
+  if (m.includes('network') || m.includes('fetch'))
+    return 'Erreur réseau. Vérifiez votre connexion.';
+  if (m.includes('password') && m.includes('weak'))
+    return 'Mot de passe trop faible.';
+  if (m.includes('already registered') || m.includes('already exists') || m.includes('user_already_exists'))
+    return 'Cette adresse email est déjà associée à un compte.';
+  return message; // fallback : message original
+}
+
 async function fetchProfileWithRetry(userId: string, attempts = 5): Promise<UserProfile> {
   for (let i = 0; i < attempts; i++) {
     const { data } = await supabase
@@ -40,15 +60,13 @@ export async function signUp({ email, password, username }: SignUpParams): Promi
     password,
     options: { data: { username } },
   });
-  if (error) throw error;
+  if (error) throw new Error(translateAuthError(error.message));
   if (!data.user) throw new Error('Utilisateur non créé');
   return fetchProfileWithRetry(data.user.id);
 }
 
 /**
  * Connexion par email OU username.
- * La résolution username → email passe par la RPC `get_email_by_user_id`
- * (SECURITY DEFINER, accessible à anon).
  */
 export async function signIn({ identifier, password }: SignInParams): Promise<UserProfile> {
   const trimmed = identifier.trim();
@@ -57,7 +75,6 @@ export async function signIn({ identifier, password }: SignInParams): Promise<Us
   if (trimmed.includes('@')) {
     email = trimmed;
   } else {
-    // 1. Trouve l'id depuis le username (profiles est lisible par anon)
     const { data: profileData, error: profileError } = await supabase
       .from('profiles')
       .select('id')
@@ -68,7 +85,6 @@ export async function signIn({ identifier, password }: SignInParams): Promise<Us
       throw new Error('Nom d\'utilisateur introuvable.');
     }
 
-    // 2. Résout l'email via RPC SECURITY DEFINER
     const { data: emailData, error: rpcError } = await supabase
       .rpc('get_email_by_user_id', { p_user_id: profileData.id });
 
@@ -79,7 +95,7 @@ export async function signIn({ identifier, password }: SignInParams): Promise<Us
   }
 
   const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-  if (error) throw error;
+  if (error) throw new Error(translateAuthError(error.message));
   if (!data.user) throw new Error('Connexion échouée');
   return fetchProfile(data.user.id);
 }
