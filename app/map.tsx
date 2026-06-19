@@ -328,7 +328,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     alignItems: 'center', justifyContent: 'center',
   },
-  recenterIcon: { width: 28, height: 28 },
+  recenterIcon: { width: 44, height: 44 },
   backLabel: { fontSize: 13, letterSpacing: 0.5 },
   tooltip: {
     position: 'absolute', left: 16, right: 16,
