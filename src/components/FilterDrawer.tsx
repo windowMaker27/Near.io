@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react';
 import {
   Animated,
-  Dimensions,
+  PanResponder,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -16,6 +16,11 @@ import { PlaceCategory } from '@/types/place';
 import { formatDistance } from '@/features/compass/utils/distance';
 
 const DRAWER_WIDTH = 280;
+// Seuil de vélocité/distance pour valider le swipe
+const SWIPE_VELOCITY_THRESHOLD = 0.4;
+const SWIPE_DISTANCE_THRESHOLD = 60;
+// Zone de détection du swipe "ouvrir" sur le bord gauche (px)
+const EDGE_HIT_WIDTH = 28;
 const RADIUS_OPTIONS = [100, 300, 500, 1000, 2000, 3000];
 
 export function FilterDrawer() {
@@ -24,24 +29,59 @@ export function FilterDrawer() {
   const translateX = useRef(new Animated.Value(-DRAWER_WIDTH)).current;
   const { filters, setRadius, toggleOpenOnly, toggleCategory, reset } = useFiltersStore();
 
-  const openDrawer = () => {
-    setOpen(true);
+  const spring = (toValue: number, cb?: () => void) =>
     Animated.spring(translateX, {
-      toValue: 0,
+      toValue,
       useNativeDriver: true,
       damping: 20,
       stiffness: 150,
-    }).start();
+    }).start(cb);
+
+  const openDrawer = () => {
+    setOpen(true);
+    spring(0);
   };
 
   const closeDrawer = () => {
-    Animated.spring(translateX, {
-      toValue: -DRAWER_WIDTH,
-      useNativeDriver: true,
-      damping: 20,
-      stiffness: 150,
-    }).start(() => setOpen(false));
+    spring(-DRAWER_WIDTH, () => setOpen(false));
   };
+
+  // PanResponder sur le handle latéral (swipe → pour ouvrir)
+  const handlePanResponder = useRef(
+    PanResponder.create({
+      onMoveShouldSetPanResponder: (_, g) => g.dx > 8 && Math.abs(g.dy) < 20,
+      onPanResponderMove: (_, g) => {
+        const next = -DRAWER_WIDTH + Math.max(0, Math.min(g.dx, DRAWER_WIDTH));
+        translateX.setValue(next);
+      },
+      onPanResponderRelease: (_, g) => {
+        if (g.vx > SWIPE_VELOCITY_THRESHOLD || g.dx > SWIPE_DISTANCE_THRESHOLD) {
+          setOpen(true);
+          spring(0);
+        } else {
+          spring(-DRAWER_WIDTH);
+        }
+      },
+    }),
+  ).current;
+
+  // PanResponder sur le drawer (swipe ← pour fermer)
+  const drawerPanResponder = useRef(
+    PanResponder.create({
+      onMoveShouldSetPanResponder: (_, g) => g.dx < -8 && Math.abs(g.dy) < 20,
+      onPanResponderMove: (_, g) => {
+        const next = Math.min(0, g.dx);
+        translateX.setValue(next);
+      },
+      onPanResponderRelease: (_, g) => {
+        if (g.vx < -SWIPE_VELOCITY_THRESHOLD || g.dx < -SWIPE_DISTANCE_THRESHOLD) {
+          spring(-DRAWER_WIDTH, () => setOpen(false));
+        } else {
+          spring(0);
+        }
+      },
+    }),
+  ).current;
 
   const categories = Object.keys(PLACE_TYPE_LABELS).filter(
     (k) => k !== 'unknown',
@@ -49,20 +89,28 @@ export function FilterDrawer() {
 
   return (
     <>
+      {/* Zone de swipe sur le bord gauche — toujours présente même drawer fermé */}
       {!open && (
-        <Pressable
-          style={[s.handle, { backgroundColor: t.surface, borderColor: t.border }]}
-          onPress={openDrawer}
+        <View
+          style={s.edgeZone}
+          {...handlePanResponder.panHandlers}
         >
-          <Text style={[s.handleIcon, { color: t.accent, fontFamily: t.fontMonoBold }]}>›</Text>
-          <Text style={[s.handleLabel, { color: t.textMuted, fontFamily: t.fontMono }]}>Filtres</Text>
-        </Pressable>
+          {/* Handle visuel cliquable */}
+          <Pressable
+            style={[s.handle, { backgroundColor: t.surface, borderColor: t.border }]}
+            onPress={openDrawer}
+          >
+            <Text style={[s.handleIcon, { color: t.accent, fontFamily: t.fontMonoBold }]}>›</Text>
+            <Text style={[s.handleLabel, { color: t.textMuted, fontFamily: t.fontMono }]}>Filtres</Text>
+          </Pressable>
+        </View>
       )}
 
       {open && <Pressable style={s.backdrop} onPress={closeDrawer} />}
 
       <Animated.View
         style={[s.drawer, { transform: [{ translateX }], backgroundColor: t.surface, borderRightColor: t.border }]}
+        {...drawerPanResponder.panHandlers}
       >
         <View style={[s.drawerHeader, { borderBottomColor: t.border }]}>
           <Text style={[s.drawerTitle, { color: t.text, fontFamily: t.fontMonoBold }]}>Filtres</Text>
@@ -132,6 +180,16 @@ export function FilterDrawer() {
 }
 
 const s = StyleSheet.create({
+  // Zone transparente sur le bord gauche pour capturer le swipe
+  edgeZone: {
+    position: 'absolute',
+    left: 0,
+    top: 0,
+    bottom: 0,
+    width: EDGE_HIT_WIDTH,
+    zIndex: 10,
+    justifyContent: 'center',
+  },
   handle: {
     position: 'absolute',
     left: 0,
@@ -144,7 +202,6 @@ const s = StyleSheet.create({
     paddingHorizontal: 6,
     alignItems: 'center',
     gap: 4,
-    zIndex: 10,
   },
   handleIcon: { fontSize: 18 },
   handleLabel: {
