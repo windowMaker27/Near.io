@@ -27,17 +27,14 @@ export default function MapScreen() {
   const { placeId } = useLocalSearchParams<{ placeId?: string }>();
   const { filters } = useFiltersStore();
 
-  // MapView ref pour flyTo (plus fiable que Camera.setCamera)
-  const mapRef = useRef<any>(null);
+  // Camera ref stable — rendu inconditionnel pour éviter le ref stale
+  const cameraRef = useRef<any>(null);
   const tapCountRef = useRef(0);
-
-  // Ref mirror de detailVisible pour éviter les closures stales dans les handlers
   const detailVisibleRef = useRef(false);
 
-  const [userLocation, setUserLocation] = useState<Coordinates | undefined>();
-  // coords stocké en ref ET en state : ref pour recenter (toujours frais), state pour le rendu
   const coordsRef = useRef<[number, number] | null>(null);
   const [coords, setCoords] = useState<[number, number] | null>(null);
+  const [userLocation, setUserLocation] = useState<Coordinates | undefined>();
 
   const [tooltip, setTooltip] = useState<Place | null>(null);
   const [detailPlace, setDetailPlace] = useState<Place | null>(null);
@@ -71,7 +68,7 @@ export default function MapScreen() {
 
   const applyLocation = (c: { latitude: number; longitude: number }) => {
     const next: [number, number] = [c.longitude, c.latitude];
-    coordsRef.current = next;  // toujours à jour, sans dépendance de render
+    coordsRef.current = next;
     setCoords(next);
     setUserLocation({ latitude: c.latitude, longitude: c.longitude });
   };
@@ -110,7 +107,6 @@ export default function MapScreen() {
     const id = feature.id as string;
     const found = places.find((p) => p.id === id);
     if (!found) return;
-    // Utilise la ref pour lire detailVisible sans closure stale
     if (detailVisibleRef.current) {
       setDetailPlace(found);
     } else {
@@ -130,11 +126,16 @@ export default function MapScreen() {
     setTimeout(() => setDetailPlace(null), 300);
   };
 
-  // Recentrage via flyTo sur MapView — fonctionne à chaque appel
+  // Recentrage via Camera.setCamera — ref stable car Camera toujours monté
   const recenter = () => {
     const c = coordsRef.current;
-    if (!mapRef.current || !c) return;
-    mapRef.current.flyTo(c, 800);
+    if (!cameraRef.current || !c) return;
+    cameraRef.current.setCamera({
+      centerCoordinate: c,
+      zoomLevel: 14,
+      animationDuration: 800,
+      animationMode: 'flyTo',
+    });
   };
 
   const handleBack = () => {
@@ -184,16 +185,17 @@ export default function MapScreen() {
   return (
     <View style={styles.container}>
       <MapView
-        ref={mapRef}
         style={{ width, height }}
         mapStyle={mapStyle as any}
         logoEnabled={false}
         attributionEnabled={false}
         onPress={handleMapPress}
       >
-        {coords && (
-          <Camera centerCoordinate={coords} zoomLevel={14} animationMode="none" />
-        )}
+        {/* Camera toujours montée pour que cameraRef soit stable */}
+        <Camera
+          ref={cameraRef}
+          defaultSettings={{ centerCoordinate: coords ?? [2.3522, 48.8566], zoomLevel: 14 }}
+        />
 
         {circleGeoJSON && (
           <ShapeSource id="radar-circle" shape={circleGeoJSON}>
@@ -289,6 +291,7 @@ export default function MapScreen() {
         </Animated.View>
       )}
 
+      {/* Sheet rendu dans le même arbre — pointerEvents gérés en interne */}
       <PlaceDetailSheet
         visible={detailVisible}
         place={detailPlace}
