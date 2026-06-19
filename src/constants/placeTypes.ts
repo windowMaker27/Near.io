@@ -5,13 +5,14 @@ export const PLACE_TYPE_LABELS: Record<PlaceCategory, string> = {
   convenience:   'Supérette',
   bakery:        'Boulangerie',
   grocery:       'Épicerie',
-  organic:       'Bio',
-  halal:         'Halal',
   pharmacy:      'Pharmacie',
   fast_food:     'Fast-food',
   restaurant:    'Restaurant',
+  cafe:          'Café / Bar',
+  butcher:       'Boucherie',
+  florist:       'Fleuriste',
   other:         'Autres',
-  street_vendor: 'Vendeur de rue',
+  street_vendor: 'Marché / Ambulant',
   unknown:       'Commerce',
 };
 
@@ -20,12 +21,15 @@ export const OSM_TAG_TO_CATEGORY: Record<string, PlaceCategory> = {
   convenience:  'convenience',
   bakery:       'bakery',
   greengrocer:  'grocery',
-  organic:      'organic',
-  halal:        'halal',
   pharmacy:     'pharmacy',
-  chemist:      'pharmacy',  // parapharmacie OSM → pharmacy
+  chemist:      'pharmacy',
   fast_food:    'fast_food',
   restaurant:   'restaurant',
+  cafe:         'cafe',
+  bar:          'cafe',
+  pub:          'cafe',
+  butcher:      'butcher',
+  florist:      'florist',
 };
 
 export const SUBMITTABLE_CATEGORIES: PlaceCategory[] = [
@@ -33,11 +37,12 @@ export const SUBMITTABLE_CATEGORIES: PlaceCategory[] = [
   'bakery',
   'convenience',
   'supermarket',
-  'organic',
-  'halal',
   'pharmacy',
   'fast_food',
   'restaurant',
+  'cafe',
+  'butcher',
+  'florist',
   'other',
   'street_vendor',
 ];

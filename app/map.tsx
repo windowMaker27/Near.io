@@ -32,10 +32,11 @@ export default function MapScreen() {
   const [userLocation, setUserLocation] = useState<Coordinates | undefined>();
   const [coords, setCoords] = useState<[number, number] | null>(null);
   const [tooltip, setTooltip] = useState<Place | null>(null);
+  // détail ouvert indépendamment du tooltip — permet de changer de commerce sans fermer le sheet
+  const [detailPlace, setDetailPlace] = useState<Place | null>(null);
   const [detailVisible, setDetailVisible] = useState(false);
   const tooltipAnim = useRef(new Animated.Value(0)).current;
 
-  // Radar
   const sweepGeoJSON = useRadarSweep(
     coords ? coords[0] : null,
     coords ? coords[1] : null,
@@ -46,16 +47,28 @@ export default function MapScreen() {
     ? { type: 'FeatureCollection', features: [makeCirclePolygon(coords[0], coords[1], filters.radiusMeters)] }
     : null;
 
+  // Récupère + suit la position
   useEffect(() => {
+    let sub: Location.LocationSubscription | null = null;
     (async () => {
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== 'granted') return;
+      // Position initiale rapide
       const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
-      const c: [number, number] = [loc.coords.longitude, loc.coords.latitude];
-      setCoords(c);
-      setUserLocation({ latitude: loc.coords.latitude, longitude: loc.coords.longitude });
+      applyLocation(loc.coords);
+      // Suivi continu pour que le recentrage soit toujours à jour
+      sub = await Location.watchPositionAsync(
+        { accuracy: Location.Accuracy.Balanced, distanceInterval: 5 },
+        (l) => applyLocation(l.coords),
+      );
     })();
+    return () => { sub?.remove(); };
   }, []);
+
+  const applyLocation = (c: { latitude: number; longitude: number }) => {
+    setCoords([c.longitude, c.latitude]);
+    setUserLocation({ latitude: c.latitude, longitude: c.longitude });
+  };
 
   const { places } = useNearbyPlaces(userLocation);
 
@@ -90,7 +103,43 @@ export default function MapScreen() {
     if (!feature) return;
     const id = feature.id as string;
     const found = places.find((p) => p.id === id);
-    if (found) showTooltip(found);
+    if (!found) return;
+    // Si le détail est ouvert, on switche directement vers le nouveau commerce
+    if (detailVisible) {
+      setDetailPlace(found);
+    } else {
+      showTooltip(found);
+    }
+  };
+
+  const openDetail = (place: Place) => {
+    setDetailPlace(place);
+    setDetailVisible(true);
+  };
+
+  const closeDetail = () => {
+    setDetailVisible(false);
+    // Laisse un court délai avant de vider le place pour éviter le flash
+    setTimeout(() => setDetailPlace(null), 300);
+  };
+
+  // Recentrage — utilise coords déjà à jour via watchPosition
+  const recenter = () => {
+    if (!cameraRef.current || !coords) return;
+    cameraRef.current.setCamera({
+      centerCoordinate: coords,
+      zoomLevel: 14,
+      animationDuration: 800,
+      animationMode: 'flyTo',
+    });
+  };
+
+  const handleBack = () => {
+    if (detailVisible) {
+      closeDetail();
+    } else {
+      router.back();
+    }
   };
 
   const geojson: GeoJSON.FeatureCollection = {
@@ -113,33 +162,12 @@ export default function MapScreen() {
     }] : [],
   };
 
-  const selectedId = tooltip?.id ?? '';
+  const selectedId = tooltip?.id ?? detailPlace?.id ?? '';
   const accentHex: string = t.accent;
   const bgHex: string = t.bg;
-
-  // Couleurs radar adaptées au thème
   const radarStroke = accentHex;
   const radarFill = isDark ? 'rgba(231,76,60,0.04)' : 'rgba(231,76,60,0.03)';
   const sweepFill = isDark ? 'rgba(231,76,60,0.18)' : 'rgba(231,76,60,0.12)';
-
-  const recenter = async () => {
-    if (cameraRef.current && coords) {
-      cameraRef.current.setCamera({ centerCoordinate: coords, zoomLevel: 14, animationDuration: 500 });
-    } else {
-      const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
-      const c: [number, number] = [loc.coords.longitude, loc.coords.latitude];
-      setCoords(c);
-      setUserLocation({ latitude: loc.coords.latitude, longitude: loc.coords.longitude });
-    }
-  };
-
-  const handleBack = () => {
-    if (detailVisible) {
-      setDetailVisible(false);
-    } else {
-      router.back();
-    }
-  };
 
   const statusLabel = (p: Place) => {
     if (p.openingStatus === 'open') return `● Ouvert${p.closingTime ? ` jusqu'à ${p.closingTime}` : ''}`;
@@ -164,49 +192,22 @@ export default function MapScreen() {
           <Camera ref={cameraRef} centerCoordinate={coords} zoomLevel={14} animationMode="none" />
         )}
 
-        {/* --- RADAR : cercle de portée --- */}
         {circleGeoJSON && (
           <ShapeSource id="radar-circle" shape={circleGeoJSON}>
-            {/* Remplissage très transparent */}
-            <FillLayer
-              id="radar-fill"
-              style={{ fillColor: radarFill, fillOpacity: 1 }}
-            />
-            {/* Contour du cercle */}
-            <LineLayer
-              id="radar-border"
-              style={{
-                lineColor: radarStroke,
-                lineWidth: 1.5,
-                lineOpacity: 0.6,
-                lineDasharray: [4, 3] as any,
-              }}
-            />
+            <FillLayer id="radar-fill" style={{ fillColor: radarFill, fillOpacity: 1 }} />
+            <LineLayer id="radar-border" style={{ lineColor: radarStroke, lineWidth: 1.5, lineOpacity: 0.6, lineDasharray: [4, 3] as any }} />
           </ShapeSource>
         )}
 
-        {/* --- RADAR : secteur balayage animé --- */}
         {sweepGeoJSON && (
           <ShapeSource id="radar-sweep" shape={sweepGeoJSON}>
-            <FillLayer
-              id="radar-sweep-fill"
-              style={{ fillColor: sweepFill, fillOpacity: 1 }}
-            />
+            <FillLayer id="radar-sweep-fill" style={{ fillColor: sweepFill, fillOpacity: 1 }} />
           </ShapeSource>
         )}
 
-        {/* Point utilisateur (au-dessus du radar) */}
         {coords && (
           <ShapeSource id="user-location" shape={userGeojson}>
-            <CircleLayer
-              id="user-location-dot"
-              style={{
-                circleRadius: 7,
-                circleColor: accentHex,
-                circleStrokeWidth: 2,
-                circleStrokeColor: '#FFFFFF',
-              }}
-            />
+            <CircleLayer id="user-location-dot" style={{ circleRadius: 7, circleColor: accentHex, circleStrokeWidth: 2, circleStrokeColor: '#FFFFFF' }} />
           </ShapeSource>
         )}
 
@@ -225,6 +226,7 @@ export default function MapScreen() {
         )}
       </MapView>
 
+      {/* Bouton retour — haut gauche */}
       <Pressable
         style={[styles.backBtn, { top: insets.top + 12, backgroundColor: t.surface, borderColor: t.border }]}
         onPress={handleBack}
@@ -232,19 +234,21 @@ export default function MapScreen() {
         <Text style={[styles.backLabel, { color: t.text, fontFamily: t.fontMono }]}>← Retour</Text>
       </Pressable>
 
+      {/* Bouton recentrer — haut droite */}
       <Pressable
-        style={[styles.recenterBtn, { bottom: insets.bottom + 24, backgroundColor: accentHex, ...t.shadowMd }]}
+        style={[styles.recenterBtn, { top: insets.top + 12, backgroundColor: t.surface, borderColor: t.border }]}
         onPress={recenter}
       >
-        <Text style={styles.recenterIcon}>◎</Text>
+        <Text style={[styles.recenterIcon, { color: accentHex }]}>◎</Text>
       </Pressable>
 
-      {tooltip && (
+      {/* Tooltip commerce (visible si pas de detail ouvert) */}
+      {tooltip && !detailVisible && (
         <Animated.View
           style={[
             styles.tooltip,
             {
-              bottom: insets.bottom + 90,
+              bottom: insets.bottom + 24,
               backgroundColor: t.surface,
               borderColor: t.border,
               ...t.shadowMd,
@@ -272,15 +276,10 @@ export default function MapScreen() {
               </Text>
             )}
           </View>
-          {tooltip.closingTime && tooltip.openingStatus === 'open' && (
-            <Text style={[styles.tooltipHours, { color: t.textMuted, fontFamily: t.fontMono }]}>
-              Ferme à {tooltip.closingTime}
-            </Text>
-          )}
           <View style={styles.tooltipActions}>
             <Pressable
               style={[styles.tooltipBtnPrimary, { backgroundColor: accentHex }]}
-              onPress={() => setDetailVisible(true)}
+              onPress={() => openDetail(tooltip)}
             >
               <Text style={[styles.tooltipBtnText, { color: '#fff', fontFamily: t.fontMonoMedium }]}>Voir +</Text>
             </Pressable>
@@ -290,8 +289,8 @@ export default function MapScreen() {
 
       <PlaceDetailSheet
         visible={detailVisible}
-        place={tooltip}
-        onClose={() => setDetailVisible(false)}
+        place={detailPlace}
+        onClose={closeDetail}
       />
     </View>
   );
@@ -304,13 +303,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14, paddingVertical: 8,
     borderRadius: 20, borderWidth: 1,
   },
-  backLabel: { fontSize: 13, letterSpacing: 0.5 },
   recenterBtn: {
-    position: 'absolute', right: 20,
-    width: 48, height: 48, borderRadius: 24,
+    position: 'absolute', right: 16,
+    width: 40, height: 40, borderRadius: 20,
+    borderWidth: 1,
     alignItems: 'center', justifyContent: 'center',
   },
-  recenterIcon: { fontSize: 22, color: '#fff', lineHeight: 26 },
+  recenterIcon: { fontSize: 20, lineHeight: 24 },
+  backLabel: { fontSize: 13, letterSpacing: 0.5 },
   tooltip: {
     position: 'absolute', left: 16, right: 16,
     borderRadius: 16, borderWidth: 1,
@@ -321,11 +321,7 @@ const styles = StyleSheet.create({
   tooltipRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   tooltipStatus: { fontSize: 12 },
   tooltipDist: { fontSize: 12 },
-  tooltipHours: { fontSize: 11, marginTop: 2 },
   tooltipActions: { marginTop: 10 },
-  tooltipBtnPrimary: {
-    paddingVertical: 10, borderRadius: 10,
-    alignItems: 'center', justifyContent: 'center',
-  },
+  tooltipBtnPrimary: { paddingVertical: 10, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
   tooltipBtnText: { fontSize: 13, letterSpacing: 0.3 },
 });
