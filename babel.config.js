@@ -6,8 +6,8 @@ module.exports = function (api) {
       ['@babel/plugin-transform-class-properties', { loose: true }],
       ['@babel/plugin-transform-private-methods', { loose: true }],
       ['@babel/plugin-transform-private-property-in-object', { loose: true }],
-      // DOIT être en dernier — contrainte reanimated v4
-      'react-native-worklets/plugin',
+      // DOIT être en dernier — contrainte reanimated
+      'react-native-reanimated/plugin',
     ],
   };
 };
