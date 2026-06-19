@@ -24,6 +24,7 @@ import { SplashLoader } from '@/components/SplashLoader';
 import { useTheme } from '@/hooks/useTheme';
 import { formatDistance } from '@/features/compass/utils/distance';
 import { PLACE_TYPE_LABELS } from '@/constants/placeTypes';
+import { AdBanner } from '@/components/ads';
 
 export default function CompassScreen() {
   const router = useRouter();
@@ -46,9 +47,6 @@ export default function CompassScreen() {
   const [submitModalOpen, setSubmitModalOpen] = useState(false);
   const [detailVisible, setDetailVisible] = useState(false);
   const [splashDone, setSplashDone] = useState(false);
-
-  // Quand le splash se ferme, si les places sont encore en cours de fetch
-  // on affiche LoadingView. Évite le flash "aucune cible" pendant le fetch initial.
   const [showLoadingAfterSplash, setShowLoadingAfterSplash] = useState(false);
 
   const handleSplashDone = () => {
@@ -83,7 +81,6 @@ export default function CompassScreen() {
     return <PermissionGate onPress={askPermission} />;
   }
 
-  // LoadingView après que le splash a disparu, tant que le fetch tourne
   if (splashDone && showLoadingAfterSplash) {
     return <LoadingView label="Recherche..." />;
   }
@@ -91,7 +88,6 @@ export default function CompassScreen() {
   const fav = target ? isFavorite(target.id) : false;
 
   return (
-    // View racine sans safe area — le splash peut couvrir tout l'écran
     <View style={s.root}>
       <SafeAreaView style={[s.safeArea, { backgroundColor: t.bg }]}>
         {/* HEADER */}
@@ -154,7 +150,10 @@ export default function CompassScreen() {
           </View>
         )}
 
-        {/* COMPASS */}
+        {/* PUB — bannière entre header et boussole */}
+        <AdBanner slot="compass_top" />
+
+        {/* COMPASS — flex:1 pour occuper l'espace restant sans déborder */}
         <View style={s.compassZone}>
           {target ? (
             <CompassDial deltaAngle={deltaAngle} instruction={instruction} />
@@ -165,6 +164,9 @@ export default function CompassScreen() {
             />
           )}
         </View>
+
+        {/* PUB — bannière entre boussole et distance */}
+        <AdBanner slot="compass_bottom" />
 
         {/* DISTANCE */}
         {target && (
@@ -195,7 +197,6 @@ export default function CompassScreen() {
         <PlaceDetailSheet visible={detailVisible} place={target ?? null} onClose={() => setDetailVisible(false)} />
       </SafeAreaView>
 
-      {/* SPLASH en dehors du SafeAreaView — couvre tout l'écran */}
       {!splashDone && <SplashLoader onDone={handleSplashDone} />}
     </View>
   );
@@ -215,6 +216,8 @@ const s = StyleSheet.create({
   heartIcon: { fontSize: 24 },
   warningBanner: { paddingVertical: 7, paddingHorizontal: 16, borderBottomWidth: 1 },
   warningText: { fontSize: 11 },
+  // compassZone : flex:1 garantit que la boussole prend l'espace disponible
+  // entre les deux bannières sans jamais empiéter sur header ni distanceRow
   compassZone: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   distanceRow: { alignItems: 'center', paddingBottom: 16, gap: 4 },
   distanceValue: { fontSize: 36, letterSpacing: -1 },

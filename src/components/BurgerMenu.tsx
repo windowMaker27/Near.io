@@ -1,10 +1,11 @@
 import { useEffect, useRef } from 'react';
-import { Animated, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Animated, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { theme } from '@/constants/theme';
 import { useTheme } from '@/hooks/useTheme';
 import { useThemeStore } from '@/store/themeStore';
 import { useAuthStore } from '@/store/authStore';
+import { AdSidebarRect } from '@/components/ads';
 
 type Props = {
   open: boolean;
@@ -50,58 +51,70 @@ export function BurgerMenu({ open, onClose, onSubmitPlace }: Props) {
 
   return (
     <Pressable style={s.backdrop} onPress={onClose}>
-      <Animated.View style={[
-        s.menu,
-        { opacity, transform: [{ translateY }], backgroundColor: t.surface, borderColor: t.border },
-      ]}>
-        <Text style={[s.menuTitle, { color: t.accent, fontFamily: t.fontMonoBold }]}>NEAR.IO</Text>
-        <View style={[s.divider, { backgroundColor: t.border }]} />
+      {/* ScrollView pour éviter le débordement si contenu + pub dépasse l'écran */}
+      <ScrollView
+        style={[s.menu, { backgroundColor: t.surface, borderColor: t.border }]}
+        contentContainerStyle={s.menuContent}
+        scrollEnabled={false}
+        showsVerticalScrollIndicator={false}
+      >
+        <Animated.View style={{ opacity, transform: [{ translateY }] }}>
+          <Text style={[s.menuTitle, { color: t.accent, fontFamily: t.fontMonoBold }]}>NEAR.IO</Text>
+          <View style={[s.divider, { backgroundColor: t.border }]} />
 
-        {/* Compte */}
-        <Pressable style={s.menuItem} onPress={() => { onClose(); router.push(accountRoute as any); }}>
-          <Text style={[s.menuIcon, { color: t.textMuted, fontFamily: t.fontMono }]}>◉</Text>
-          <Text style={[s.menuLabel, { color: session ? t.accent : t.text, fontFamily: t.fontMono }]}>{accountLabel}</Text>
-        </Pressable>
-
-        <View style={[s.divider, { backgroundColor: t.border }]} />
-
-        {/* Nav items */}
-        {NAV_ITEMS.map((item) => (
-          <Pressable key={item.route} style={s.menuItem} onPress={() => { onClose(); router.push(item.route); }}>
-            <Text style={[s.menuIcon, { color: t.textMuted, fontFamily: t.fontMono }]}>{item.icon}</Text>
-            <Text style={[s.menuLabel, { color: t.text, fontFamily: t.fontMono }]}>{item.label}</Text>
+          {/* Compte */}
+          <Pressable style={s.menuItem} onPress={() => { onClose(); router.push(accountRoute as any); }}>
+            <Text style={[s.menuIcon, { color: t.textMuted, fontFamily: t.fontMono }]}>◉</Text>
+            <Text style={[s.menuLabel, { color: session ? t.accent : t.text, fontFamily: t.fontMono }]}>{accountLabel}</Text>
           </Pressable>
-        ))}
 
-        <View style={[s.divider, { backgroundColor: t.border }]} />
+          <View style={[s.divider, { backgroundColor: t.border }]} />
 
-        {/* Toggle thème */}
-        <Pressable style={s.menuItem} onPress={cycleTheme}>
-          <Text style={[s.menuIcon, { color: t.accent, fontFamily: t.fontMono }]}>{themeIcon}</Text>
-          <Text style={[s.menuLabel, { color: t.text, fontFamily: t.fontMono }]}>{themeLabel}</Text>
-          <View style={[s.badge, { backgroundColor: t.accent }]}>
-            <Text style={[s.badgeText, { color: t.bg, fontFamily: t.fontMonoBold }]}>
-              {mode.toUpperCase()}
-            </Text>
+          {/* Nav items */}
+          {NAV_ITEMS.map((item) => (
+            <Pressable key={item.route} style={s.menuItem} onPress={() => { onClose(); router.push(item.route); }}>
+              <Text style={[s.menuIcon, { color: t.textMuted, fontFamily: t.fontMono }]}>{item.icon}</Text>
+              <Text style={[s.menuLabel, { color: t.text, fontFamily: t.fontMono }]}>{item.label}</Text>
+            </Pressable>
+          ))}
+
+          <View style={[s.divider, { backgroundColor: t.border }]} />
+
+          {/* Toggle thème */}
+          <Pressable style={s.menuItem} onPress={cycleTheme}>
+            <Text style={[s.menuIcon, { color: t.accent, fontFamily: t.fontMono }]}>{themeIcon}</Text>
+            <Text style={[s.menuLabel, { color: t.text, fontFamily: t.fontMono }]}>{themeLabel}</Text>
+            <View style={[s.badge, { backgroundColor: t.accent }]}>
+              <Text style={[s.badgeText, { color: t.bg, fontFamily: t.fontMonoBold }]}>
+                {mode.toUpperCase()}
+              </Text>
+            </View>
+          </Pressable>
+
+          <View style={[s.divider, { backgroundColor: t.border }]} />
+
+          {/* Proposer */}
+          <Pressable style={s.menuItem} onPress={() => { onClose(); onSubmitPlace(); }}>
+            <Text style={[s.menuIcon, { color: t.textMuted, fontFamily: t.fontMono }]}>＋</Text>
+            <Text style={[s.menuLabel, { color: t.text, fontFamily: t.fontMono }]}>Proposer un commerce</Text>
+          </Pressable>
+
+          <View style={[s.divider, { backgroundColor: t.border }]} />
+
+          {/* Mentions légales */}
+          <Pressable style={s.menuItem} onPress={() => { onClose(); router.push('/legal'); }}>
+            <Text style={[s.menuIcon, { color: t.textMuted, fontFamily: t.fontMono }]}>ⓘ</Text>
+            <Text style={[s.menuLabel, { color: t.text, fontFamily: t.fontMono }]}>Mentions légales</Text>
+          </Pressable>
+
+          <View style={[s.divider, { backgroundColor: t.border }]} />
+
+          {/* PUB — rectangle vertical en bas du menu */}
+          <View style={s.adSlot}>
+            <AdSidebarRect />
           </View>
-        </Pressable>
-
-        <View style={[s.divider, { backgroundColor: t.border }]} />
-
-        {/* Proposer */}
-        <Pressable style={s.menuItem} onPress={() => { onClose(); onSubmitPlace(); }}>
-          <Text style={[s.menuIcon, { color: t.textMuted, fontFamily: t.fontMono }]}>＋</Text>
-          <Text style={[s.menuLabel, { color: t.text, fontFamily: t.fontMono }]}>Proposer un commerce</Text>
-        </Pressable>
-
-        <View style={[s.divider, { backgroundColor: t.border }]} />
-
-        {/* Mentions légales */}
-        <Pressable style={s.menuItem} onPress={() => { onClose(); router.push('/legal'); }}>
-          <Text style={[s.menuIcon, { color: t.textMuted, fontFamily: t.fontMono }]}>ⓘ</Text>
-          <Text style={[s.menuLabel, { color: t.text, fontFamily: t.fontMono }]}>Mentions légales</Text>
-        </Pressable>
-      </Animated.View>
+        </Animated.View>
+      </ScrollView>
     </Pressable>
   );
 }
@@ -114,7 +127,8 @@ const s = StyleSheet.create({
     paddingTop: theme.sp12 + theme.sp3,
     paddingHorizontal: theme.pagePad,
   },
-  menu: { borderRadius: theme.radiusLg, borderWidth: 1, overflow: 'hidden', paddingBottom: theme.sp2 },
+  menu: { borderRadius: theme.radiusLg, borderWidth: 1 },
+  menuContent: { paddingBottom: theme.sp2 },
   menuTitle: { fontSize: theme.textSm, letterSpacing: theme.trackingTitle, padding: theme.pagePad, paddingBottom: theme.sp3 },
   divider: { height: 1, marginHorizontal: theme.pagePad, marginBottom: theme.sp2, marginTop: theme.sp1 },
   menuItem: { flexDirection: 'row', alignItems: 'center', paddingVertical: 14, paddingHorizontal: theme.pagePad, gap: theme.sp4 },
@@ -122,4 +136,5 @@ const s = StyleSheet.create({
   menuLabel: { fontSize: theme.textLg, flex: 1 },
   badge: { borderRadius: 4, paddingHorizontal: 6, paddingVertical: 2 },
   badgeText: { fontSize: 9, letterSpacing: 1 },
+  adSlot: { alignItems: 'center', paddingVertical: theme.sp4 },
 });
