@@ -18,12 +18,12 @@
     ],
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "io.near.app",
+      "bundleIdentifier": "io.near1.app",
       "buildNumber": "1",
       "deploymentTarget": "16.4",
       "infoPlist": {
         "NSLocationWhenInUseUsageDescription": "Near.io utilise votre position pour vous guider vers le commerce alimentaire ouvert le plus proche.",
-        "NSCameraUsageDescription": "Near.io utilise la caméra pour afficher le mode AR directionnel.",
+        "NSCameraUsageDescription": "Near.io utilise la cam\u00e9ra pour afficher le mode AR directionnel.",
         "ITSAppUsesNonExemptEncryption": false,
         "GADApplicationIdentifier": "ca-app-pub-7688202552948414~8808213287"
       }
@@ -33,7 +33,7 @@
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#080808"
       },
-      "package": "io.near.app",
+      "package": "io.near1.app",
       "permissions": [
         "ACCESS_COARSE_LOCATION",
         "ACCESS_FINE_LOCATION",
