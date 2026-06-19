@@ -21,5 +21,7 @@ export const haversineDistance = haversineDistanceMeters;
 export function formatDistance(meters: number): string {
   const display = Math.max(0, meters - DISPLAY_OFFSET_M);
   if (display < 1000) return `${Math.round(display)}\u202fm`;
-  return `${(display / 1000).toFixed(1)}\u202fkm`;
+  const km = display / 1000;
+  // Affiche "1km" au lieu de "1.0km" pour les entiers
+  return `${Number.isInteger(km) ? km.toFixed(0) : km.toFixed(1)}\u202fkm`;
 }

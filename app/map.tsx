@@ -11,8 +11,11 @@ import { PlaceDetailSheet } from '@/components/PlaceDetailSheet';
 import { Coordinates, Place } from '@/types/place';
 import { PLACE_TYPE_LABELS } from '@/constants/placeTypes';
 import { formatDistance } from '@/features/compass/utils/distance';
+import { useFiltersStore } from '@/store/filtersStore';
+import { makeCirclePolygon } from '@/utils/geoCircle';
+import { useRadarSweep } from '@/hooks/useRadarSweep';
 
-const { MapView, Camera, ShapeSource, CircleLayer } = MapLibre;
+const { MapView, Camera, ShapeSource, CircleLayer, FillLayer, LineLayer } = MapLibre;
 const { width, height } = Dimensions.get('window');
 
 export default function MapScreen() {
@@ -24,12 +27,24 @@ export default function MapScreen() {
   const { placeId } = useLocalSearchParams<{ placeId?: string }>();
   const cameraRef = useRef<any>(null);
   const tapCountRef = useRef(0);
+  const { filters } = useFiltersStore();
 
   const [userLocation, setUserLocation] = useState<Coordinates | undefined>();
   const [coords, setCoords] = useState<[number, number] | null>(null);
   const [tooltip, setTooltip] = useState<Place | null>(null);
   const [detailVisible, setDetailVisible] = useState(false);
   const tooltipAnim = useRef(new Animated.Value(0)).current;
+
+  // Radar
+  const sweepGeoJSON = useRadarSweep(
+    coords ? coords[0] : null,
+    coords ? coords[1] : null,
+    filters.radiusMeters,
+  );
+
+  const circleGeoJSON: GeoJSON.FeatureCollection | null = coords
+    ? { type: 'FeatureCollection', features: [makeCirclePolygon(coords[0], coords[1], filters.radiusMeters)] }
+    : null;
 
   useEffect(() => {
     (async () => {
@@ -102,6 +117,11 @@ export default function MapScreen() {
   const accentHex: string = t.accent;
   const bgHex: string = t.bg;
 
+  // Couleurs radar adaptées au thème
+  const radarStroke = accentHex;
+  const radarFill = isDark ? 'rgba(231,76,60,0.04)' : 'rgba(231,76,60,0.03)';
+  const sweepFill = isDark ? 'rgba(231,76,60,0.18)' : 'rgba(231,76,60,0.12)';
+
   const recenter = async () => {
     if (cameraRef.current && coords) {
       cameraRef.current.setCamera({ centerCoordinate: coords, zoomLevel: 14, animationDuration: 500 });
@@ -144,6 +164,38 @@ export default function MapScreen() {
           <Camera ref={cameraRef} centerCoordinate={coords} zoomLevel={14} animationMode="none" />
         )}
 
+        {/* --- RADAR : cercle de portée --- */}
+        {circleGeoJSON && (
+          <ShapeSource id="radar-circle" shape={circleGeoJSON}>
+            {/* Remplissage très transparent */}
+            <FillLayer
+              id="radar-fill"
+              style={{ fillColor: radarFill, fillOpacity: 1 }}
+            />
+            {/* Contour du cercle */}
+            <LineLayer
+              id="radar-border"
+              style={{
+                lineColor: radarStroke,
+                lineWidth: 1.5,
+                lineOpacity: 0.6,
+                lineDasharray: [4, 3] as any,
+              }}
+            />
+          </ShapeSource>
+        )}
+
+        {/* --- RADAR : secteur balayage animé --- */}
+        {sweepGeoJSON && (
+          <ShapeSource id="radar-sweep" shape={sweepGeoJSON}>
+            <FillLayer
+              id="radar-sweep-fill"
+              style={{ fillColor: sweepFill, fillOpacity: 1 }}
+            />
+          </ShapeSource>
+        )}
+
+        {/* Point utilisateur (au-dessus du radar) */}
         {coords && (
           <ShapeSource id="user-location" shape={userGeojson}>
             <CircleLayer
