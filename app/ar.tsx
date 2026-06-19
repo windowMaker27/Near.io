@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { AROverlay } from '@/features/ar/components/AROverlay';
 import { useAppStore } from '@/store/appStore';
@@ -11,6 +11,7 @@ import * as Location from 'expo-location';
 
 export default function ARScreen() {
   const t = useTheme();
+  const { width, height } = useWindowDimensions();
   const [permission, requestPermission] = useCameraPermissions();
   const { userLocation, userHeading, selectedTarget, setUserHeading } = useAppStore();
   const { deltaAngle } = useTargetBearing(userLocation, userHeading, selectedTarget);
@@ -18,8 +19,6 @@ export default function ARScreen() {
   const [requested, setRequested] = useState(false);
   const headingSubRef = useRef<Location.LocationSubscription | null>(null);
 
-  // Souscription heading locale — garantit que le heading est dispo
-  // même si useHeading dans index.tsx n'a pas encore fourni de valeur
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -58,8 +57,13 @@ export default function ARScreen() {
   }
 
   return (
-    <View style={styles.container}>
-      <CameraView style={StyleSheet.absoluteFillObject} facing="back" />
+    // Dimensions explicites : nécessaire en EAS build pour que le layer natif
+    // CameraView se rende correctement (flex:1 seul est insuffisant sur certains builds)
+    <View style={{ width, height, backgroundColor: '#000' }}>
+      <CameraView
+        style={{ position: 'absolute', top: 0, left: 0, width, height }}
+        facing="back"
+      />
       <AROverlay
         target={selectedTarget}
         instruction={instruction}
@@ -70,7 +74,6 @@ export default function ARScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#000' },
   fallback: {
     flex: 1,
     justifyContent: 'center',
