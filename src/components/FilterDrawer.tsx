@@ -16,10 +16,8 @@ import { PlaceCategory } from '@/types/place';
 import { formatDistance } from '@/features/compass/utils/distance';
 
 const DRAWER_WIDTH = 280;
-// Seuil de vélocité/distance pour valider le swipe
 const SWIPE_VELOCITY_THRESHOLD = 0.4;
 const SWIPE_DISTANCE_THRESHOLD = 60;
-// Zone de détection du swipe "ouvrir" sur le bord gauche (px)
 const EDGE_HIT_WIDTH = 28;
 const RADIUS_OPTIONS = [100, 300, 500, 1000, 2000, 3000];
 
@@ -37,27 +35,18 @@ export function FilterDrawer() {
       stiffness: 150,
     }).start(cb);
 
-  const openDrawer = () => {
-    setOpen(true);
-    spring(0);
-  };
+  const openDrawer = () => { setOpen(true); spring(0); };
+  const closeDrawer = () => { spring(-DRAWER_WIDTH, () => setOpen(false)); };
 
-  const closeDrawer = () => {
-    spring(-DRAWER_WIDTH, () => setOpen(false));
-  };
-
-  // PanResponder sur le handle latéral (swipe → pour ouvrir)
   const handlePanResponder = useRef(
     PanResponder.create({
       onMoveShouldSetPanResponder: (_, g) => g.dx > 8 && Math.abs(g.dy) < 20,
       onPanResponderMove: (_, g) => {
-        const next = -DRAWER_WIDTH + Math.max(0, Math.min(g.dx, DRAWER_WIDTH));
-        translateX.setValue(next);
+        translateX.setValue(-DRAWER_WIDTH + Math.max(0, Math.min(g.dx, DRAWER_WIDTH)));
       },
       onPanResponderRelease: (_, g) => {
         if (g.vx > SWIPE_VELOCITY_THRESHOLD || g.dx > SWIPE_DISTANCE_THRESHOLD) {
-          setOpen(true);
-          spring(0);
+          setOpen(true); spring(0);
         } else {
           spring(-DRAWER_WIDTH);
         }
@@ -65,13 +54,11 @@ export function FilterDrawer() {
     }),
   ).current;
 
-  // PanResponder sur le drawer (swipe ← pour fermer)
   const drawerPanResponder = useRef(
     PanResponder.create({
       onMoveShouldSetPanResponder: (_, g) => g.dx < -8 && Math.abs(g.dy) < 20,
       onPanResponderMove: (_, g) => {
-        const next = Math.min(0, g.dx);
-        translateX.setValue(next);
+        translateX.setValue(Math.min(0, g.dx));
       },
       onPanResponderRelease: (_, g) => {
         if (g.vx < -SWIPE_VELOCITY_THRESHOLD || g.dx < -SWIPE_DISTANCE_THRESHOLD) {
@@ -89,19 +76,19 @@ export function FilterDrawer() {
 
   return (
     <>
-      {/* Zone de swipe sur le bord gauche — toujours présente même drawer fermé */}
       {!open && (
-        <View
-          style={s.edgeZone}
-          {...handlePanResponder.panHandlers}
-        >
-          {/* Handle visuel cliquable */}
+        <View style={s.edgeZone} {...handlePanResponder.panHandlers}>
           <Pressable
             style={[s.handle, { backgroundColor: t.surface, borderColor: t.border }]}
             onPress={openDrawer}
           >
+            {/* Conteneur fixé pour le texte rotaté : largeur = hauteur cible du texte */}
+            <View style={s.handleLabelWrap}>
+              <Text style={[s.handleLabel, { color: t.textMuted, fontFamily: t.fontMono }]}>
+                FILTRES
+              </Text>
+            </View>
             <Text style={[s.handleIcon, { color: t.accent, fontFamily: t.fontMonoBold }]}>›</Text>
-            <Text style={[s.handleLabel, { color: t.textMuted, fontFamily: t.fontMono }]}>Filtres</Text>
           </Pressable>
         </View>
       )}
@@ -180,7 +167,6 @@ export function FilterDrawer() {
 }
 
 const s = StyleSheet.create({
-  // Zone transparente sur le bord gauche pour capturer le swipe
   edgeZone: {
     position: 'absolute',
     left: 0,
@@ -193,24 +179,35 @@ const s = StyleSheet.create({
   handle: {
     position: 'absolute',
     left: 0,
-    top: '80%',
+    top: '35%',
     borderTopRightRadius: 8,
     borderBottomRightRadius: 8,
     borderWidth: 1,
     borderLeftWidth: 0,
-    paddingVertical: 20,
+    paddingVertical: 12,
     paddingHorizontal: 6,
     alignItems: 'center',
-    gap: 4,
+    gap: 6,
   },
-  handleIcon: { fontSize: 18 },
+  // Wrapper avec dimensions fixées pour accueillir le texte après rotation
+  // La rotation échange largeur et hauteur : on fixe width = hauteur souhaitée du texte
+  handleLabelWrap: {
+    width: 9,          // épaisseur du handle (ce que le texte occupe en largeur après rotation)
+    height: 48,        // espace vertical réservé pour le texte rotaté
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'visible',
+  },
   handleLabel: {
     fontSize: 9,
-    letterSpacing: 1,
+    letterSpacing: 1.5,
     textTransform: 'uppercase',
-    transform: [{ rotate: '90deg' }],
-    marginTop: 8,
+    transform: [{ rotate: '-90deg' }],
+    // Évite que le texte soit coupé par son propre container
+    width: 48,
+    textAlign: 'center',
   },
+  handleIcon: { fontSize: 18 },
   backdrop: {
     position: 'absolute',
     top: 0, left: 0, right: 0, bottom: 0,
