@@ -1,10 +1,6 @@
-/**
- * adsStore — persiste l'état "pubs supprimées" via MMKV.
- * Mis à jour après un achat RevenueCat réussi.
- */
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
-import { zustandMMKVStorage } from '@/store/mmkvStorage';
+import { storage } from '@/lib/mmkv';
 
 interface AdsState {
   adsRemoved: boolean;
@@ -18,8 +14,8 @@ export const useAdsStore = create<AdsState>()(
       setAdsRemoved: (value) => set({ adsRemoved: value }),
     }),
     {
-      name: 'ads-storage',
-      storage: createJSONStorage(() => zustandMMKVStorage),
+      name: 'near-io-ads',
+      storage: createJSONStorage(() => storage),
     },
   ),
 );
