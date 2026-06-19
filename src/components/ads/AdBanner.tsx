@@ -1,6 +1,7 @@
 import { StyleSheet, View } from 'react-native';
 import { BannerAd, BannerAdSize, TestIds } from 'react-native-google-mobile-ads';
 import { AD_UNIT_IDS, AdSlot } from '@/constants/adUnits';
+import { useAdsStore } from '@/store/adsStore';
 
 const TEST_BANNER_ID = TestIds.BANNER;
 
@@ -9,6 +10,9 @@ interface Props {
 }
 
 export function AdBanner({ slot }: Props) {
+  const adsRemoved = useAdsStore((s) => s.adsRemoved);
+  if (adsRemoved) return null;
+
   const unitId = __DEV__ ? TEST_BANNER_ID : AD_UNIT_IDS[slot];
   const isTop = slot === 'compass_top';
 
@@ -24,18 +28,6 @@ export function AdBanner({ slot }: Props) {
 }
 
 const s = StyleSheet.create({
-  // top : pleine largeur, centré, pas de marge
-  wrapperTop: {
-    width: '100%',
-    alignItems: 'center',
-    overflow: 'hidden',
-  },
-  // bottom : pleine largeur, centré, marginBottom négatif pour remonter
-  // la bannière vers la boussole
-  wrapperBottom: {
-    width: '100%',
-    alignItems: 'center',
-    overflow: 'hidden',
-    marginBottom: 8,
-  },
+  wrapperTop: { width: '100%', alignItems: 'center', overflow: 'hidden' },
+  wrapperBottom: { width: '100%', alignItems: 'center', overflow: 'hidden', marginBottom: 8 },
 });
