@@ -47,6 +47,19 @@ export default function CompassScreen() {
   const [detailVisible, setDetailVisible] = useState(false);
   const [splashDone, setSplashDone] = useState(false);
 
+  // Quand le splash se ferme, si les places sont encore en cours de fetch
+  // on affiche LoadingView. Évite le flash "aucune cible" pendant le fetch initial.
+  const [showLoadingAfterSplash, setShowLoadingAfterSplash] = useState(false);
+
+  const handleSplashDone = () => {
+    if (loading) setShowLoadingAfterSplash(true);
+    setSplashDone(true);
+  };
+
+  useEffect(() => {
+    if (!loading) setShowLoadingAfterSplash(false);
+  }, [loading]);
+
   useEffect(() => { setSelectedTarget(target); }, [setSelectedTarget, target]);
 
   useEffect(() => {
@@ -70,7 +83,8 @@ export default function CompassScreen() {
     return <PermissionGate onPress={askPermission} />;
   }
 
-  if (loading && !target) {
+  // LoadingView après que le splash a disparu, tant que le fetch tourne
+  if (splashDone && showLoadingAfterSplash) {
     return <LoadingView label="Recherche..." />;
   }
 
@@ -182,7 +196,7 @@ export default function CompassScreen() {
       </SafeAreaView>
 
       {/* SPLASH en dehors du SafeAreaView — couvre tout l'écran */}
-      {!splashDone && <SplashLoader onDone={() => setSplashDone(true)} />}
+      {!splashDone && <SplashLoader onDone={handleSplashDone} />}
     </View>
   );
 }
