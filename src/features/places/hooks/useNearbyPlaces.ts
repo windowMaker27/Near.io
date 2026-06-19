@@ -11,83 +11,82 @@ import { useFiltersStore } from '@/store/filtersStore';
 import { fetchApprovedPlaces } from '@/services/supabaseService';
 import { Coordinates, Place } from '@/types/place';
 import { isGoogleConfigured } from '@/lib/env';
+import { useAppStore } from '@/store/appStore';
 
-interface OsmCache {
-  lat: number;
-  lon: number;
-  radius: number;
-  places: Place[];
-  fetchedAt: number;
-}
-let osmCache: OsmCache | null = null;
-const OSM_CACHE_TTL_MS = 5 * 60 * 1000;
-// Seuil minimum de déplacement pour relancer un fetch OSM (évite les micro-updates GPS)
+// Seuil minimum de déplacement pour relancer un fetch OSM
 const OSM_REFETCH_THRESHOLD_M = 50;
-// Debounce : attend que la position se stabilise avant de fetch
+// Durée de vie du cache global (ms)
+const CACHE_TTL_MS = 5 * 60 * 1000;
+// Debounce position GPS
 const DEBOUNCE_MS = 3000;
-
-function isCacheValid(cache: OsmCache, lat: number, lon: number, radius: number): boolean {
-  if (Date.now() - cache.fetchedAt > OSM_CACHE_TTL_MS) return false;
-  if (cache.radius !== radius) return false;
-  const d = haversineDistanceMeters(cache.lat, cache.lon, lat, lon);
-  return d < OSM_REFETCH_THRESHOLD_M;
-}
 
 export const useNearbyPlaces = (userLocation?: Coordinates) => {
   const { filters } = useFiltersStore();
-  const [places, setPlaces] = useState<Place[]>([]);
+  const { placesCache, setPlacesCache, invalidatePlacesCache } = useAppStore();
+
+  const [places, setPlaces] = useState<Place[]>(() => placesCache?.places ?? []);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string>();
   const [targetIndex, setTargetIndex] = useState(0);
   const [refreshTick, setRefreshTick] = useState(0);
 
-  // Coords stables après debounce
   const [stableCoords, setStableCoords] = useState<{ lat: number; lon: number } | null>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  // Ref vers le cancel du fetch en cours pour éviter les races
   const cancelRef = useRef<(() => void) | null>(null);
 
   const lat = userLocation?.latitude;
   const lon = userLocation?.longitude;
   const radius = filters.radiusMeters;
+  const filtersKey = JSON.stringify(filters);
 
-  // Debounce : met à jour stableCoords seulement après DEBOUNCE_MS sans changement
+  // Debounce position
   useEffect(() => {
     if (lat == null || lon == null) return;
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(() => {
       setStableCoords((prev) => {
-        // Ne relance le fetch que si déplacement > seuil ou premier fix
         if (prev) {
           const d = haversineDistanceMeters(prev.lat, prev.lon, lat, lon);
-          if (d < OSM_REFETCH_THRESHOLD_M) return prev; // position identique, pas de re-fetch
+          if (d < OSM_REFETCH_THRESHOLD_M) return prev;
         }
         return { lat, lon };
       });
     }, DEBOUNCE_MS);
-    return () => {
-      if (debounceRef.current) clearTimeout(debounceRef.current);
-    };
+    return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
   }, [lat, lon]);
 
-  // AppState foreground : invalide cache et force reload
+  // Foreground : invalide le cache global et force reload
   useEffect(() => {
     const handleAppStateChange = (nextState: AppStateStatus) => {
       if (nextState === 'active') {
-        osmCache = null;
+        invalidatePlacesCache();
         setRefreshTick((t) => t + 1);
-        // Force recalcul des stableCoords
-        if (lat != null && lon != null) {
-          setStableCoords({ lat, lon });
-        }
+        if (lat != null && lon != null) setStableCoords({ lat, lon });
       }
     };
     const sub = AppState.addEventListener('change', handleAppStateChange);
     return () => sub.remove();
-  }, [lat, lon]);
+  }, [lat, lon, invalidatePlacesCache]);
 
-  const load = useCallback(async (lat: number, lon: number, radius: number) => {
-    // Annule le fetch précédent s'il tourne encore
+  // Invalide le cache sur changement de filtres
+  useEffect(() => {
+    invalidatePlacesCache();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filtersKey]);
+
+  const isCacheHit = useCallback(
+    (lat: number, lon: number): boolean => {
+      if (!placesCache) return false;
+      if (Date.now() - placesCache.fetchedAt > CACHE_TTL_MS) return false;
+      if (placesCache.radius !== radius) return false;
+      if (placesCache.filters !== filtersKey) return false;
+      const d = haversineDistanceMeters(placesCache.lat, placesCache.lon, lat, lon);
+      return d < OSM_REFETCH_THRESHOLD_M;
+    },
+    [placesCache, radius, filtersKey],
+  );
+
+  const load = useCallback(async (lat: number, lon: number, radius: number, filtersKey: string) => {
     cancelRef.current?.();
     let cancelled = false;
     cancelRef.current = () => { cancelled = true; };
@@ -96,21 +95,26 @@ export const useNearbyPlaces = (userLocation?: Coordinates) => {
     setError(undefined);
 
     try {
-      let osmPlaces: Place[];
-      if (osmCache && isCacheValid(osmCache, lat, lon, radius)) {
-        osmPlaces = osmCache.places;
-      } else {
-        let osmResult: Place[] = [];
-        try {
-          osmResult = await fetchNearbyOverpassPlaces(lat, lon, radius);
-        } catch (e) {
-          console.warn('[useNearbyPlaces] Overpass failed:', e);
-        }
-        if (cancelled) return;
-        osmPlaces = osmResult;
-        osmCache = { lat, lon, radius, places: osmResult, fetchedAt: Date.now() };
+      // --- Cache global hit : pas de réseau ---
+      const cache = useAppStore.getState().placesCache;
+      if (cache &&
+          Date.now() - cache.fetchedAt <= CACHE_TTL_MS &&
+          cache.radius === radius &&
+          cache.filters === filtersKey &&
+          haversineDistanceMeters(cache.lat, cache.lon, lat, lon) < OSM_REFETCH_THRESHOLD_M) {
+        setPlaces(cache.places);
+        setTargetIndex(0);
+        setLoading(false);
+        return;
       }
 
+      // --- Fetch réseau ---
+      let osmPlaces: Place[] = [];
+      try {
+        osmPlaces = await fetchNearbyOverpassPlaces(lat, lon, radius);
+      } catch (e) {
+        console.warn('[useNearbyPlaces] Overpass failed:', e);
+      }
       if (cancelled) return;
 
       const supabaseResult = await fetchApprovedPlaces(lat, lon, radius).catch(() => []);
@@ -150,6 +154,15 @@ export const useNearbyPlaces = (userLocation?: Coordinates) => {
       }
 
       if (!cancelled) {
+        // Sauvegarde dans le store global
+        setPlacesCache({
+          places: enriched,
+          lat,
+          lon,
+          radius,
+          filters: filtersKey,
+          fetchedAt: Date.now(),
+        });
         setPlaces(enriched);
         setTargetIndex(0);
       }
@@ -171,13 +184,21 @@ export const useNearbyPlaces = (userLocation?: Coordinates) => {
     } finally {
       if (!cancelled) setLoading(false);
     }
-  }, []);
+  }, [setPlacesCache]);
 
-  // Déclenche load seulement sur stableCoords (post-debounce) ou refreshTick
+  // Déclenche load sur stableCoords ou refreshTick
   useEffect(() => {
     if (stableCoords == null) return;
-    load(stableCoords.lat, stableCoords.lon, radius);
-  }, [stableCoords, radius, refreshTick, load]);
+
+    // Cache hit : affiche immédiatement sans spinner
+    if (isCacheHit(stableCoords.lat, stableCoords.lon)) {
+      const cached = useAppStore.getState().placesCache!;
+      setPlaces(cached.places);
+      return;
+    }
+
+    load(stableCoords.lat, stableCoords.lon, radius, filtersKey);
+  }, [stableCoords, radius, refreshTick, filtersKey, load, isCacheHit]);
 
   const filteredPlaces = useMemo(() => filterPlaces(places, filters), [filters, places]);
   const rankedPlaces = useMemo(() => rankPlaces(filteredPlaces), [filteredPlaces]);
