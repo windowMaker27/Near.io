@@ -1,12 +1,11 @@
 /**
  * SplashLoader — écran de démarrage plein écran avec barre de progression.
- * Rendu en dehors du SafeAreaView via absoluteFillObject + zIndex élevé.
  */
 import { useEffect, useRef } from 'react';
 import { Animated, Easing, StyleSheet, Text, View } from 'react-native';
 import { useTheme } from '@/hooks/useTheme';
 
-const DURATION = 2600; // durée barre (ms)
+const DURATION = 3400; // 2600 + 800ms
 const FADE_DURATION = 300;
 
 type Props = { onDone: () => void };
@@ -58,12 +57,6 @@ const s = StyleSheet.create({
   },
   logo: { fontSize: 32, letterSpacing: 8 },
   tagline: { fontSize: 10, letterSpacing: 4, textTransform: 'uppercase', marginBottom: 24 },
-  track: {
-    width: 200,
-    height: 2,
-    borderRadius: 2,
-    overflow: 'hidden',
-    backgroundColor: 'transparent',
-  },
+  track: { width: 200, height: 2, borderRadius: 2, overflow: 'hidden', backgroundColor: 'transparent' },
   bar: { height: 2, borderRadius: 2 },
 });
