@@ -1,4 +1,4 @@
-import { StyleSheet } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { BannerAd, BannerAdSize, TestIds } from 'react-native-google-mobile-ads';
 import { AD_UNIT_IDS, AdSlot } from '@/constants/adUnits';
 
@@ -10,27 +10,32 @@ interface Props {
 
 export function AdBanner({ slot }: Props) {
   const unitId = __DEV__ ? TEST_BANNER_ID : AD_UNIT_IDS[slot];
+  const isTop = slot === 'compass_top';
 
   return (
-    <BannerAd
-      unitId={unitId}
-      size={slot === 'compass_top' ? BannerAdSize.LARGE_BANNER : BannerAdSize.BANNER}
-      requestOptions={{ requestNonPersonalizedAdsOnly: false }}
-      style={slot === 'compass_top' ? s.top : s.bottom}
-    />
+    <View style={isTop ? s.wrapperTop : s.wrapperBottom}>
+      <BannerAd
+        unitId={unitId}
+        size={isTop ? BannerAdSize.LARGE_BANNER : BannerAdSize.BANNER}
+        requestOptions={{ requestNonPersonalizedAdsOnly: false }}
+      />
+    </View>
   );
 }
 
 const s = StyleSheet.create({
-  // compass_top : LARGE_BANNER (320×100), pleine largeur, centré
-  top: {
-    alignSelf: 'center',
+  // top : pleine largeur, centré, pas de marge
+  wrapperTop: {
     width: '100%',
+    alignItems: 'center',
+    overflow: 'hidden',
   },
-  // compass_bot : BANNER (320×50), pleine largeur, centré, marge basse réduite
-  bottom: {
-    alignSelf: 'center',
+  // bottom : pleine largeur, centré, marginBottom négatif pour remonter
+  // la bannière vers la boussole
+  wrapperBottom: {
     width: '100%',
-    marginBottom: -8,
+    alignItems: 'center',
+    overflow: 'hidden',
+    marginBottom: 8,
   },
 });
