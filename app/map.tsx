@@ -187,9 +187,7 @@ export default function MapScreen() {
         mapStyle={mapStyle as any}
         logoEnabled={false}
         attributionEnabled={false}
-        compassEnabled
-        compassViewPosition={2}
-        compassViewMargins={{ x: 20, y: insets.bottom + 100 }}
+        compassEnabled={false}
         onPress={handleMapPress}
       >
         {coords && (
