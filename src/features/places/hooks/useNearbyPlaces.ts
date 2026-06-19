@@ -1,7 +1,5 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { AppState, AppStateStatus } from 'react-native';
+import { useEffect, useMemo, useState } from 'react';
 import { haversineDistanceMeters } from '@/features/compass/utils/distance';
-import { fetchNearbyOverpassPlaces } from '@/features/places/api/overpass';
 import { fetchGooglePlaceDetails, searchGooglePlacesText } from '@/features/places/api/googlePlaces';
 import { filterPlaces } from '@/features/places/utils/filterPlaces';
 import { mergeGoogleDetails, normalizeSupabasePlace } from '@/features/places/utils/normalizePlace';
@@ -29,17 +27,10 @@ export const useNearbyPlaces = (userLocation?: Coordinates) => {
 
   const lat = userLocation?.latitude;
   const lon = userLocation?.longitude;
+  // radius est une vraie dépendance : changer le slider re-déclenche le fetch
   const radius = filters.radiusMeters;
   const filtersKey = JSON.stringify(filters);
 
-  // stableCoords : initialisé immédiatement si coords disponibles au montage
-  const [stableCoords, setStableCoords] = useState<{ lat: number; lon: number } | null>(
-    () => (lat != null && lon != null ? { lat, lon } : null),
-  );
-  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const cancelRef = useRef<(() => void) | null>(null);
-
-  // Debounce : ne relance que si déplacement > seuil
   useEffect(() => {
     if (lat == null || lon == null) return;
     if (debounceRef.current) clearTimeout(debounceRef.current);
@@ -92,30 +83,13 @@ export const useNearbyPlaces = (userLocation?: Coordinates) => {
     try {
       let osmPlaces: Place[] = [];
       try {
-        osmPlaces = await fetchNearbyOverpassPlaces(lat, lon, radius);
-      } catch (e) {
-        console.warn('[useNearbyPlaces] Overpass failed:', e);
-      }
-      if (cancelled) return;
+        // Source unique : Supabase DB (plus d'appel Overpass)
+        const dbPlaces = await fetchApprovedPlaces(lat, lon, radius);
+        console.log('[useNearbyPlaces] Supabase:', dbPlaces.length, 'lieux');
 
-      const supabaseResult = await fetchApprovedPlaces(lat, lon, radius).catch(() => []);
-      if (cancelled) return;
+        const normalized: Place[] = dbPlaces.map(normalizeSupabasePlace);
 
-      const userPlaces = supabaseResult.map(normalizeSupabasePlace);
-      const merged = deduplicatePlaces([...osmPlaces, ...userPlaces]);
-      const base = merged.length ? merged : mockPlaces;
-
-      const withDistance = base.map((place) => ({
-        ...place,
-        distanceMeters: haversineDistanceMeters(
-          lat, lon,
-          place.coordinates.latitude,
-          place.coordinates.longitude,
-        ),
-      }));
-
-      const ranked = rankPlaces(withDistance);
-      let enriched = ranked;
+        const base = normalized.length ? normalized : mockPlaces;
 
       if (isGoogleConfigured && ranked.length > 0) {
         const top = ranked.slice(0, 3);
@@ -158,19 +132,53 @@ export const useNearbyPlaces = (userLocation?: Coordinates) => {
             place.coordinates.longitude,
           ),
         }));
-        setPlaces(rankPlaces(fallback));
-        setTargetIndex(0);
+
+        const ranked = rankPlaces(withDistance);
+        let enriched = ranked;
+
+        if (isGoogleConfigured && ranked.length > 0) {
+          const top = ranked.slice(0, 3);
+          enriched = await Promise.all(
+            ranked.map(async (place) => {
+              if (!top.some((item) => item.id === place.id)) return place;
+              const results = await searchGooglePlacesText(
+                `${place.name} ${place.shortAddress ?? ''}`.trim(),
+              );
+              const googleId = results?.[0]?.id;
+              if (!googleId) return place;
+              const details = await fetchGooglePlaceDetails(googleId);
+              return details ? mergeGoogleDetails(place, details) : place;
+            }),
+          );
+        }
+
+        if (!cancelled) setPlaces(enriched);
+      } catch (e) {
+        console.error('[useNearbyPlaces] Erreur critique:', e);
+        if (!cancelled) {
+          setError('Impossible de charger les commerces, mode mock activé.');
+          const fallback = mockPlaces.map((place) => ({
+            ...place,
+            distanceMeters: haversineDistanceMeters(
+              lat, lon,
+              place.coordinates.latitude,
+              place.coordinates.longitude,
+            ),
+          }));
+          setPlaces(rankPlaces(fallback));
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
       }
     } finally {
       if (!cancelled) setLoading(false);
     }
   }, [setPlacesCache]);
 
-  // Déclenche load à chaque changement de coords stables, radius, filtres ou refreshTick
-  useEffect(() => {
-    if (stableCoords == null) return;
-    load(stableCoords.lat, stableCoords.lon, radius, filtersKey);
-  }, [stableCoords, radius, filtersKey, refreshTick, load]);
+    load();
+    return () => { cancelled = true; };
+  // radius est une vraie dépendance : le fetch se relance quand le slider change
+  }, [lat, lon, radius]);
 
   const filteredPlaces = useMemo(() => filterPlaces(places, filters), [filters, places]);
   const rankedPlaces = useMemo(() => rankPlaces(filteredPlaces), [filteredPlaces]);
@@ -193,36 +201,3 @@ export const useNearbyPlaces = (userLocation?: Coordinates) => {
     isGoogleConfigured,
   };
 };
-
-function deduplicatePlaces(places: Place[]): Place[] {
-  const result: Place[] = [];
-  for (const candidate of places) {
-    const isDuplicate = result.some((existing) => {
-      const d = haversineDistanceMeters(
-        existing.coordinates.latitude, existing.coordinates.longitude,
-        candidate.coordinates.latitude, candidate.coordinates.longitude,
-      );
-      if (d > 30) return false;
-      const nameA = existing.name.toLowerCase();
-      const nameB = candidate.name.toLowerCase();
-      return nameA === nameB || nameA.includes(nameB) || nameB.includes(nameA);
-    });
-    if (!isDuplicate) {
-      result.push(candidate);
-    } else {
-      const existingIdx = result.findIndex((e) => {
-        const d = haversineDistanceMeters(
-          e.coordinates.latitude, e.coordinates.longitude,
-          candidate.coordinates.latitude, candidate.coordinates.longitude,
-        );
-        return d <= 30;
-      });
-      if (existingIdx !== -1) {
-        const existing = result[existingIdx];
-        if ((candidate.qualityScore ?? 0) > (existing.qualityScore ?? 0))
-          result[existingIdx] = candidate;
-      }
-    }
-  }
-  return result;
-}
