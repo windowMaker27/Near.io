@@ -10,11 +10,21 @@ import { signOut, updateProfile } from '@/features/auth/authService';
 
 export default function ProfileScreen() {
   const t = useTheme();
-  const { profile, setProfile, reset } = useAuthStore();
+  const { profile, isLoading, setProfile, reset } = useAuthStore();
   const [username, setUsername] = useState(profile?.username ?? '');
-  const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Pendant le boot, Supabase restaure la session depuis MMKV de façon async.
+  // On attend la fin du chargement avant de décider si l'utilisateur est connecté.
+  if (isLoading) {
+    return (
+      <SafeAreaView style={{ flex: 1, backgroundColor: t.bg, justifyContent: 'center', alignItems: 'center' }}>
+        <ActivityIndicator color={t.accent} />
+      </SafeAreaView>
+    );
+  }
 
   if (!profile) {
     router.replace('/(auth)/login');
@@ -24,7 +34,7 @@ export default function ProfileScreen() {
   async function handleSave() {
     setError(null); setSuccess(false);
     if (!username.trim()) { setError('Username requis'); return; }
-    setLoading(true);
+    setSaving(true);
     try {
       await updateProfile(profile!.id, { username: username.trim() });
       setProfile({ ...profile!, username: username.trim() });
@@ -32,7 +42,7 @@ export default function ProfileScreen() {
     } catch (e: any) {
       setError(e.message ?? 'Erreur de mise à jour');
     } finally {
-      setLoading(false);
+      setSaving(false);
     }
   }
 
@@ -79,8 +89,8 @@ export default function ProfileScreen() {
         {error && <Text style={s.error}>{error}</Text>}
         {success && <Text style={s.successText}>Profil mis à jour ✓</Text>}
 
-        <TouchableOpacity style={[s.btn, loading && s.btnDisabled]} onPress={handleSave} disabled={loading}>
-          {loading
+        <TouchableOpacity style={[s.btn, saving && s.btnDisabled]} onPress={handleSave} disabled={saving}>
+          {saving
             ? <ActivityIndicator color={t.bg} />
             : <Text style={s.btnText}>ENREGISTRER</Text>}
         </TouchableOpacity>
