@@ -27,16 +27,18 @@ export default function MapScreen() {
   const { placeId } = useLocalSearchParams<{ placeId?: string }>();
   const { filters } = useFiltersStore();
 
-  // Camera ref stable — rendu inconditionnel pour éviter le ref stale
-  const cameraRef = useRef<any>(null);
   const tapCountRef = useRef(0);
   const detailVisibleRef = useRef(false);
-
   const coordsRef = useRef<[number, number] | null>(null);
+
   const [coords, setCoords] = useState<[number, number] | null>(null);
   const [userLocation, setUserLocation] = useState<Coordinates | undefined>();
+  // Chaque incrément force Camera à re-render avec les coords fraîches → recentrage fiable
+  const [recenterKey, setRecenterKey] = useState(0);
 
   const [tooltip, setTooltip] = useState<Place | null>(null);
+  // selectedId géré séparément pour le switch sans dépendre de tooltip
+  const [selectedId, setSelectedId] = useState('');
   const [detailPlace, setDetailPlace] = useState<Place | null>(null);
   const [detailVisible, setDetailVisible] = useState(false);
   const tooltipAnim = useRef(new Animated.Value(0)).current;
@@ -84,6 +86,7 @@ export default function MapScreen() {
 
   const showTooltip = (place: Place) => {
     setTooltip(place);
+    setSelectedId(place.id);
     tapCountRef.current = 0;
     Animated.spring(tooltipAnim, { toValue: 1, useNativeDriver: true, tension: 80, friction: 8 }).start();
   };
@@ -91,6 +94,7 @@ export default function MapScreen() {
   const hideTooltip = () => {
     Animated.timing(tooltipAnim, { toValue: 0, duration: 150, useNativeDriver: true }).start(() => {
       setTooltip(null);
+      setSelectedId('');
       tapCountRef.current = 0;
     });
   };
@@ -108,7 +112,9 @@ export default function MapScreen() {
     const found = places.find((p) => p.id === id);
     if (!found) return;
     if (detailVisibleRef.current) {
+      // Switch direct : met à jour place ET selectedId sans fermer le sheet
       setDetailPlace(found);
+      setSelectedId(found.id);
     } else {
       showTooltip(found);
     }
@@ -116,6 +122,7 @@ export default function MapScreen() {
 
   const openDetail = (place: Place) => {
     setDetailPlace(place);
+    setSelectedId(place.id);
     detailVisibleRef.current = true;
     setDetailVisible(true);
   };
@@ -123,19 +130,16 @@ export default function MapScreen() {
   const closeDetail = () => {
     detailVisibleRef.current = false;
     setDetailVisible(false);
+    setSelectedId('');
     setTimeout(() => setDetailPlace(null), 300);
   };
 
-  // Recentrage via Camera.setCamera — ref stable car Camera toujours monté
+  // Recentrage : incrémenter recenterKey force un nouveau rendu de <Camera>
+  // avec les coords fraîches depuis coordsRef → animationMode flyTo déclenché
   const recenter = () => {
-    const c = coordsRef.current;
-    if (!cameraRef.current || !c) return;
-    cameraRef.current.setCamera({
-      centerCoordinate: c,
-      zoomLevel: 14,
-      animationDuration: 800,
-      animationMode: 'flyTo',
-    });
+    if (!coordsRef.current) return;
+    setCoords([...coordsRef.current]);
+    setRecenterKey((k) => k + 1);
   };
 
   const handleBack = () => {
@@ -166,7 +170,6 @@ export default function MapScreen() {
     }] : [],
   };
 
-  const selectedId = tooltip?.id ?? detailPlace?.id ?? '';
   const accentHex: string = t.accent;
   const bgHex: string = t.bg;
   const radarFill = isDark ? 'rgba(231,76,60,0.04)' : 'rgba(231,76,60,0.03)';
@@ -191,11 +194,29 @@ export default function MapScreen() {
         attributionEnabled={false}
         onPress={handleMapPress}
       >
-        {/* Camera toujours montée pour que cameraRef soit stable */}
-        <Camera
-          ref={cameraRef}
-          defaultSettings={{ centerCoordinate: coords ?? [2.3522, 48.8566], zoomLevel: 14 }}
-        />
+        {/*
+          Camera conditionnelle sur coords (centrage initial propre à l'ouverture).
+          recenterKey force un démontage/remontage avec animationMode flyTo
+          uniquement quand l'user appuie sur recentrer.
+        */}
+        {coords && (
+          recenterKey === 0 ? (
+            <Camera
+              key="init"
+              centerCoordinate={coords}
+              zoomLevel={14}
+              animationMode="none"
+            />
+          ) : (
+            <Camera
+              key={`recenter-${recenterKey}`}
+              centerCoordinate={coords}
+              zoomLevel={14}
+              animationMode="flyTo"
+              animationDuration={800}
+            />
+          )
+        )}
 
         {circleGeoJSON && (
           <ShapeSource id="radar-circle" shape={circleGeoJSON}>
@@ -291,7 +312,6 @@ export default function MapScreen() {
         </Animated.View>
       )}
 
-      {/* Sheet rendu dans le même arbre — pointerEvents gérés en interne */}
       <PlaceDetailSheet
         visible={detailVisible}
         place={detailPlace}
