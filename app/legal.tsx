@@ -17,38 +17,13 @@ const CREDITS: { source: string; detail: string; url?: string }[] = [
   },
   {
     source: 'MapLibre GL',
-    detail: 'Moteur de rendu cartographique open-source.',
+    detail: 'Moteur de rendu cartographique open-source utilisé pour l'affichage des cartes.',
     url: 'https://maplibre.org',
   },
   {
-    source: 'Île-de-France Mobilités — Réseau métro RATP',
-    detail:
-      'Les données de transport en commun contiennent des informations fournies par Île-de-France Mobilités.',
-    url: 'https://data.iledefrance-mobilites.fr',
-  },
-  {
-    source: 'Île-de-France Mobilités — Réseau RER',
-    detail:
-      'Les données de transport en commun contiennent des informations fournies par Île-de-France Mobilités.',
-    url: 'https://data.iledefrance-mobilites.fr',
-  },
-  {
-    source: 'Île-de-France Mobilités — Réseau bus',
-    detail:
-      'Les données de transport en commun contiennent des informations fournies par Île-de-France Mobilités.',
-    url: 'https://data.iledefrance-mobilites.fr',
-  },
-  {
-    source: 'Île-de-France Mobilités — Réseau tramway',
-    detail:
-      'Les données de transport en commun contiennent des informations fournies par Île-de-France Mobilités.',
-    url: 'https://data.iledefrance-mobilites.fr',
-  },
-  {
-    source: 'Île-de-France Mobilités — Transilien',
-    detail:
-      'Les données de transport en commun contiennent des informations fournies par Île-de-France Mobilités.',
-    url: 'https://data.iledefrance-mobilites.fr',
+    source: 'Icons8',
+    detail: 'L'icône de recentrage (radar) est fournie par Icons8.',
+    url: 'https://icons8.com',
   },
 ];
 
@@ -90,11 +65,7 @@ export default function LegalScreen() {
 
       {/* Content */}
       <ScrollView contentContainerStyle={s.scroll} showsVerticalScrollIndicator={false}>
-        {tab === 'credits' ? (
-          <CreditsTab t={t} />
-        ) : (
-          <PrivacyTab t={t} />
-        )}
+        {tab === 'credits' ? <CreditsTab t={t} /> : <PrivacyTab t={t} />}
       </ScrollView>
     </SafeAreaView>
   );
@@ -207,18 +178,13 @@ const s = StyleSheet.create({
   backBtn: { minWidth: 64 },
   backLabel: { fontSize: theme.textSm },
   headerTitle: { fontSize: theme.textBase },
-  tabBar: {
-    flexDirection: 'row', borderBottomWidth: 1,
-  },
+  tabBar: { flexDirection: 'row', borderBottomWidth: 1 },
   tab: { flex: 1, alignItems: 'center', paddingVertical: 13 },
   tabLabel: { fontSize: theme.textSm },
   scroll: { padding: theme.pagePad, paddingBottom: 48 },
   section: { gap: 12 },
   sectionNote: { fontSize: 11, marginBottom: 4 },
-  card: {
-    borderWidth: 1, borderRadius: theme.radiusMd,
-    padding: theme.pagePad, gap: 6,
-  },
+  card: { borderWidth: 1, borderRadius: theme.radiusMd, padding: theme.pagePad, gap: 6 },
   cardSource: { fontSize: 11, letterSpacing: 1 },
   cardDetail: { fontSize: 13, lineHeight: 19 },
   cardLink: { fontSize: 11, textDecorationLine: 'underline' },
