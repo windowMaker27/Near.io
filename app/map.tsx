@@ -256,7 +256,7 @@ export default function MapScreen() {
         onPress={recenter}
       >
         <Image
-          source={require('@/assets/images/radar-button.png')}
+          source={require('../assets/images/radar-button.png')}
           style={styles.recenterIcon}
           resizeMode="contain"
         />
