@@ -39,7 +39,6 @@ export function BurgerMenu({ open, onClose, onSubmitPlace }: Props) {
   const accountLabel = session ? (profile?.username ?? 'Mon compte') : 'Se connecter / Créer un compte';
   const accountRoute = session ? '/profile' : '/(auth)/login';
 
-  // cycle: system → light → dark → system
   function cycleTheme() {
     if (mode === 'system') setMode('light');
     else if (mode === 'light') setMode('dark');
@@ -93,6 +92,14 @@ export function BurgerMenu({ open, onClose, onSubmitPlace }: Props) {
         <Pressable style={s.menuItem} onPress={() => { onClose(); onSubmitPlace(); }}>
           <Text style={[s.menuIcon, { color: t.textMuted, fontFamily: t.fontMono }]}>＋</Text>
           <Text style={[s.menuLabel, { color: t.text, fontFamily: t.fontMono }]}>Proposer un commerce</Text>
+        </Pressable>
+
+        <View style={[s.divider, { backgroundColor: t.border }]} />
+
+        {/* Mentions légales */}
+        <Pressable style={s.menuItem} onPress={() => { onClose(); router.push('/legal'); }}>
+          <Text style={[s.menuIcon, { color: t.textMuted, fontFamily: t.fontMono }]}>ⓘ</Text>
+          <Text style={[s.menuLabel, { color: t.text, fontFamily: t.fontMono }]}>Mentions légales</Text>
         </Pressable>
       </Animated.View>
     </Pressable>
