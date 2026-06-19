@@ -25,14 +25,21 @@ export default function MapScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { placeId } = useLocalSearchParams<{ placeId?: string }>();
-  const cameraRef = useRef<any>(null);
-  const tapCountRef = useRef(0);
   const { filters } = useFiltersStore();
 
+  // MapView ref pour flyTo (plus fiable que Camera.setCamera)
+  const mapRef = useRef<any>(null);
+  const tapCountRef = useRef(0);
+
+  // Ref mirror de detailVisible pour éviter les closures stales dans les handlers
+  const detailVisibleRef = useRef(false);
+
   const [userLocation, setUserLocation] = useState<Coordinates | undefined>();
+  // coords stocké en ref ET en state : ref pour recenter (toujours frais), state pour le rendu
+  const coordsRef = useRef<[number, number] | null>(null);
   const [coords, setCoords] = useState<[number, number] | null>(null);
+
   const [tooltip, setTooltip] = useState<Place | null>(null);
-  // détail ouvert indépendamment du tooltip — permet de changer de commerce sans fermer le sheet
   const [detailPlace, setDetailPlace] = useState<Place | null>(null);
   const [detailVisible, setDetailVisible] = useState(false);
   const tooltipAnim = useRef(new Animated.Value(0)).current;
@@ -47,16 +54,13 @@ export default function MapScreen() {
     ? { type: 'FeatureCollection', features: [makeCirclePolygon(coords[0], coords[1], filters.radiusMeters)] }
     : null;
 
-  // Récupère + suit la position
   useEffect(() => {
     let sub: Location.LocationSubscription | null = null;
     (async () => {
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== 'granted') return;
-      // Position initiale rapide
       const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
       applyLocation(loc.coords);
-      // Suivi continu pour que le recentrage soit toujours à jour
       sub = await Location.watchPositionAsync(
         { accuracy: Location.Accuracy.Balanced, distanceInterval: 5 },
         (l) => applyLocation(l.coords),
@@ -66,7 +70,9 @@ export default function MapScreen() {
   }, []);
 
   const applyLocation = (c: { latitude: number; longitude: number }) => {
-    setCoords([c.longitude, c.latitude]);
+    const next: [number, number] = [c.longitude, c.latitude];
+    coordsRef.current = next;  // toujours à jour, sans dépendance de render
+    setCoords(next);
     setUserLocation({ latitude: c.latitude, longitude: c.longitude });
   };
 
@@ -104,8 +110,8 @@ export default function MapScreen() {
     const id = feature.id as string;
     const found = places.find((p) => p.id === id);
     if (!found) return;
-    // Si le détail est ouvert, on switche directement vers le nouveau commerce
-    if (detailVisible) {
+    // Utilise la ref pour lire detailVisible sans closure stale
+    if (detailVisibleRef.current) {
       setDetailPlace(found);
     } else {
       showTooltip(found);
@@ -114,28 +120,25 @@ export default function MapScreen() {
 
   const openDetail = (place: Place) => {
     setDetailPlace(place);
+    detailVisibleRef.current = true;
     setDetailVisible(true);
   };
 
   const closeDetail = () => {
+    detailVisibleRef.current = false;
     setDetailVisible(false);
-    // Laisse un court délai avant de vider le place pour éviter le flash
     setTimeout(() => setDetailPlace(null), 300);
   };
 
-  // Recentrage — utilise coords déjà à jour via watchPosition
+  // Recentrage via flyTo sur MapView — fonctionne à chaque appel
   const recenter = () => {
-    if (!cameraRef.current || !coords) return;
-    cameraRef.current.setCamera({
-      centerCoordinate: coords,
-      zoomLevel: 14,
-      animationDuration: 800,
-      animationMode: 'flyTo',
-    });
+    const c = coordsRef.current;
+    if (!mapRef.current || !c) return;
+    mapRef.current.flyTo(c, 800);
   };
 
   const handleBack = () => {
-    if (detailVisible) {
+    if (detailVisibleRef.current) {
       closeDetail();
     } else {
       router.back();
@@ -165,7 +168,6 @@ export default function MapScreen() {
   const selectedId = tooltip?.id ?? detailPlace?.id ?? '';
   const accentHex: string = t.accent;
   const bgHex: string = t.bg;
-  const radarStroke = accentHex;
   const radarFill = isDark ? 'rgba(231,76,60,0.04)' : 'rgba(231,76,60,0.03)';
   const sweepFill = isDark ? 'rgba(231,76,60,0.18)' : 'rgba(231,76,60,0.12)';
 
@@ -182,6 +184,7 @@ export default function MapScreen() {
   return (
     <View style={styles.container}>
       <MapView
+        ref={mapRef}
         style={{ width, height }}
         mapStyle={mapStyle as any}
         logoEnabled={false}
@@ -189,13 +192,13 @@ export default function MapScreen() {
         onPress={handleMapPress}
       >
         {coords && (
-          <Camera ref={cameraRef} centerCoordinate={coords} zoomLevel={14} animationMode="none" />
+          <Camera centerCoordinate={coords} zoomLevel={14} animationMode="none" />
         )}
 
         {circleGeoJSON && (
           <ShapeSource id="radar-circle" shape={circleGeoJSON}>
             <FillLayer id="radar-fill" style={{ fillColor: radarFill, fillOpacity: 1 }} />
-            <LineLayer id="radar-border" style={{ lineColor: radarStroke, lineWidth: 1.5, lineOpacity: 0.6, lineDasharray: [4, 3] as any }} />
+            <LineLayer id="radar-border" style={{ lineColor: accentHex, lineWidth: 1.5, lineOpacity: 0.6, lineDasharray: [4, 3] as any }} />
           </ShapeSource>
         )}
 
@@ -242,7 +245,6 @@ export default function MapScreen() {
         <Text style={[styles.recenterIcon, { color: accentHex }]}>◎</Text>
       </Pressable>
 
-      {/* Tooltip commerce (visible si pas de detail ouvert) */}
       {tooltip && !detailVisible && (
         <Animated.View
           style={[
