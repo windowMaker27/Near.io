@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity,
   StyleSheet, SafeAreaView, ActivityIndicator, Alert,
@@ -16,8 +16,12 @@ export default function ProfileScreen() {
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Pendant le boot, Supabase restaure la session depuis MMKV de façon async.
-  // On attend la fin du chargement avant de décider si l'utilisateur est connecté.
+  useEffect(() => {
+    if (!isLoading && !profile) {
+      router.replace('/(auth)/login');
+    }
+  }, [isLoading, profile]);
+
   if (isLoading) {
     return (
       <SafeAreaView style={{ flex: 1, backgroundColor: t.bg, justifyContent: 'center', alignItems: 'center' }}>
@@ -26,10 +30,7 @@ export default function ProfileScreen() {
     );
   }
 
-  if (!profile) {
-    router.replace('/(auth)/login');
-    return null;
-  }
+  if (!profile) return null;
 
   async function handleSave() {
     setError(null); setSuccess(false);
