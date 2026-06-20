@@ -24,9 +24,7 @@
       "infoPlist": {
         "NSLocationWhenInUseUsageDescription": "Near.io utilise votre position pour vous guider vers le commerce alimentaire ouvert le plus proche.",
         "NSCameraUsageDescription": "Near.io utilise la caméra pour afficher le mode AR directionnel.",
-        "ITSAppUsesNonExemptEncryption": false,
-        "GADApplicationIdentifier": "ca-app-pub-7688202552948414~8808213287",
-        "GADDelayAppMeasurementInit": true
+        "ITSAppUsesNonExemptEncryption": false
       }
     },
     "android": {
