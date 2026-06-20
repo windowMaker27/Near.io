@@ -32,8 +32,8 @@ export default function RootLayout() {
     // En cas de module natif absent, ne pas faire planter le démarrage.
     try {
       const mod = require('@maplibre/maplibre-react-native');
-      setMapLibre(mod);
-      mod.setAccessToken('');
+      const mapLibreModule = (mod && (mod.default || mod)) as any;
+      mapLibreModule?.setAccessToken('');
     } catch (error) {
       console.warn('[MapLibre] unable to set access token', error);
     }
