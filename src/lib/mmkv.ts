@@ -1,15 +1,15 @@
 /**
  * Storage adapter universel — interface 100% async (Promise).
  *
- * - Expo Go (appOwnership === 'expo')  → AsyncStorage
- * - Dev build / EAS / prod             → MMKV wrappé en Promise
+ * - Expo Go (executionEnvironment === 'storeClient')  → AsyncStorage
+ * - Dev build / EAS / prod                            → MMKV wrappé en Promise
  *
  * Interface zustand createJSONStorage compatible : toujours Promise.
  * Les stores n'ont JAMAIS à importer AsyncStorage ou MMKV directement.
  */
-import Constants from 'expo-constants';
+import Constants, { ExecutionEnvironment } from 'expo-constants';
 
-const isExpoGo = Constants.appOwnership === 'expo';
+const isExpoGo = Constants.executionEnvironment === ExecutionEnvironment.StoreClient;
 
 type AsyncStorage = {
   getItem(key: string): Promise<string | null>;
