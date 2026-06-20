@@ -61,8 +61,7 @@
         {
           "androidAppId": "ca-app-pub-3940256099942544~3347511713",
           "iosAppId": "ca-app-pub-7688202552948414~8808213287",
-          "delayAppMeasurementInit": true,
-          "userTrackingUsageDescription": false
+          "delayAppMeasurementInit": true
         }
       ]
     ],
