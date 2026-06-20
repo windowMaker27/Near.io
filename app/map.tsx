@@ -55,7 +55,11 @@ export default function MapScreen() {
   useEffect(() => {
     try {
       const mod = require('@maplibre/maplibre-react-native');
-      setMapLibre((mod && mod.default) ? mod.default : mod);
+      const resolved = (mod && (mod.default || mod)) as any;
+      if (resolved?.setAccessToken) {
+        resolved.setAccessToken('');
+      }
+      setMapLibre(resolved);
     } catch (error) {
       console.warn('[MapScreen] MapLibre module unavailable', error);
     }

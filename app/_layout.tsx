@@ -28,15 +28,7 @@ export default function RootLayout() {
   const t = useTheme();
 
   useEffect(() => {
-    // MapLibre requiert setAccessToken même sans Mapbox — chaîne vide pour OFM.
-    // En cas de module natif absent, ne pas faire planter le démarrage.
-    try {
-      const mod = require('@maplibre/maplibre-react-native');
-      const mapLibreModule = (mod && (mod.default || mod)) as any;
-      mapLibreModule?.setAccessToken('');
-    } catch (error) {
-      console.warn('[MapLibre] unable to set access token', error);
-    }
+    console.warn('[JS Startup] RootLayout mounted');
   }, []);
 
   if (!fontsLoaded) return null;
