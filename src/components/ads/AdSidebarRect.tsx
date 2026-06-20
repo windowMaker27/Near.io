@@ -1,15 +1,25 @@
+import { useEffect, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
-import { BannerAd, BannerAdSize, TestIds } from 'react-native-google-mobile-ads';
 import { AD_UNIT_IDS } from '@/constants/adUnits';
 import { useAdsStore } from '@/store/adsStore';
 
-const TEST_BANNER_ID = TestIds.BANNER;
-
 export function AdSidebarRect() {
   const adsRemoved = useAdsStore((s) => s.adsRemoved);
-  if (adsRemoved) return null;
+  const [adModule, setAdModule] = useState<any>(null);
 
-  const unitId = __DEV__ ? TEST_BANNER_ID : AD_UNIT_IDS.sidebar;
+  useEffect(() => {
+    try {
+      const mod = require('react-native-google-mobile-ads');
+      setAdModule(mod);
+    } catch (error) {
+      console.warn('[AdSidebarRect] google-mobile-ads unavailable', error);
+    }
+  }, []);
+
+  if (adsRemoved || !adModule) return null;
+
+  const { BannerAd, BannerAdSize, TestIds } = adModule;
+  const unitId = __DEV__ ? TestIds.BANNER : AD_UNIT_IDS.sidebar;
 
   return (
     <View style={s.wrapper}>

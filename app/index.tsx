@@ -67,15 +67,30 @@ export default function CompassScreen() {
   }, [deltaAngle]);
 
   const askPermission = async () => {
-    const status = await requestLocationPermission();
-    setLocationPermission(status as any);
-    if (status === 'granted') {
-      const sub = await watchPosition((coords) => setUserLocation(coords));
-      return () => sub.remove();
+    try {
+      const status = await requestLocationPermission();
+      setLocationPermission(status as any);
+      if (status === 'granted') {
+        const sub = await watchPosition((coords) => setUserLocation(coords));
+        return () => sub.remove();
+      }
+    } catch (error) {
+      console.warn('[CompassScreen] location permission/watch failed', error);
     }
+    return undefined;
   };
 
-  useEffect(() => { askPermission(); }, []);
+  useEffect(() => {
+    let cleanup: void | (() => void);
+    askPermission().then((result) => {
+      cleanup = result;
+    });
+    return () => {
+      if (typeof cleanup === 'function') {
+        cleanup();
+      }
+    };
+  }, []);
 
   if (locationPermission !== 'granted') {
     return <PermissionGate onPress={askPermission} />;

@@ -9,33 +9,60 @@
  */
 import Constants from 'expo-constants';
 
+declare function require(moduleName: string): any;
+
 const isExpoGo = Constants.appOwnership === 'expo';
 
-type AsyncStorage = {
+type StorageAdapter = {
   getItem(key: string): Promise<string | null>;
   setItem(key: string, value: string): Promise<void>;
   removeItem(key: string): Promise<void>;
 };
 
-let _storage: AsyncStorage;
-
-if (isExpoGo) {
+function createAsyncStorageAdapter(): StorageAdapter {
   // eslint-disable-next-line @typescript-eslint/no-var-requires
-  const AS = require('@react-native-async-storage/async-storage').default;
-  _storage = {
-    getItem: (key) => AS.getItem(key),
-    setItem: (key, value) => AS.setItem(key, value),
-    removeItem: (key) => AS.removeItem(key),
-  };
-} else {
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
-  const { MMKV } = require('react-native-mmkv');
-  const mmkv = new MMKV({ id: 'near-io-storage' });
-  _storage = {
-    getItem: (key) => Promise.resolve(mmkv.getString(key) ?? null),
-    setItem: (key, value) => Promise.resolve(mmkv.set(key, value)),
-    removeItem: (key) => Promise.resolve(mmkv.delete(key)),
+  const AsyncStorage = require('@react-native-async-storage/async-storage').default;
+  return {
+    getItem: (key) => AsyncStorage.getItem(key),
+    setItem: (key, value) => AsyncStorage.setItem(key, value),
+    removeItem: (key) => AsyncStorage.removeItem(key),
   };
 }
 
-export const storage = _storage;
+function createMmkvAdapter(): StorageAdapter | null {
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const { MMKV } = require('react-native-mmkv');
+    const mmkv = new MMKV({ id: 'near-io-storage' });
+    return {
+      getItem: (key) => Promise.resolve(mmkv.getString(key) ?? null),
+      setItem: (key, value) => Promise.resolve(mmkv.set(key, value)),
+      removeItem: (key) => Promise.resolve(mmkv.delete(key)),
+    };
+  } catch (error) {
+    console.warn('[mmkv] unavailable, falling back to AsyncStorage', error);
+    return null;
+  }
+}
+
+let _storage: StorageAdapter | null = null;
+
+function getStorageAdapter(): StorageAdapter {
+  if (_storage) {
+    return _storage;
+  }
+
+  if (isExpoGo) {
+    _storage = createAsyncStorageAdapter();
+  } else {
+    _storage = createMmkvAdapter() ?? createAsyncStorageAdapter();
+  }
+
+  return _storage;
+}
+
+export const storage: StorageAdapter = {
+  getItem: (key) => getStorageAdapter().getItem(key),
+  setItem: (key, value) => getStorageAdapter().setItem(key, value),
+  removeItem: (key) => getStorageAdapter().removeItem(key),
+};

@@ -2,7 +2,6 @@ import { useEffect, useRef, useState } from 'react';
 import { Animated, Dimensions, Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import MapLibre from '@maplibre/maplibre-react-native';
 import * as Location from 'expo-location';
 import { useTheme } from '@/hooks/useTheme';
 import { nearMapStyleDark, nearMapStyleLight } from '@/features/maplibre/style/nearMapStyle';
@@ -15,15 +14,30 @@ import { useFiltersStore } from '@/store/filtersStore';
 import { makeCirclePolygon } from '@/utils/geoCircle';
 import { useRadarSweep } from '@/hooks/useRadarSweep';
 
-const { MapView, Camera, ShapeSource, CircleLayer, FillLayer, LineLayer } = MapLibre;
 const { width, height } = Dimensions.get('window');
 
 export default function MapScreen() {
+  const [mapLibre, setMapLibre] = useState<any>(null);
+
+  useEffect(() => {
+    try {
+      const mod = require('@maplibre/maplibre-react-native');
+      setMapLibre(mod);
+    } catch (error) {
+      console.warn('[MapScreen] MapLibre module unavailable', error);
+    }
+  }, []);
   const t = useTheme();
   const isDark = t.bg === '#080808';
   const mapStyle = isDark ? nearMapStyleDark : nearMapStyleLight;
   const insets = useSafeAreaInsets();
   const router = useRouter();
+
+  if (!mapLibre) {
+    return <View style={[styles.container, { backgroundColor: t.bg }]} />;
+  }
+
+  const { MapView, Camera, ShapeSource, CircleLayer, FillLayer, LineLayer } = mapLibre;
   const { placeId } = useLocalSearchParams<{ placeId?: string }>();
   const { filters } = useFiltersStore();
 
@@ -54,14 +68,18 @@ export default function MapScreen() {
   useEffect(() => {
     let sub: Location.LocationSubscription | null = null;
     (async () => {
-      const { status } = await Location.requestForegroundPermissionsAsync();
-      if (status !== 'granted') return;
-      const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
-      applyLocation(loc.coords);
-      sub = await Location.watchPositionAsync(
-        { accuracy: Location.Accuracy.Balanced, distanceInterval: 5 },
-        (l) => applyLocation(l.coords),
-      );
+      try {
+        const { status } = await Location.requestForegroundPermissionsAsync();
+        if (status !== 'granted') return;
+        const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+        applyLocation(loc.coords);
+        sub = await Location.watchPositionAsync(
+          { accuracy: Location.Accuracy.Balanced, distanceInterval: 5 },
+          (l) => applyLocation(l.coords),
+        );
+      } catch (error) {
+        console.warn('[MapScreen] location initialization failed', error);
+      }
     })();
     return () => { sub?.remove(); };
   }, []);

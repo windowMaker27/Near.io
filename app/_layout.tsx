@@ -1,5 +1,5 @@
 import 'react-native-gesture-handler';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { Stack } from 'expo-router';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -12,7 +12,6 @@ import {
 } from '@expo-google-fonts/jetbrains-mono';
 import { useAuthInit } from '@/features/auth/useAuth';
 import { useTheme } from '@/hooks/useTheme';
-import MapLibre from '@maplibre/maplibre-react-native';
 
 function AppInitializer() {
   useAuthInit();
@@ -29,8 +28,15 @@ export default function RootLayout() {
   const t = useTheme();
 
   useEffect(() => {
-    // MapLibre requiert setAccessToken même sans Mapbox — chaîne vide pour OFM
-    MapLibre.setAccessToken('');
+    // MapLibre requiert setAccessToken même sans Mapbox — chaîne vide pour OFM.
+    // En cas de module natif absent, ne pas faire planter le démarrage.
+    try {
+      const mod = require('@maplibre/maplibre-react-native');
+      setMapLibre(mod);
+      mod.setAccessToken('');
+    } catch (error) {
+      console.warn('[MapLibre] unable to set access token', error);
+    }
   }, []);
 
   if (!fontsLoaded) return null;

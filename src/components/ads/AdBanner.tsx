@@ -1,10 +1,7 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
-import { BannerAd, BannerAdSize, TestIds } from 'react-native-google-mobile-ads';
 import { AD_UNIT_IDS, AdSlot } from '@/constants/adUnits';
 import { useAdsStore } from '@/store/adsStore';
-
-const TEST_BANNER_ID = TestIds.BANNER;
 
 interface Props {
   slot: Extract<AdSlot, 'compass_top' | 'compass_bottom'>;
@@ -13,10 +10,22 @@ interface Props {
 export function AdBanner({ slot }: Props) {
   const adsRemoved = useAdsStore((s) => s.adsRemoved);
   const [adFailed, setAdFailed] = useState(false);
+  const [adModule, setAdModule] = useState<any>(null);
 
-  if (adsRemoved || adFailed) return null;
+  useEffect(() => {
+    try {
+      const mod = require('react-native-google-mobile-ads');
+      setAdModule(mod);
+    } catch (error) {
+      console.warn('[AdBanner] google-mobile-ads unavailable', error);
+      setAdFailed(true);
+    }
+  }, []);
 
-  const unitId = __DEV__ ? TEST_BANNER_ID : AD_UNIT_IDS[slot];
+  if (adsRemoved || adFailed || !adModule) return null;
+
+  const { BannerAd, BannerAdSize, TestIds } = adModule;
+  const unitId = __DEV__ ? TestIds.BANNER : AD_UNIT_IDS[slot];
   const isTop = slot === 'compass_top';
 
   return (
