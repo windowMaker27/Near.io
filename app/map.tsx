@@ -52,17 +52,38 @@ export default function MapScreen() {
     ? { type: 'FeatureCollection', features: [makeCirclePolygon(coords[0], coords[1], filters.radiusMeters)] }
     : null;
 
+  // Chargement lazy de MapLibre — jamais au top-level pour éviter
+  // tout crash JSI/TurboModule au boot sur New Architecture (release build).
+  // setAccessToken est appelé dans un try/catch séparé pour ne pas
+  // faire avorter le chargement du module si la méthode native n'est
+  // pas encore disponible (race condition New Arch au démarrage).
   useEffect(() => {
+    let isMounted = true;
+
     try {
       const mod = require('@maplibre/maplibre-react-native');
       const resolved = (mod && (mod.default || mod)) as any;
-      if (resolved?.setAccessToken) {
-        resolved.setAccessToken('');
+
+      if (resolved) {
+        // Appel natif isolé : s'il échoue (TurboModule pas encore prêt),
+        // le module est quand même utilisable pour le rendu.
+        try {
+          if (typeof resolved.setAccessToken === 'function') {
+            resolved.setAccessToken('');
+          }
+        } catch (tokenError) {
+          console.warn('[MapScreen] setAccessToken failed (non-fatal)', tokenError);
+        }
+
+        if (isMounted) {
+          setMapLibre(resolved);
+        }
       }
-      setMapLibre(resolved);
     } catch (error) {
       console.warn('[MapScreen] MapLibre module unavailable', error);
     }
+
+    return () => { isMounted = false; };
   }, []);
 
   useEffect(() => {
@@ -267,7 +288,6 @@ export default function MapScreen() {
         )}
       </MapView>
 
-      {/* Bouton retour — haut gauche */}
       <Pressable
         style={[styles.backBtn, { top: insets.top + 12, backgroundColor: t.surface, borderColor: t.border }]}
         onPress={handleBack}
@@ -275,7 +295,6 @@ export default function MapScreen() {
         <Text style={[styles.backLabel, { color: t.text, fontFamily: t.fontMono }]}>← Retour</Text>
       </Pressable>
 
-      {/* Bouton recentrer — haut droite */}
       <Pressable
         style={[styles.recenterBtn, { top: insets.top + 12, backgroundColor: t.surface, borderColor: t.border }]}
         onPress={recenter}
