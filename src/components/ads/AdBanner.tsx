@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { BannerAd, BannerAdSize, TestIds } from 'react-native-google-mobile-ads';
 import { AD_UNIT_IDS, AdSlot } from '@/constants/adUnits';
@@ -11,7 +12,9 @@ interface Props {
 
 export function AdBanner({ slot }: Props) {
   const adsRemoved = useAdsStore((s) => s.adsRemoved);
-  if (adsRemoved) return null;
+  const [adFailed, setAdFailed] = useState(false);
+
+  if (adsRemoved || adFailed) return null;
 
   const unitId = __DEV__ ? TEST_BANNER_ID : AD_UNIT_IDS[slot];
   const isTop = slot === 'compass_top';
@@ -22,6 +25,7 @@ export function AdBanner({ slot }: Props) {
         unitId={unitId}
         size={isTop ? BannerAdSize.LARGE_BANNER : BannerAdSize.BANNER}
         requestOptions={{ requestNonPersonalizedAdsOnly: false }}
+        onAdFailedToLoad={() => setAdFailed(true)}
       />
     </View>
   );
