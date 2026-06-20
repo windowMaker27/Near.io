@@ -14,9 +14,6 @@ import { useAuthInit } from '@/features/auth/useAuth';
 import { useTheme } from '@/hooks/useTheme';
 import MapLibre from '@maplibre/maplibre-react-native';
 
-// MapLibre requiert setAccessToken même sans Mapbox — chaîne vide pour OFM
-MapLibre.setAccessToken('');
-
 function AppInitializer() {
   useAuthInit();
   return null;
@@ -30,6 +27,11 @@ export default function RootLayout() {
   });
 
   const t = useTheme();
+
+  useEffect(() => {
+    // MapLibre requiert setAccessToken même sans Mapbox — chaîne vide pour OFM
+    MapLibre.setAccessToken('');
+  }, []);
 
   if (!fontsLoaded) return null;
 
