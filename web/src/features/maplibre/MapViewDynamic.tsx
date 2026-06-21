@@ -7,7 +7,7 @@
 import dynamic from 'next/dynamic';
 
 export const MapViewDynamic = dynamic(
-  () => import('./MapView').then((m) => ({ default: m.MapView })),
+  () => import('./MapView'),
   {
     ssr: false,
     loading: () => (
