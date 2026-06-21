@@ -6,6 +6,7 @@ import { PlaceCard } from '@/features/places/PlaceCard';
 import { PlaceDetailSheet } from '@/features/places/PlaceDetailSheet';
 import { AdBanner } from '@/features/ads/AdBanner';
 import { BottomNav } from '@/components/BottomNav';
+import { BurgerMenu } from '@/components/BurgerMenu';
 import { useLocationStore } from '@/store/locationStore';
 import { watchPosition, getCurrentPosition } from '@/services/locationService';
 import { useFiltersStore } from '@/store/filtersStore';
@@ -18,30 +19,24 @@ export default function HomePage() {
   const [selected, setSelected] = useState<Place | null>(null);
   const [requesting, setRequesting] = useState(false);
 
-  // Au montage : vérifier si la permission est déjà accordée
   useEffect(() => {
     if (!navigator.geolocation) return;
     navigator.permissions
       .query({ name: 'geolocation' })
       .then((result) => {
         if (result.state === 'granted') {
-          // Permission déjà accordée — on lance le watch directement
           const stop = watchPosition(() => {});
           return () => stop();
         }
-        // Sinon on attend l'action utilisateur
       })
       .catch(() => {});
   }, []);
 
   const handleRequestLocation = async () => {
     setRequesting(true);
-    await getCurrentPosition(); // demande la permission + stocke dans locationStore
+    await getCurrentPosition();
     setRequesting(false);
-    // Une fois la permission accordée, on lance le watch continu
-    const stop = watchPosition(() => {});
-    // cleanup au démontage si besoin — acceptable ici car page principale
-    return stop;
+    watchPosition(() => {});
   };
 
   const userCoords = coords
@@ -51,108 +46,76 @@ export default function HomePage() {
   const { places, loading, error } = useNearbyPlaces(userCoords);
 
   // ── PERMISSION GATE ──────────────────────────────────────────────────────
-  if (permissionState === 'idle' || permissionState === 'denied' || permissionState === 'unavailable') {
-    if (!coords) {
-      return (
-        <main
+  if ((permissionState === 'idle' || permissionState === 'denied' || permissionState === 'unavailable') && !coords) {
+    return (
+      <main
+        style={{
+          minHeight: '100dvh',
+          backgroundColor: 'var(--color-bg)',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: 'var(--space-8)',
+          gap: 'var(--space-6)',
+        }}
+      >
+        <div style={{ fontSize: 48 }}>📍</div>
+        <h1
           style={{
-            minHeight: '100dvh',
-            backgroundColor: 'var(--color-bg)',
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            justifyContent: 'center',
-            padding: 'var(--space-8)',
-            gap: 'var(--space-6)',
+            fontFamily: 'var(--font-display)',
+            fontSize: 'var(--text-xl)',
+            color: 'var(--color-text)',
+            margin: 0,
+            textAlign: 'center',
           }}
         >
-          <div style={{ fontSize: 48 }}>📍</div>
-          <h1
-            style={{
-              fontFamily: 'var(--font-display)',
-              fontSize: 'var(--text-xl)',
-              color: 'var(--color-text)',
-              margin: 0,
-              textAlign: 'center',
-            }}
-          >
-            near<span style={{ color: 'var(--color-primary)' }}>.</span>
-          </h1>
-          {permissionState === 'denied' ? (
-            <p
+          near<span style={{ color: 'var(--color-primary)' }}>.</span>
+        </h1>
+        {permissionState === 'denied' ? (
+          <p style={{ color: 'var(--color-error)', fontSize: 'var(--text-sm)', textAlign: 'center', maxWidth: '32ch', margin: 0 }}>
+            Géolocalisation refusée. Autorise l&apos;accès dans les réglages du navigateur.
+          </p>
+        ) : permissionState === 'unavailable' ? (
+          <p style={{ color: 'var(--color-text-muted)', fontSize: 'var(--text-sm)', textAlign: 'center', maxWidth: '32ch', margin: 0 }}>
+            Géolocalisation non disponible sur cet appareil.
+          </p>
+        ) : (
+          <>
+            <p style={{ color: 'var(--color-text-muted)', fontSize: 'var(--text-sm)', textAlign: 'center', maxWidth: '30ch', margin: 0 }}>
+              Découvre les commerces autour de toi. Active ta position pour commencer.
+            </p>
+            <button
+              onClick={handleRequestLocation}
+              disabled={requesting}
               style={{
-                color: 'var(--color-error)',
+                backgroundColor: 'var(--color-primary)',
+                color: '#fff',
+                border: 'none',
+                borderRadius: 'var(--radius-lg)',
+                padding: 'var(--space-4) var(--space-8)',
                 fontSize: 'var(--text-sm)',
-                textAlign: 'center',
-                maxWidth: '32ch',
-                margin: 0,
+                fontWeight: 600,
+                cursor: requesting ? 'wait' : 'pointer',
+                opacity: requesting ? 0.7 : 1,
+                minWidth: 200,
               }}
             >
-              Géolocalisation refusée. Autorise l'accès à ta position dans les réglages du navigateur.
-            </p>
-          ) : permissionState === 'unavailable' ? (
-            <p
-              style={{
-                color: 'var(--color-text-muted)',
-                fontSize: 'var(--text-sm)',
-                textAlign: 'center',
-                maxWidth: '32ch',
-                margin: 0,
-              }}
-            >
-              Géolocalisation non disponible sur cet appareil.
-            </p>
-          ) : (
-            <>
-              <p
-                style={{
-                  color: 'var(--color-text-muted)',
-                  fontSize: 'var(--text-sm)',
-                  textAlign: 'center',
-                  maxWidth: '30ch',
-                  margin: 0,
-                }}
-              >
-                Découvre les commerces autour de toi. Active ta position pour commencer.
-              </p>
-              <button
-                onClick={handleRequestLocation}
-                disabled={requesting}
-                style={{
-                  backgroundColor: 'var(--color-primary)',
-                  color: '#fff',
-                  border: 'none',
-                  borderRadius: 'var(--radius-lg)',
-                  padding: 'var(--space-4) var(--space-8)',
-                  fontSize: 'var(--text-sm)',
-                  fontWeight: 600,
-                  cursor: requesting ? 'wait' : 'pointer',
-                  opacity: requesting ? 0.7 : 1,
-                  minWidth: 200,
-                }}
-              >
-                {requesting ? 'Localisation…' : 'Activer ma position'}
-              </button>
-            </>
-          )}
-        </main>
-      );
-    }
+              {requesting ? 'Localisation…' : 'Activer ma position'}
+            </button>
+          </>
+        )}
+      </main>
+    );
   }
 
   // ── VUE PRINCIPALE ───────────────────────────────────────────────────────
   return (
-    <main
-      style={{
-        minHeight: '100dvh',
-        backgroundColor: 'var(--color-bg)',
-        paddingBottom: '80px',
-      }}
-    >
+    <main style={{ minHeight: '100dvh', backgroundColor: 'var(--color-bg)', paddingBottom: '80px' }}>
       {/* Header sticky */}
       <header
         style={{
-          padding: 'var(--space-6) var(--space-5) var(--space-4)',
+          padding: 'var(--space-4) var(--space-5)',
           borderBottom: '1px solid var(--color-border)',
           position: 'sticky', top: 0,
           backgroundColor: 'var(--color-bg)',
@@ -161,7 +124,8 @@ export default function HomePage() {
           WebkitBackdropFilter: 'blur(12px)',
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 'var(--space-3)' }}>
+          {/* Logo */}
           <div>
             <h1
               style={{
@@ -181,47 +145,44 @@ export default function HomePage() {
             </p>
           </div>
 
-          {/* Filtre rayon rapide */}
-          <select
-            value={filters.radiusMeters}
-            onChange={(e) => setFilters({ radiusMeters: Number(e.target.value) })}
-            aria-label="Rayon de recherche"
-            style={{
-              backgroundColor: 'var(--color-surface)',
-              border: '1px solid var(--color-border)',
-              borderRadius: 'var(--radius-md)',
-              padding: 'var(--space-2) var(--space-3)',
-              fontSize: 'var(--text-xs)',
-              color: 'var(--color-text-muted)',
-              cursor: 'pointer',
-            }}
-          >
-            <option value={200}>200 m</option>
-            <option value={500}>500 m</option>
-            <option value={1000}>1 km</option>
-            <option value={2000}>2 km</option>
-            <option value={5000}>5 km</option>
-          </select>
+          {/* Contrôles droite */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)' }}>
+            {/* Filtre rayon */}
+            <select
+              value={filters.radiusMeters}
+              onChange={(e) => setFilters({ radiusMeters: Number(e.target.value) })}
+              aria-label="Rayon de recherche"
+              style={{
+                backgroundColor: 'var(--color-surface)',
+                border: '1px solid var(--color-border)',
+                borderRadius: 'var(--radius-md)',
+                padding: 'var(--space-2) var(--space-3)',
+                fontSize: 'var(--text-xs)',
+                color: 'var(--color-text-muted)',
+                cursor: 'pointer',
+              }}
+            >
+              <option value={200}>200 m</option>
+              <option value={500}>500 m</option>
+              <option value={1000}>1 km</option>
+              <option value={2000}>2 km</option>
+              <option value={5000}>5 km</option>
+            </select>
+
+            {/* Burger */}
+            <BurgerMenu />
+          </div>
         </div>
       </header>
 
       {/* AdSense banner */}
       <AdBanner style={{ margin: 'var(--space-3) var(--space-5) 0', minHeight: 60 }} />
 
-      {/* Liste */}
+      {/* Liste places */}
       <div style={{ padding: 'var(--space-4) var(--space-5)', display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
-        {loading && (
-          Array.from({ length: 4 }).map((_, i) => (
-            <div
-              key={i}
-              className="skeleton"
-              style={{
-                height: 80,
-                borderRadius: 'var(--radius-xl)',
-              }}
-            />
-          ))
-        )}
+        {loading && Array.from({ length: 4 }).map((_, i) => (
+          <div key={i} className="skeleton" style={{ height: 80, borderRadius: 'var(--radius-xl)' }} />
+        ))}
 
         {!loading && error && (
           <div style={{ textAlign: 'center', padding: 'var(--space-8)', color: 'var(--color-error)', fontSize: 'var(--text-sm)' }}>
@@ -232,12 +193,8 @@ export default function HomePage() {
         {!loading && !error && places.length === 0 && coords && (
           <div style={{ textAlign: 'center', padding: 'var(--space-16) var(--space-8)', color: 'var(--color-text-muted)' }}>
             <div style={{ fontSize: 40, marginBottom: 'var(--space-4)' }}>📍</div>
-            <p style={{ fontWeight: 600, color: 'var(--color-text)', marginBottom: 'var(--space-2)' }}>
-              Aucun commerce trouvé
-            </p>
-            <p style={{ fontSize: 'var(--text-sm)', maxWidth: '28ch', margin: '0 auto' }}>
-              Essaie d'augmenter le rayon de recherche.
-            </p>
+            <p style={{ fontWeight: 600, color: 'var(--color-text)', marginBottom: 'var(--space-2)' }}>Aucun commerce trouvé</p>
+            <p style={{ fontSize: 'var(--text-sm)', maxWidth: '28ch', margin: '0 auto' }}>Essaie d&apos;augmenter le rayon de recherche.</p>
           </div>
         )}
 
