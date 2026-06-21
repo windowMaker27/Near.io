@@ -4,81 +4,104 @@ import { useEffect, useRef } from 'react';
 import { useCompass } from '@/hooks/useCompass';
 
 const ACCENT = '#00d4aa';
+const ACCENT_ALIGNED = '#51cf66';
 const SIZE = 280;
+const ALIGNMENT_THRESHOLD_DEG = 12;
 
 type Props = {
-  targetBearing?: number | null; // degrés vers le lieu cible
+  /** Bearing absolu vers le lieu cible (0-359, 0 = Nord géo) */
+  targetBearing?: number | null;
   placeName?: string | null;
   distance?: string | null;
 };
 
 /**
- * CompassRing — boussole SVG animée
+ * CompassRing — guidage directionnel vers un commerce
  *
- * Reprend la logique visuelle de la boussole RN (rotation du cadran,
- * flèche rouge vers le Nord, flèche teal vers la cible).
+ * Affiche UNE seule flèche qui pointe vers le lieu cible.
+ * Le Nord n'apparaît pas — ce n'est pas une boussole cartographique,
+ * c'est un guidage proximité.
  *
- * Sur iOS, un bouton "Activer la boussole" appelle requestPermission()
- * sur un geste utilisateur (exigence Apple).
+ * Formule : relativeAngle = (targetBearing - heading + 360) % 360
+ * La flèche tourne dans le SVG fixe — l'anneau ne bouge plus.
+ * Quand |relativeAngle| < seuil : feedback "En face" + couleur verte.
+ *
+ * Permission iOS : bouton déclenché sur geste utilisateur (exigence Apple).
  */
 export function CompassRing({ targetBearing = null, placeName, distance }: Props) {
   const { heading, granted, supported, requestPermission, error } = useCompass();
-  const ringRef = useRef<SVGGElement>(null);
-  const targetArrowRef = useRef<SVGLineElement>(null);
-  const prevHeadingRef = useRef<number | null>(null);
+  const arrowRef = useRef<SVGPolygonElement>(null);
+  const arrowLineRef = useRef<SVGLineElement>(null);
+  const ringRef = useRef<SVGCircleElement>(null);
+  const prevAngleRef = useRef<number>(0);
 
   const needsPermission =
     supported &&
     !granted &&
     typeof (DeviceOrientationEvent as unknown as { requestPermission?: unknown }).requestPermission === 'function';
 
-  // Animation fluide du cadran
+  // Calcul angle relatif vers la cible
+  const relativeAngle: number | null =
+    targetBearing != null && heading != null
+      ? (targetBearing - heading + 360) % 360
+      : targetBearing != null
+      ? targetBearing // pas de heading encore : on affiche le bearing brut
+      : null;
+
+  // Normalisation [-180, 180] pour détecter gauche/droite
+  const normalizedAngle: number | null =
+    relativeAngle != null
+      ? relativeAngle > 180 ? relativeAngle - 360 : relativeAngle
+      : null;
+
+  const isAligned =
+    normalizedAngle != null && Math.abs(normalizedAngle) < ALIGNMENT_THRESHOLD_DEG;
+
+  const arrowColor = isAligned ? ACCENT_ALIGNED : ACCENT;
+  const ringColor = isAligned ? ACCENT_ALIGNED : 'var(--color-border)';
+
+  // Animation fluide de la flèche (gère le passage 359->0)
   useEffect(() => {
-    if (heading == null || !ringRef.current) return;
-    const prev = prevHeadingRef.current ?? heading;
-    // Gère le passage 359 -> 0
-    let delta = heading - prev;
+    if (relativeAngle == null || !arrowRef.current || !arrowLineRef.current) return;
+    const prev = prevAngleRef.current;
+    let delta = relativeAngle - prev;
     if (delta > 180) delta -= 360;
     if (delta < -180) delta += 360;
     const next = prev + delta;
-    prevHeadingRef.current = next;
-    ringRef.current.style.transition = 'transform 150ms ease-out';
-    ringRef.current.style.transform = `rotate(${-next}deg)`;
-  }, [heading]);
+    prevAngleRef.current = next;
 
-  // Flèche vers la cible
-  useEffect(() => {
-    if (targetBearing == null || !targetArrowRef.current) return;
-    // La cible est relative au Nord : flèche tourne avec le heading
-    const angle = targetBearing; // bearing absolu — le cadran tourne déjà
-    const rad = (angle - 90) * (Math.PI / 180);
     const cx = SIZE / 2;
     const cy = SIZE / 2;
-    const r1 = 30;
-    const r2 = 100;
-    const x1 = cx + r1 * Math.cos(rad);
-    const y1 = cy + r1 * Math.sin(rad);
-    const x2 = cx + r2 * Math.cos(rad);
-    const y2 = cy + r2 * Math.sin(rad);
-    targetArrowRef.current.setAttribute('x1', String(x1));
-    targetArrowRef.current.setAttribute('y1', String(y1));
-    targetArrowRef.current.setAttribute('x2', String(x2));
-    targetArrowRef.current.setAttribute('y2', String(y2));
-    targetArrowRef.current.style.opacity = '1';
-  }, [targetBearing, heading]);
+    arrowRef.current.style.transition = 'transform 180ms cubic-bezier(0.16,1,0.3,1)';
+    arrowRef.current.style.transformOrigin = `${cx}px ${cy}px`;
+    arrowRef.current.style.transform = `rotate(${next}deg)`;
+    arrowLineRef.current.style.transition = 'transform 180ms cubic-bezier(0.16,1,0.3,1)';
+    arrowLineRef.current.style.transformOrigin = `${cx}px ${cy}px`;
+    arrowLineRef.current.style.transform = `rotate(${next}deg)`;
+  }, [relativeAngle]);
+
+  // Couleur anneau via attribut SVG
+  useEffect(() => {
+    if (!ringRef.current) return;
+    ringRef.current.setAttribute('stroke', isAligned ? ACCENT_ALIGNED : 'var(--color-border)');
+  }, [isAligned]);
 
   const cx = SIZE / 2;
   const cy = SIZE / 2;
-  const r = 120;
+  const R = 110;
 
-  const cardinals = [
-    { label: 'N', angle: 0, color: '#ef4444' },
-    { label: 'E', angle: 90, color: '#aaa' },
-    { label: 'S', angle: 180, color: '#aaa' },
-    { label: 'O', angle: 270, color: '#aaa' },
-  ];
-
-  const ticks = Array.from({ length: 72 }, (_, i) => i * 5);
+  // Label directionnel
+  const directionLabel = (): string => {
+    if (targetBearing == null) return 'Sélectionne un commerce';
+    if (heading == null) return 'Activation...';
+    if (isAligned) return 'En face ✔';
+    if (normalizedAngle != null) {
+      if (Math.abs(normalizedAngle) < 45) return 'Tout droit';
+      if (normalizedAngle > 0) return 'Tourne à droite';
+      return 'Tourne à gauche';
+    }
+    return '';
+  };
 
   return (
     <div
@@ -90,102 +113,95 @@ export function CompassRing({ targetBearing = null, placeName, distance }: Props
         userSelect: 'none',
       }}
     >
-      {/* Boussole SVG */}
+      {/* SVG boussole */}
       <div style={{ position: 'relative', width: SIZE, height: SIZE }}>
         <svg
           width={SIZE}
           height={SIZE}
           viewBox={`0 0 ${SIZE} ${SIZE}`}
-          aria-label={`Boussole, cap : ${heading != null ? `${Math.round(heading)}°` : 'inconnu'}`}
+          aria-label={targetBearing != null ? `Direction vers ${placeName ?? 'la cible'}` : 'Aucun lieu sélectionné'}
         >
           {/* Fond */}
-          <circle cx={cx} cy={cy} r={r + 16} fill="var(--color-surface)" stroke="var(--color-border)" strokeWidth={1} />
+          <circle cx={cx} cy={cy} r={R + 20} fill="var(--color-surface)" />
 
-          {/* Groupe rotatif (cadran + ticks + cardinaux) */}
-          <g ref={ringRef} style={{ transformOrigin: `${cx}px ${cy}px` }}>
-            {/* Ticks */}
-            {ticks.map((deg) => {
-              const rad = (deg - 90) * (Math.PI / 180);
-              const isMajor = deg % 90 === 0;
-              const isMid = deg % 45 === 0;
-              const rInner = r - (isMajor ? 14 : isMid ? 10 : 6);
-              return (
-                <line
-                  key={deg}
-                  x1={cx + r * Math.cos(rad)}
-                  y1={cy + r * Math.sin(rad)}
-                  x2={cx + rInner * Math.cos(rad)}
-                  y2={cy + rInner * Math.sin(rad)}
-                  stroke={isMajor ? '#888' : '#444'}
-                  strokeWidth={isMajor ? 2 : 1}
-                />
-              );
-            })}
-
-            {/* Cardinaux */}
-            {cardinals.map(({ label, angle, color }) => {
-              const rad = (angle - 90) * (Math.PI / 180);
-              const rLabel = r - 28;
-              return (
-                <text
-                  key={label}
-                  x={cx + rLabel * Math.cos(rad)}
-                  y={cy + rLabel * Math.sin(rad)}
-                  fill={color}
-                  fontSize={14}
-                  fontWeight={700}
-                  textAnchor="middle"
-                  dominantBaseline="central"
-                  fontFamily="var(--font-mono)"
-                >
-                  {label}
-                </text>
-              );
-            })}
-          </g>
-
-          {/* Flèche Nord fixe (pointe toujours vers le haut) */}
-          <line
-            x1={cx}
-            y1={cy}
-            x2={cx}
-            y2={cy - 80}
-            stroke="#ef4444"
-            strokeWidth={3}
-            strokeLinecap="round"
-          />
-          <polygon
-            points={`${cx},${cy - 90} ${cx - 6},${cy - 70} ${cx + 6},${cy - 70}`}
-            fill="#ef4444"
+          {/* Anneau */}
+          <circle
+            ref={ringRef}
+            cx={cx} cy={cy} r={R}
+            fill="none"
+            stroke="var(--color-border)"
+            strokeWidth={1.5}
+            style={{ transition: 'stroke 300ms' }}
           />
 
-          {/* Flèche vers la cible (teal) */}
-          <line
-            ref={targetArrowRef}
-            x1={cx}
-            y1={cy}
-            x2={cx}
-            y2={cy - 100}
-            stroke={ACCENT}
-            strokeWidth={2.5}
-            strokeLinecap="round"
-            strokeDasharray="6 3"
-            style={{ opacity: targetBearing != null ? 1 : 0, transition: 'opacity 200ms' }}
-          />
+          {/* Ticks minimalistes (juste 4 repères discrets, sans lettre) */}
+          {[0, 90, 180, 270].map((deg) => {
+            const rad = (deg - 90) * (Math.PI / 180);
+            const x1 = cx + R * Math.cos(rad);
+            const y1 = cy + R * Math.sin(rad);
+            const x2 = cx + (R - 10) * Math.cos(rad);
+            const y2 = cy + (R - 10) * Math.sin(rad);
+            return (
+              <line
+                key={deg}
+                x1={x1} y1={y1} x2={x2} y2={y2}
+                stroke="var(--color-border)"
+                strokeWidth={2}
+              />
+            );
+          })}
+
+          {/* Flèche vers la cible (tourne selon relativeAngle) */}
+          {relativeAngle != null ? (
+            <>
+              <line
+                ref={arrowLineRef}
+                x1={cx}
+                y1={cy + 20}
+                x2={cx}
+                y2={cy - 80}
+                stroke={arrowColor}
+                strokeWidth={3}
+                strokeLinecap="round"
+                style={{ transition: 'stroke 300ms' }}
+              />
+              <polygon
+                ref={arrowRef}
+                points={`${cx},${cy - 92} ${cx - 8},${cy - 72} ${cx + 8},${cy - 72}`}
+                fill={arrowColor}
+                style={{ transition: 'fill 300ms' }}
+              />
+              {/* Contre-flèche (queue) */}
+              <polygon
+                points={`${cx},${cy + 28} ${cx - 5},${cy + 14} ${cx + 5},${cy + 14}`}
+                fill="var(--color-border)"
+                style={{
+                  transformOrigin: `${cx}px ${cy}px`,
+                  transform: arrowRef.current?.style.transform ?? 'rotate(0deg)',
+                  transition: 'transform 180ms cubic-bezier(0.16,1,0.3,1)',
+                }}
+              />
+            </>
+          ) : (
+            /* Pas de lieu : cercle central discret */
+            <circle cx={cx} cy={cy} r={8} fill="var(--color-border)" />
+          )}
 
           {/* Point central */}
-          <circle cx={cx} cy={cy} r={5} fill={ACCENT} />
+          <circle cx={cx} cy={cy} r={5} fill={relativeAngle != null ? arrowColor : 'var(--color-border)'} style={{ transition: 'fill 300ms' }} />
 
-          {/* Heading text */}
+          {/* Label directionnel sous l'anneau */}
           <text
             x={cx}
-            y={cy + r + 28}
-            fill="var(--color-text-muted)"
-            fontSize={12}
-            fontFamily="var(--font-mono)"
+            y={cy + R + 30}
+            fill={isAligned ? ACCENT_ALIGNED : 'var(--color-text-muted)'}
+            fontSize={13}
+            fontWeight={isAligned ? 700 : 400}
+            fontFamily="var(--font-body)"
             textAnchor="middle"
+            style={{ transition: 'fill 300ms' }}
           >
-            {heading != null ? `${Math.round(heading)}°` : '---'}
+            {directionLabel()}
           </text>
         </svg>
       </div>
@@ -205,7 +221,7 @@ export function CompassRing({ targetBearing = null, placeName, distance }: Props
             cursor: 'pointer',
           }}
         >
-          Activer la boussole
+          Activer la direction
         </button>
       )}
 
@@ -215,14 +231,14 @@ export function CompassRing({ targetBearing = null, placeName, distance }: Props
         </p>
       )}
 
-      {/* Info lieu cible */}
+      {/* Infos lieu */}
       {placeName && (
         <div style={{ textAlign: 'center' }}>
-          <p style={{ color: 'var(--color-text)', fontWeight: 600, fontSize: 'var(--text-base)', margin: 0 }}>
+          <p style={{ color: 'var(--color-text)', fontWeight: 700, fontSize: 'var(--text-lg)', margin: 0 }}>
             {placeName}
           </p>
           {distance && (
-            <p style={{ color: 'var(--color-text-muted)', fontSize: 'var(--text-sm)', margin: 0 }}>
+            <p style={{ color: 'var(--color-text-muted)', fontSize: 'var(--text-sm)', margin: '4px 0 0' }}>
               {distance}
             </p>
           )}
