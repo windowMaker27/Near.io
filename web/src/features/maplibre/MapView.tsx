@@ -38,7 +38,12 @@ export default function MapView({ onPlaceSelect }: Props) {
 
   const coords = useLocationStore((s) => s.coords);
   const { filters } = useFiltersStore();
-  const { places } = useNearbyPlaces();
+
+  // Pass coords so the hook actually fetches places
+  const userCoords: Coordinates | undefined = coords
+    ? { latitude: coords.latitude, longitude: coords.longitude }
+    : undefined;
+  const { places } = useNearbyPlaces(userCoords);
 
   const sweepGeoJSON = useRadarSweep(
     coords?.longitude ?? null,
@@ -63,9 +68,6 @@ export default function MapView({ onPlaceSelect }: Props) {
       if (cancelled || !containerRef.current) return;
 
       const dark = isDarkTheme();
-      const radarFill = dark ? 'rgba(231,76,60,0.04)' : 'rgba(231,76,60,0.03)';
-      const sweepFill = dark ? 'rgba(231,76,60,0.18)' : 'rgba(231,76,60,0.12)';
-
       map = new MLMap({
         container: containerRef.current,
         style: dark ? nearMapStyleDark : nearMapStyleLight,
@@ -76,53 +78,7 @@ export default function MapView({ onPlaceSelect }: Props) {
 
       map.on('load', () => {
         if (cancelled) { map.remove(); return; }
-
-        const dark2 = isDarkTheme();
-        const rf = dark2 ? 'rgba(231,76,60,0.04)' : 'rgba(231,76,60,0.03)';
-        const sf = dark2 ? 'rgba(231,76,60,0.18)' : 'rgba(231,76,60,0.12)';
-
-        map.addSource('user-dot', { type: 'geojson', data: emptyFC() });
-        map.addSource('radar-circle', { type: 'geojson', data: emptyFC() });
-        map.addSource('radar-sweep', { type: 'geojson', data: emptyFC() });
-        map.addSource('places', { type: 'geojson', data: emptyFC() });
-
-        map.addLayer({ id: 'radar-fill', type: 'fill', source: 'radar-circle', paint: { 'fill-color': rf } });
-        map.addLayer({ id: 'radar-stroke', type: 'line', source: 'radar-circle', paint: { 'line-color': ACCENT, 'line-width': 1.2, 'line-opacity': 0.6 } });
-        map.addLayer({ id: 'radar-sweep-layer', type: 'fill', source: 'radar-sweep', paint: { 'fill-color': sf } });
-
-        map.addLayer({
-          id: 'places-circle', type: 'circle', source: 'places',
-          paint: {
-            'circle-radius': 7,
-            'circle-color': ['case',
-              ['==', ['get', 'openingStatus'], 'open'], OPEN_COLOR,
-              ['==', ['get', 'openingStatus'], 'closed'], CLOSED_COLOR,
-              '#888',
-            ],
-            'circle-stroke-width': 1.5,
-            'circle-stroke-color': '#fff',
-          },
-        });
-
-        map.addLayer({
-          id: 'places-label', type: 'symbol', source: 'places',
-          layout: {
-            'text-field': ['get', 'name'],
-            'text-size': 11,
-            'text-offset': [0, 1.4],
-            'text-anchor': 'top',
-            'text-optional': true,
-            'text-font': ['Noto Sans Regular'],
-          },
-          paint: {
-            'text-color': dark2 ? '#cccccc' : '#111111',
-            'text-halo-color': dark2 ? '#080808' : '#ffffff',
-            'text-halo-width': 1.5,
-          },
-        });
-
-        map.addLayer({ id: 'user-dot-layer', type: 'circle', source: 'user-dot', paint: { 'circle-radius': 8, 'circle-color': ACCENT, 'circle-stroke-width': 2, 'circle-stroke-color': '#fff' } });
-
+        addOverlayLayers(map);
         mapRef.current = map;
         setMapReady(true);
       });
@@ -148,46 +104,16 @@ export default function MapView({ onPlaceSelect }: Props) {
   useEffect(() => {
     if (!mapReady || !mapRef.current) return;
     const map = mapRef.current;
-
     const observer = new MutationObserver(() => {
       const dark = isDarkTheme();
       map.setStyle(dark ? nearMapStyleDark : nearMapStyleLight);
-
-      // Re-add overlay sources/layers after style change
-      map.once('style.load', () => {
-        const rf = dark ? 'rgba(231,76,60,0.04)' : 'rgba(231,76,60,0.03)';
-        const sf = dark ? 'rgba(231,76,60,0.18)' : 'rgba(231,76,60,0.12)';
-
-        map.addSource('user-dot', { type: 'geojson', data: emptyFC() });
-        map.addSource('radar-circle', { type: 'geojson', data: emptyFC() });
-        map.addSource('radar-sweep', { type: 'geojson', data: emptyFC() });
-        map.addSource('places', { type: 'geojson', data: emptyFC() });
-
-        map.addLayer({ id: 'radar-fill', type: 'fill', source: 'radar-circle', paint: { 'fill-color': rf } });
-        map.addLayer({ id: 'radar-stroke', type: 'line', source: 'radar-circle', paint: { 'line-color': ACCENT, 'line-width': 1.2, 'line-opacity': 0.6 } });
-        map.addLayer({ id: 'radar-sweep-layer', type: 'fill', source: 'radar-sweep', paint: { 'fill-color': sf } });
-        map.addLayer({
-          id: 'places-circle', type: 'circle', source: 'places',
-          paint: {
-            'circle-radius': 7,
-            'circle-color': ['case', ['==', ['get', 'openingStatus'], 'open'], OPEN_COLOR, ['==', ['get', 'openingStatus'], 'closed'], CLOSED_COLOR, '#888'],
-            'circle-stroke-width': 1.5, 'circle-stroke-color': '#fff',
-          },
-        });
-        map.addLayer({
-          id: 'places-label', type: 'symbol', source: 'places',
-          layout: { 'text-field': ['get', 'name'], 'text-size': 11, 'text-offset': [0, 1.4], 'text-anchor': 'top', 'text-optional': true, 'text-font': ['Noto Sans Regular'] },
-          paint: { 'text-color': dark ? '#cccccc' : '#111111', 'text-halo-color': dark ? '#080808' : '#ffffff', 'text-halo-width': 1.5 },
-        });
-        map.addLayer({ id: 'user-dot-layer', type: 'circle', source: 'user-dot', paint: { 'circle-radius': 8, 'circle-color': ACCENT, 'circle-stroke-width': 2, 'circle-stroke-color': '#fff' } });
-      });
+      map.once('style.load', () => addOverlayLayers(map));
     });
-
     observer.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
     return () => observer.disconnect();
   }, [mapReady]);
 
-  // ── Update user dot + radar circle ─────────────────────────────────
+  // ── Update user dot + radar circle ────────────────────────────────
   useEffect(() => {
     const map = mapRef.current;
     if (!mapReady || !map || !coords) return;
@@ -208,7 +134,7 @@ export default function MapView({ onPlaceSelect }: Props) {
     (map.getSource('radar-sweep') as GeoJSONSource)?.setData(sweepGeoJSON);
   }, [mapReady, sweepGeoJSON]);
 
-  // ── Update places ───────────────────────────────────────────────────
+  // ── Update places ──────────────────────────────────────────────────
   const updatePlaces = useCallback(() => {
     const map = mapRef.current;
     if (!mapReady || !map) return;
@@ -229,14 +155,14 @@ export default function MapView({ onPlaceSelect }: Props) {
 
   useEffect(() => { updatePlaces(); }, [updatePlaces]);
 
-  // ── Center on user ─────────────────────────────────────────────────
+  // ── Center on user ────────────────────────────────────────────────
   useEffect(() => {
     const map = mapRef.current;
     if (!mapReady || !map || !coords) return;
     map.easeTo({ center: [coords.longitude, coords.latitude], duration: 600 });
   }, [mapReady, coords]);
 
-  // ── Watch location ────────────────────────────────────────────────
+  // ── Watch location ───────────────────────────────────────────────
   useEffect(() => {
     return watchPosition((c: Coordinates) => useLocationStore.getState().setCoords(c));
   }, []);
@@ -248,4 +174,61 @@ export default function MapView({ onPlaceSelect }: Props) {
       aria-label="Carte des commerces \u00e0 proximit\u00e9"
     />
   );
+}
+
+// ── Helper: add all overlay sources + layers ────────────────────────────────
+function addOverlayLayers(map: MapLibreMap) {
+  const dark = isDarkTheme();
+  const rf = dark ? 'rgba(231,76,60,0.04)' : 'rgba(231,76,60,0.03)';
+  const sf = dark ? 'rgba(231,76,60,0.18)' : 'rgba(231,76,60,0.12)';
+
+  const emptyFC: FeatureCollection = { type: 'FeatureCollection', features: [] };
+
+  if (!map.getSource('user-dot'))    map.addSource('user-dot',     { type: 'geojson', data: emptyFC });
+  if (!map.getSource('radar-circle')) map.addSource('radar-circle', { type: 'geojson', data: emptyFC });
+  if (!map.getSource('radar-sweep'))  map.addSource('radar-sweep',  { type: 'geojson', data: emptyFC });
+  if (!map.getSource('places'))       map.addSource('places',        { type: 'geojson', data: emptyFC });
+
+  if (!map.getLayer('radar-fill'))        map.addLayer({ id: 'radar-fill',        type: 'fill',   source: 'radar-circle', paint: { 'fill-color': rf } });
+  if (!map.getLayer('radar-stroke'))      map.addLayer({ id: 'radar-stroke',      type: 'line',   source: 'radar-circle', paint: { 'line-color': ACCENT, 'line-width': 1.2, 'line-opacity': 0.6 } });
+  if (!map.getLayer('radar-sweep-layer')) map.addLayer({ id: 'radar-sweep-layer', type: 'fill',   source: 'radar-sweep',  paint: { 'fill-color': sf } });
+
+  if (!map.getLayer('places-circle')) {
+    map.addLayer({
+      id: 'places-circle', type: 'circle', source: 'places',
+      paint: {
+        'circle-radius': 7,
+        'circle-color': ['case',
+          ['==', ['get', 'openingStatus'], 'open'],   OPEN_COLOR,
+          ['==', ['get', 'openingStatus'], 'closed'], CLOSED_COLOR,
+          '#888',
+        ],
+        'circle-stroke-width': 1.5,
+        'circle-stroke-color': '#fff',
+      },
+    });
+  }
+
+  if (!map.getLayer('places-label')) {
+    map.addLayer({
+      id: 'places-label', type: 'symbol', source: 'places',
+      layout: {
+        'text-field': ['get', 'name'],
+        'text-size': 11,
+        'text-offset': [0, 1.4],
+        'text-anchor': 'top',
+        'text-optional': true,
+        'text-font': ['Noto Sans Regular'],
+      },
+      paint: {
+        'text-color':       dark ? '#cccccc' : '#111111',
+        'text-halo-color':  dark ? '#080808' : '#ffffff',
+        'text-halo-width': 1.5,
+      },
+    });
+  }
+
+  if (!map.getLayer('user-dot-layer')) {
+    map.addLayer({ id: 'user-dot-layer', type: 'circle', source: 'user-dot', paint: { 'circle-radius': 8, 'circle-color': ACCENT, 'circle-stroke-width': 2, 'circle-stroke-color': '#fff' } });
+  }
 }
