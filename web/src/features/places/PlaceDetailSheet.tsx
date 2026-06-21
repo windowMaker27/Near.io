@@ -1,11 +1,5 @@
 'use client';
 
-/**
- * PlaceDetailSheet — drawer bottom sheet pour les détails d’un lieu
- *
- * Utilise une simple div avec animation CSS (pas de dépendance Vaul / Radix
- * pour éviter d’alourdir le bundle). Compatible mobile + desktop.
- */
 import { useEffect, useRef } from 'react';
 import type { Place } from '@/types/place';
 import { PLACE_TYPE_LABELS } from '@/constants/placeTypes';
@@ -28,8 +22,8 @@ type Props = {
 export function PlaceDetailSheet({ place, onClose }: Props) {
   const overlayRef = useRef<HTMLDivElement>(null);
   const coords = useLocationStore((s) => s.coords);
-  const { toggleFavorite, favorites } = useFavoritesStore();
-  const isFav = favorites.includes(place.id);
+  const { isFavorite, addFavorite, removeFavorite } = useFavoritesStore();
+  const isFav = isFavorite(place.id);
   const router = useRouter();
 
   const bearing = coords
@@ -39,14 +33,12 @@ export function PlaceDetailSheet({ place, onClose }: Props) {
       )
     : null;
 
-  // Fermer sur Escape
   useEffect(() => {
     const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
   }, [onClose]);
 
-  // Bloquer le scroll body
   useEffect(() => {
     document.body.style.overflow = 'hidden';
     return () => { document.body.style.overflow = ''; };
@@ -56,6 +48,21 @@ export function PlaceDetailSheet({ place, onClose }: Props) {
     useAppStore.getState().setSelectedPlace(place);
     router.push('/compass');
   };
+
+  const handleFavToggle = () => {
+    if (isFav) removeFavorite(place.id);
+    else addFavorite(place);
+  };
+
+  const statusColor =
+    place.openingStatus === 'open' ? OPEN_COLOR
+    : place.openingStatus === 'closed' ? CLOSED_COLOR
+    : '#888';
+
+  const statusLabel =
+    place.openingStatus === 'open'
+      ? `Ouvert${place.closingTime ? ` jusqu'\u00e0 ${place.closingTime}` : ''}`
+      : place.openingStatus === 'closed' ? 'Ferm\u00e9' : 'Horaires inconnus';
 
   return (
     <>
@@ -75,7 +82,7 @@ export function PlaceDetailSheet({ place, onClose }: Props) {
       <div
         role="dialog"
         aria-modal="true"
-        aria-label={`Détails : ${place.name}`}
+        aria-label={`D\u00e9tails : ${place.name}`}
         style={{
           position: 'fixed', bottom: 0, left: 0, right: 0,
           zIndex: 101,
@@ -112,103 +119,79 @@ export function PlaceDetailSheet({ place, onClose }: Props) {
         </div>
 
         {/* Status + distance */}
-        <div style={{ display: 'flex', gap: 'var(--space-3)', flexWrap: 'wrap' }}>
-          <span
-            style={{
-              fontSize: 'var(--text-xs)',
-              color: place.openingStatus === 'open' ? OPEN_COLOR : place.openingStatus === 'closed' ? CLOSED_COLOR : '#888',
-              backgroundColor: 'var(--color-surface-offset)',
-              borderRadius: 'var(--radius-full)',
-              padding: 'var(--space-1) var(--space-3)',
-              fontWeight: 500,
-            }}
-          >
-            {place.openingStatus === 'open'
-              ? `● Ouvert${place.closingTime ? ` jusqu'à ${place.closingTime}` : ''}`
-              : place.openingStatus === 'closed' ? '● Fermé' : '● Horaires inconnus'}
+        <div style={{ display: 'flex', gap: 'var(--space-4)', alignItems: 'center' }}>
+          <span style={{ fontSize: 'var(--text-sm)', color: statusColor, fontWeight: 600 }}>
+            ● {statusLabel}
           </span>
           {place.distanceMeters != null && (
-            <span style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)', backgroundColor: 'var(--color-surface-offset)', borderRadius: 'var(--radius-full)', padding: 'var(--space-1) var(--space-3)' }}>
+            <span style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-muted)' }}>
               {formatDistance(place.distanceMeters)}
-            </span>
-          )}
-          {bearing != null && (
-            <span style={{ fontSize: 'var(--text-xs)', color: ACCENT, backgroundColor: 'var(--color-surface-offset)', borderRadius: 'var(--radius-full)', padding: 'var(--space-1) var(--space-3)' }}>
-              {Math.round(bearing)}°
             </span>
           )}
         </div>
 
         {/* Adresse */}
-        {place.address && (
+        {place.shortAddress && (
           <p style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-muted)', margin: 0 }}>
-            📍 {place.address}
+            📍 {place.shortAddress}
           </p>
         )}
 
-        {/* Téléphone */}
-        {place.phone && (
-          <a
-            href={`tel:${place.phone}`}
-            style={{ fontSize: 'var(--text-sm)', color: 'var(--color-primary)', textDecoration: 'none' }}
-          >
-            📞 {place.phone}
-          </a>
-        )}
-
-        {/* Website */}
-        {place.website && (
-          <a
-            href={place.website}
-            target="_blank"
-            rel="noopener noreferrer"
-            style={{ fontSize: 'var(--text-sm)', color: 'var(--color-primary)', wordBreak: 'break-all', textDecoration: 'none' }}
-          >
-            🌐 {place.website}
-          </a>
+        {/* Horaires */}
+        {place.openingHoursText && (
+          <div>
+            <p style={{ fontSize: 'var(--text-xs)', fontWeight: 600, color: 'var(--color-text-muted)', marginBottom: 'var(--space-1)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              Horaires
+            </p>
+            {place.openingHoursText.map((line, i) => (
+              <p key={i} style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)', margin: '2px 0' }}>{line}</p>
+            ))}
+          </div>
         )}
 
         {/* Actions */}
         <div style={{ display: 'flex', gap: 'var(--space-3)', marginTop: 'var(--space-2)' }}>
           <button
-            onClick={navigateToCompass}
+            onClick={handleFavToggle}
             style={{
               flex: 1,
-              backgroundColor: 'var(--color-primary)',
-              color: 'var(--color-text-inverse)',
-              border: 'none',
+              padding: 'var(--space-3)',
               borderRadius: 'var(--radius-md)',
-              padding: 'var(--space-3) var(--space-4)',
+              border: `1px solid ${isFav ? '#f59e0b' : 'var(--color-border)'}`,
+              backgroundColor: isFav ? 'oklch(from #f59e0b l c h / 0.12)' : 'var(--color-surface)',
+              color: isFav ? '#f59e0b' : 'var(--color-text-muted)',
               fontWeight: 600,
               fontSize: 'var(--text-sm)',
               cursor: 'pointer',
             }}
           >
-            🧭 S’y rendre
+            {isFav ? '\u2605 Retirer' : '\u2606 Favori'}
           </button>
           <button
-            aria-label={isFav ? 'Retirer des favoris' : 'Ajouter aux favoris'}
-            onClick={() => toggleFavorite(place.id)}
+            onClick={navigateToCompass}
             style={{
-              width: 44, height: 44,
-              borderRadius: 'var(--radius-full)',
-              border: '1px solid var(--color-border)',
-              backgroundColor: 'var(--color-surface-offset)',
-              fontSize: 20,
+              flex: 1,
+              padding: 'var(--space-3)',
+              borderRadius: 'var(--radius-md)',
+              border: `1px solid ${ACCENT}`,
+              backgroundColor: 'oklch(from #00d4aa l c h / 0.1)',
+              color: ACCENT,
+              fontWeight: 600,
+              fontSize: 'var(--text-sm)',
               cursor: 'pointer',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              color: isFav ? '#f59e0b' : 'var(--color-text-faint)',
             }}
           >
-            {isFav ? '★' : '☆'}
+            🦭 Boussole
           </button>
         </div>
-      </div>
 
-      <style>{`
-        @keyframes fadeIn { from { opacity: 0 } to { opacity: 1 } }
-        @keyframes slideUp { from { transform: translateY(100%) } to { transform: translateY(0) } }
-      `}</style>
+        {/* Direction */}
+        {bearing != null && (
+          <p style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-faint)', textAlign: 'center' }}>
+            Direction : {Math.round(bearing)}\u00b0
+          </p>
+        )}
+      </div>
     </>
   );
 }

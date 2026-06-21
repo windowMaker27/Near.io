@@ -1,14 +1,14 @@
 'use client';
 
 import { useFiltersStore } from '@/store/filtersStore';
-import { useTheme } from '@/hooks/useTheme';
+import { useThemeStore } from '@/store/themeStore';
 import { BottomNav } from '@/components/BottomNav';
 
 const RADIUS_OPTIONS = [200, 500, 1000, 2000, 5000];
 
 export default function SettingsPage() {
   const { filters, setFilters } = useFiltersStore();
-  const { theme, setTheme } = useTheme();
+  const { mode, setMode } = useThemeStore();
 
   return (
     <main
@@ -35,15 +35,15 @@ export default function SettingsPage() {
             {(['light', 'dark', 'system'] as const).map((t) => (
               <button
                 key={t}
-                onClick={() => setTheme(t)}
+                onClick={() => setMode(t)}
                 style={{
                   flex: 1,
                   padding: 'var(--space-3)',
                   borderRadius: 'var(--radius-md)',
-                  border: `1px solid ${theme === t ? 'var(--color-primary)' : 'var(--color-border)'}`,
-                  backgroundColor: theme === t ? 'var(--color-primary-highlight)' : 'var(--color-surface)',
-                  color: theme === t ? 'var(--color-primary)' : 'var(--color-text-muted)',
-                  fontWeight: theme === t ? 700 : 400,
+                  border: `1px solid ${mode === t ? 'var(--color-primary)' : 'var(--color-border)'}`,
+                  backgroundColor: mode === t ? 'var(--color-primary-highlight)' : 'var(--color-surface)',
+                  color: mode === t ? 'var(--color-primary)' : 'var(--color-text-muted)',
+                  fontWeight: mode === t ? 700 : 400,
                   fontSize: 'var(--text-sm)',
                   cursor: 'pointer',
                   textTransform: 'capitalize',

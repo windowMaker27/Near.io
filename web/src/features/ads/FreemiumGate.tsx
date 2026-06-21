@@ -6,9 +6,9 @@ import { useAdsStore } from '@/store/adsStore';
  * FreemiumGate — remplace le paywall AdMob "Remove Ads"
  *
  * Flow :
- * 1. L’utilisateur clique "Supprimer les pubs"
+ * 1. L'utilisateur clique "Supprimer les pubs"
  * 2. On redirige vers /api/checkout (Lemon Squeezy checkout)
- * 3. Après paiement, webhook /api/webhook/lemonsqueezy met removeAds=true en DB
+ * 3. Après paiement, webhook /api/webhook/lemonsqueezy met adsRemoved=true en DB
  * 4. Le store adsStore est rafraîchi via useRemoveAds au montage
  */
 
@@ -18,8 +18,8 @@ type Props = {
 };
 
 export function FreemiumGate({ children, fallback }: Props) {
-  const { removeAds } = useAdsStore();
-  return removeAds ? <>{children}</> : <>{fallback ?? null}</>;
+  const { adsRemoved } = useAdsStore();
+  return adsRemoved ? <>{children}</> : <>{fallback ?? null}</>;
 }
 
 export function RemoveAdsButton() {

@@ -4,9 +4,7 @@ import type { Place } from '@/types/place';
 import { PLACE_TYPE_LABELS } from '@/constants/placeTypes';
 import { formatDistance } from '@/features/compass/utils/distance';
 import { useFavoritesStore } from '@/store/favoritesStore';
-import { useAdsStore } from '@/store/adsStore';
 
-const ACCENT = '#00d4aa';
 const OPEN_COLOR = '#51cf66';
 const CLOSED_COLOR = '#ff6b6b';
 
@@ -17,9 +15,8 @@ type Props = {
 };
 
 export function PlaceCard({ place, onSelect, compact = false }: Props) {
-  const { favorites, toggleFavorite } = useFavoritesStore();
-  const isFav = favorites.includes(place.id);
-  const { removeAds } = useAdsStore();
+  const { isFavorite, addFavorite, removeFavorite } = useFavoritesStore();
+  const isFav = isFavorite(place.id);
 
   const statusColor =
     place.openingStatus === 'open' ? OPEN_COLOR
@@ -28,10 +25,16 @@ export function PlaceCard({ place, onSelect, compact = false }: Props) {
 
   const statusLabel =
     place.openingStatus === 'open'
-      ? `Ouvert${place.closingTime ? ` jusqu'à ${place.closingTime}` : ''}`
+      ? `Ouvert${place.closingTime ? ` jusqu'\u00e0 ${place.closingTime}` : ''}`
       : place.openingStatus === 'closed'
-      ? 'Fermé'
+      ? 'Ferm\u00e9'
       : 'Horaires inconnus';
+
+  const handleFavToggle = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (isFav) removeFavorite(place.id);
+    else addFavorite(place);
+  };
 
   return (
     <article
@@ -108,7 +111,7 @@ export function PlaceCard({ place, onSelect, compact = false }: Props) {
       {/* Favori */}
       <button
         aria-label={isFav ? 'Retirer des favoris' : 'Ajouter aux favoris'}
-        onClick={(e) => { e.stopPropagation(); toggleFavorite(place.id); }}
+        onClick={handleFavToggle}
         style={{
           background: 'none',
           border: 'none',
@@ -120,7 +123,7 @@ export function PlaceCard({ place, onSelect, compact = false }: Props) {
           flexShrink: 0,
         }}
       >
-        {isFav ? '★' : '☆'}
+        {isFav ? '\u2605' : '\u2606'}
       </button>
     </article>
   );
@@ -128,24 +131,24 @@ export function PlaceCard({ place, onSelect, compact = false }: Props) {
 
 function getCategoryEmoji(category: string): string {
   const map: Record<string, string> = {
-    restaurant: '🍽',
-    cafe: '☕',
-    bakery: '🥐',
-    bar: '🍺',
-    supermarket: '🛍',
-    pharmacy: '💊',
-    hospital: '🏥',
-    bank: '🏦',
-    hotel: '🏨',
-    park: '🌳',
-    gym: '🏋',
-    school: '🏫',
-    museum: '🏛',
-    cinema: '🎦',
-    shop: '🛒',
-    gas_station: '⛽',
-    parking: '🅿',
-    atm: '💳',
+    restaurant: '\ud83c\udf7d',
+    cafe: '\u2615',
+    bakery: '\ud83e\udd50',
+    bar: '\ud83c\udf7a',
+    supermarket: '\ud83d\udecd',
+    pharmacy: '\ud83d\udc8a',
+    hospital: '\ud83c\udfe5',
+    bank: '\ud83c\udfe6',
+    hotel: '\ud83c\udfe8',
+    park: '\ud83c\udf33',
+    gym: '\ud83c\udfcb',
+    school: '\ud83c\udfeb',
+    museum: '\ud83c\udfdb',
+    cinema: '\ud83c\udfa6',
+    shop: '\ud83d�',
+    gas_station: '\u26fd',
+    parking: '\ud83c\udd7f',
+    atm: '\ud83d�',
   };
-  return map[category] ?? '📍';
+  return map[category] ?? '\ud83d�';
 }
