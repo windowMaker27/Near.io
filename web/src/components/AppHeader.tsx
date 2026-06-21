@@ -4,8 +4,10 @@ import { useRouter } from 'next/navigation';
 import { BurgerMenu } from '@/components/BurgerMenu';
 import { useFiltersStore } from '@/store/filtersStore';
 
+// Brand accent — rouge Near.io (identique à theme.ts accent)
+const BRAND_ACCENT = '#E8392A';
+
 interface AppHeaderProps {
-  /** Nom de la page affiché sous le logo (ex: "Profil"). Si omis, affiche le compteur dynamique. */
   subtitle?: string;
   showBack?: boolean;
   showRadiusSelect?: boolean;
@@ -58,7 +60,7 @@ export function AppHeader({ subtitle, showBack = false, showRadiusSelect = false
                 letterSpacing: '-0.01em',
               }}
             >
-              near<span style={{ color: 'var(--color-primary)' }}>.io</span>
+              near<span style={{ color: BRAND_ACCENT }}>.io</span>
             </h1>
             {subtitle && (
               <p style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)', margin: '2px 0 0' }}>

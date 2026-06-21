@@ -5,6 +5,7 @@ import { useAuthStore } from '@/store/authStore';
 
 const MIN_DURATION = 2200;
 const FADE_DURATION = 350;
+const BRAND_ACCENT = '#E8392A';
 
 type Props = { onDone: () => void };
 
@@ -82,7 +83,7 @@ export function SplashLoader({ onDone }: Props) {
           color: 'var(--color-text)',
         }}
       >
-        near<span style={{ color: 'var(--color-primary)' }}>.io</span>
+        near<span style={{ color: BRAND_ACCENT }}>.io</span>
       </span>
 
       <span
@@ -99,7 +100,7 @@ export function SplashLoader({ onDone }: Props) {
       </span>
 
       <div style={{ width: 200, height: 2, borderRadius: 2, backgroundColor: 'var(--color-border)', overflow: 'hidden' }}>
-        <div style={{ height: 2, borderRadius: 2, backgroundColor: 'var(--color-primary)', width: barWidth }} />
+        <div style={{ height: 2, borderRadius: 2, backgroundColor: BRAND_ACCENT, width: barWidth }} />
       </div>
     </div>
   );
