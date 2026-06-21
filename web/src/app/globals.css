@@ -2,7 +2,9 @@
 
 /* =============================================
    NEAR.IO — Design System
-   Toné sombre, accent teal, monospace
+   Source : src/constants/theme.ts (native)
+   Accent : #E8392A (rouge brand)
+   Font   : JetBrains Mono
    ============================================= */
 
 :root {
@@ -14,87 +16,114 @@
   --text-xl:   clamp(1.5rem,   1.2rem  + 1.25vw, 2.25rem);
   --text-2xl:  clamp(2rem,     1.2rem  + 2.5vw,  3.5rem);
 
-  /* Spacing */
-  --space-1: 0.25rem;
-  --space-2: 0.5rem;
-  --space-3: 0.75rem;
-  --space-4: 1rem;
-  --space-6: 1.5rem;
-  --space-8: 2rem;
-  --space-12: 3rem;
-  --space-16: 4rem;
+  /* Spacing (4pt grid — identique à theme.ts sp1..sp12) */
+  --space-1: 0.25rem;   /* 4px  */
+  --space-2: 0.5rem;    /* 8px  */
+  --space-3: 0.75rem;   /* 12px */
+  --space-4: 1rem;      /* 16px */
+  --space-5: 1.25rem;   /* 20px = pagePad */
+  --space-6: 1.5rem;    /* 24px */
+  --space-8: 2rem;      /* 32px */
+  --space-10: 2.5rem;   /* 40px */
+  --space-12: 3rem;     /* 48px */
+  --space-16: 4rem;     /* 64px */
 
-  /* Radius */
-  --radius-sm: 0.375rem;
-  --radius-md: 0.5rem;
-  --radius-lg: 0.75rem;
-  --radius-xl: 1rem;
+  /* Radius — identique à theme.ts */
+  --radius-sm:   0.375rem;  /* ~6px  */
+  --radius-md:   0.75rem;   /* 12px  */
+  --radius-lg:   1.25rem;   /* 20px  */
+  --radius-xl:   1rem;
   --radius-full: 9999px;
 
   /* Transitions */
   --transition: 180ms cubic-bezier(0.16, 1, 0.3, 1);
 
-  /* Font */
+  /* Font — JetBrains Mono comme dans le natif */
   --font-mono: 'JetBrains Mono', 'Courier New', monospace;
+  --font-body: 'JetBrains Mono', 'Courier New', monospace;
+  --font-display: 'JetBrains Mono', 'Courier New', monospace;
 }
 
-/* === DARK MODE (défaut) === */
+/* === DARK MODE (défaut) — source : theme.ts (dark) === */
 :root, [data-theme="dark"] {
-  --color-bg:              #0a0a0a;
+  /* Surfaces */
+  --color-bg:              #080808;
   --color-surface:         #111111;
-  --color-surface-2:       #181818;
-  --color-surface-offset:  #1f1f1f;
+  --color-surface-2:       #161616;
+  --color-surface-offset:  #1E1E1E;
   --color-surface-dynamic: #2a2a2a;
-  --color-divider:         #222222;
-  --color-border:          #2e2e2e;
+  --color-divider:         #1a1a1a;
+  --color-border:          #1E1E1E;
 
-  --color-text:            #e8e8e8;
-  --color-text-muted:      #888888;
-  --color-text-faint:      #444444;
-  --color-text-inverse:    #0a0a0a;
+  /* Text */
+  --color-text:            #F0F0F0;
+  --color-text-muted:      #666666;
+  --color-text-faint:      #333333;
+  --color-text-inverse:    #080808;
 
-  /* Teal accent — identité Near.io */
-  --color-primary:         #00d4aa;
-  --color-primary-hover:   #00b894;
-  --color-primary-active:  #009677;
-  --color-primary-highlight: #0d2e28;
+  /* Accent rouge brand — #E8392A */
+  --color-primary:           #E8392A;
+  --color-primary-hover:     #c9291c;
+  --color-primary-active:    #a81f14;
+  --color-primary-dim:       #7A1A10;
+  --color-primary-highlight: #E8392A14;
+  --color-primary-border:    #E8392A44;
 
-  --color-error:           #ff6b6b;
-  --color-success:         #51cf66;
-  --color-warning:         #ffd43b;
+  /* Semantic */
+  --color-success:         #4CAF72;
+  --color-error:           #E84444;
+  --color-warning:         #C8A020;
+  --color-info:            #4A9EFF;
 
+  /* Warning surfaces */
+  --color-warning-bg:      #1A1200;
+  --color-warning-border:  #3A2A00;
+
+  /* Shadows */
   --shadow-sm: 0 1px 2px oklch(0 0 0 / 0.4);
   --shadow-md: 0 4px 12px oklch(0 0 0 / 0.5);
   --shadow-lg: 0 12px 32px oklch(0 0 0 / 0.6);
 }
 
-/* === LIGHT MODE === */
+/* === LIGHT MODE — source : themeLight dans theme.ts === */
 [data-theme="light"] {
+  /* Surfaces (Nexus Beige — déjà utilisé dans themeLight) */
   --color-bg:              #F7F6F2;
-  --color-surface:         #F9F8F5;
+  --color-surface:         #FAFAF7;
   --color-surface-2:       #FFFFFF;
-  --color-surface-offset:  #EDEAE5;
-  --color-surface-dynamic: #E0DDD8;
-  --color-divider:         #DCD9D5;
-  --color-border:          #D4D1CA;
+  --color-surface-offset:  #F0EFE9;
+  --color-surface-dynamic: #E6E3DC;
+  --color-divider:         #DCD9D0;
+  --color-border:          #DCD9D0;
 
-  --color-text:            #1a1a1a;
-  --color-text-muted:      #666666;
-  --color-text-faint:      #aaaaaa;
-  --color-text-inverse:    #f9f8f5;
+  /* Text */
+  --color-text:            #28251D;
+  --color-text-muted:      #7A7870;
+  --color-text-faint:      #B8B5AD;
+  --color-text-inverse:    #F9F8F5;
 
-  --color-primary:         #01696f;
-  --color-primary-hover:   #0c4e54;
-  --color-primary-active:  #0f3638;
-  --color-primary-highlight: #cedcd8;
+  /* Accent rouge brand inchangé (même valeur dans themeLight) */
+  --color-primary:           #E8392A;
+  --color-primary-hover:     #c9291c;
+  --color-primary-active:    #a81f14;
+  --color-primary-dim:       #F5C9C4;
+  --color-primary-highlight: #E8392A14;
+  --color-primary-border:    #E8392A44;
 
-  --color-error:           #a12c7b;
-  --color-success:         #437a22;
-  --color-warning:         #964219;
+  /* Semantic */
+  --color-success:         #3A8F5C;
+  --color-error:           #C0392B;
+  --color-warning:         #A0720A;
+  --color-info:            #1A6EC7;
 
-  --shadow-sm: 0 1px 2px oklch(0.2 0.01 80 / 0.06);
-  --shadow-md: 0 4px 12px oklch(0.2 0.01 80 / 0.08);
-  --shadow-lg: 0 12px 32px oklch(0.2 0.01 80 / 0.12);
+  /* Warning surfaces */
+  --color-warning-bg:      #FDF3DC;
+  --color-warning-border:  #E8D49C;
+
+  /* Shadows */
+  --shadow-sm: 0 1px 2px oklch(0.15 0.01 60 / 0.08);
+  --shadow-md: 0 4px 12px oklch(0.15 0.01 60 / 0.12);
+  --shadow-lg: 0 12px 32px oklch(0.15 0.01 60 / 0.18);
 }
 
 /* === BASE RESET === */
@@ -118,7 +147,6 @@ body {
   font-size: var(--text-base);
   color: var(--color-text);
   background-color: var(--color-bg);
-  /* Safe area pour PWA mobile */
   padding-bottom: env(safe-area-inset-bottom);
 }
 
@@ -179,10 +207,10 @@ a, button, [role="button"], input, textarea, select {
 .container {
   max-width: 960px;
   margin-inline: auto;
-  padding-inline: var(--space-4);
+  padding-inline: var(--space-5);
 }
 
-/* Bottom nav clearance sur mobile */
+/* Bottom nav clearance */
 .page-content {
   padding-bottom: calc(64px + env(safe-area-inset-bottom));
 }

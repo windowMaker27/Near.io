@@ -3,8 +3,9 @@
 import { useEffect, useRef } from 'react';
 import { useCompass } from '@/hooks/useCompass';
 
-const ACCENT = '#00d4aa';
-const ACCENT_ALIGNED = '#51cf66';
+// Couleurs alignées sur src/constants/theme.ts
+const ACCENT         = '#E8392A';
+const ACCENT_ALIGNED = '#4CAF72'; // colorSuccess
 const SIZE = 280;
 const ALIGNMENT_THRESHOLD_DEG = 12;
 
@@ -30,9 +31,9 @@ type Props = {
  */
 export function CompassRing({ targetBearing = null, placeName, distance }: Props) {
   const { heading, granted, supported, requestPermission, error } = useCompass();
-  const arrowRef = useRef<SVGPolygonElement>(null);
+  const arrowRef     = useRef<SVGPolygonElement>(null);
   const arrowLineRef = useRef<SVGLineElement>(null);
-  const ringRef = useRef<SVGCircleElement>(null);
+  const ringRef      = useRef<SVGCircleElement>(null);
   const prevAngleRef = useRef<number>(0);
 
   const needsPermission =
@@ -40,15 +41,15 @@ export function CompassRing({ targetBearing = null, placeName, distance }: Props
     !granted &&
     typeof (DeviceOrientationEvent as unknown as { requestPermission?: unknown }).requestPermission === 'function';
 
-  // Calcul angle relatif vers la cible
+  // Angle relatif vers la cible
   const relativeAngle: number | null =
     targetBearing != null && heading != null
       ? (targetBearing - heading + 360) % 360
       : targetBearing != null
-      ? targetBearing // pas de heading encore : on affiche le bearing brut
+      ? targetBearing
       : null;
 
-  // Normalisation [-180, 180] pour détecter gauche/droite
+  // Normalisation [-180, 180]
   const normalizedAngle: number | null =
     relativeAngle != null
       ? relativeAngle > 180 ? relativeAngle - 360 : relativeAngle
@@ -58,7 +59,6 @@ export function CompassRing({ targetBearing = null, placeName, distance }: Props
     normalizedAngle != null && Math.abs(normalizedAngle) < ALIGNMENT_THRESHOLD_DEG;
 
   const arrowColor = isAligned ? ACCENT_ALIGNED : ACCENT;
-  const ringColor = isAligned ? ACCENT_ALIGNED : 'var(--color-border)';
 
   // Animation fluide de la flèche (gère le passage 359->0)
   useEffect(() => {
@@ -90,7 +90,6 @@ export function CompassRing({ targetBearing = null, placeName, distance }: Props
   const cy = SIZE / 2;
   const R = 110;
 
-  // Label directionnel
   const directionLabel = (): string => {
     if (targetBearing == null) return 'Sélectionne un commerce';
     if (heading == null) return 'Activation...';
@@ -134,7 +133,7 @@ export function CompassRing({ targetBearing = null, placeName, distance }: Props
             style={{ transition: 'stroke 300ms' }}
           />
 
-          {/* Ticks minimalistes (juste 4 repères discrets, sans lettre) */}
+          {/* Ticks — 4 repères cardinaux discrets */}
           {[0, 90, 180, 270].map((deg) => {
             const rad = (deg - 90) * (Math.PI / 180);
             const x1 = cx + R * Math.cos(rad);
@@ -151,7 +150,7 @@ export function CompassRing({ targetBearing = null, placeName, distance }: Props
             );
           })}
 
-          {/* Flèche vers la cible (tourne selon relativeAngle) */}
+          {/* Flèche vers la cible */}
           {relativeAngle != null ? (
             <>
               <line
@@ -183,14 +182,17 @@ export function CompassRing({ targetBearing = null, placeName, distance }: Props
               />
             </>
           ) : (
-            /* Pas de lieu : cercle central discret */
             <circle cx={cx} cy={cy} r={8} fill="var(--color-border)" />
           )}
 
           {/* Point central */}
-          <circle cx={cx} cy={cy} r={5} fill={relativeAngle != null ? arrowColor : 'var(--color-border)'} style={{ transition: 'fill 300ms' }} />
+          <circle
+            cx={cx} cy={cy} r={5}
+            fill={relativeAngle != null ? arrowColor : 'var(--color-border)'}
+            style={{ transition: 'fill 300ms' }}
+          />
 
-          {/* Label directionnel sous l'anneau */}
+          {/* Label directionnel */}
           <text
             x={cx}
             y={cy + R + 30}
