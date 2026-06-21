@@ -3,40 +3,61 @@
 import { useEffect } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { useAuthStore } from '@/store/authStore';
+import type { UserProfile } from '@/types/user';
 
-/**
- * useAuthInit — à monter une seule fois dans Providers.tsx
- * S'abonne aux changements de session Supabase et synchronise le store.
- */
+async function fetchProfile(userId: string): Promise<UserProfile | null> {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('id, username, avatar_url, role, created_at')
+    .eq('id', userId)
+    .single();
+  if (error || !data) return null;
+  return {
+    id: data.id,
+    username: data.username,
+    avatarUrl: data.avatar_url ?? undefined,
+    role: data.role ?? 'user',
+    createdAt: data.created_at,
+  };
+}
+
 export function useAuthInit() {
-  const { setUser, setSession, setLoading } = useAuthStore();
+  const { setUser, setSession, setProfile, setLoading } = useAuthStore();
 
   useEffect(() => {
     const supabase = createClient();
 
-    // Récupère la session initiale
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
       setSession(session);
       setUser(session?.user ?? null);
+      if (session?.user) {
+        const profile = await fetchProfile(session.user.id);
+        setProfile(profile);
+      } else {
+        setProfile(null);
+      }
       setLoading(false);
     });
 
-    // Écoute les changements d'auth
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (_event, session) => {
+      async (_event, session) => {
         setSession(session);
         setUser(session?.user ?? null);
+        if (session?.user) {
+          const profile = await fetchProfile(session.user.id);
+          setProfile(profile);
+        } else {
+          setProfile(null);
+        }
         setLoading(false);
       },
     );
 
     return () => subscription.unsubscribe();
-  }, [setUser, setSession, setLoading]);
+  }, [setUser, setSession, setProfile, setLoading]);
 }
 
-/**
- * useAuth — hook de commodité pour lire l'état auth + actions
- */
 export function useAuth() {
   const supabase = createClient();
   const { user, session, profile, isLoading, signOut: clearStore } = useAuthStore();
