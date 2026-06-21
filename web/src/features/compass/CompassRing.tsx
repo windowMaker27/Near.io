@@ -31,11 +31,8 @@ export function CompassRing({ targetBearing = null, placeName, distance }: Props
       : null;
 
   const isAligned = normalizedAngle != null && Math.abs(normalizedAngle) < ALIGNMENT_THRESHOLD_DEG;
-
-  // Couleur active : vert si aligné, sinon var(--color-primary)
   const accentCss = isAligned ? ACCENT_ALIGNED : 'var(--color-primary)';
 
-  // ── Spring physique JS ───────────────────────────────────────────
   const currentAngleRef = useRef(0);
   const [displayAngle, setDisplayAngle] = useState(0);
   const rafRef = useRef<number | null>(null);
@@ -85,7 +82,6 @@ export function CompassRing({ targetBearing = null, placeName, distance }: Props
   return (
     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 'var(--space-4)', userSelect: 'none' }}>
 
-      {/* Cadran */}
       <div
         style={{
           width: DIAL_SIZE,
@@ -101,7 +97,6 @@ export function CompassRing({ targetBearing = null, placeName, distance }: Props
           transition: 'border-color 0.3s, box-shadow 0.3s',
         }}
       >
-        {/* 8 ticks */}
         {TICKS.map((deg) => (
           <div
             key={deg}
@@ -118,7 +113,6 @@ export function CompassRing({ targetBearing = null, placeName, distance }: Props
           />
         ))}
 
-        {/* Flèche */}
         {relativeAngle != null ? (
           <div
             style={{
@@ -129,16 +123,13 @@ export function CompassRing({ targetBearing = null, placeName, distance }: Props
               transform: `rotate(${displayAngle}deg)`,
             }}
           >
-            {/* Pointe nord */}
             <div style={{ width: 0, height: 0, borderLeft: '8px solid transparent', borderRight: '8px solid transparent', borderBottom: `${ARROW_H}px solid ${accentCss}`, transition: 'border-bottom-color 0.3s' }} />
-            {/* Pointe sud */}
             <div style={{ width: 0, height: 0, borderLeft: '8px solid transparent', borderRight: '8px solid transparent', borderTop: `${ARROW_H}px solid var(--color-text-faint)` }} />
           </div>
         ) : (
           <div style={{ width: 16, height: 16, borderRadius: '50%', backgroundColor: 'var(--color-border)' }} />
         )}
 
-        {/* Point central */}
         <div
           style={{
             position: 'absolute',
@@ -150,7 +141,6 @@ export function CompassRing({ targetBearing = null, placeName, distance }: Props
         />
       </div>
 
-      {/* Degré + label */}
       <div style={{ textAlign: 'center', display: 'flex', flexDirection: 'column', gap: 4 }}>
         {normalizedAngle != null && (
           <span style={{ fontSize: 13, letterSpacing: 1, color: 'var(--color-text-muted)', fontFamily: 'var(--font-mono)' }}>

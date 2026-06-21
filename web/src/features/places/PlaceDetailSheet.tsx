@@ -55,7 +55,6 @@ export function PlaceDetailSheet({ place, onClose }: Props) {
   const [postError, setPostError] = useState<string | null>(null);
   const [portalRoot, setPortalRoot] = useState<HTMLElement | null>(null);
 
-  // Résout le portal-root côté client uniquement
   useEffect(() => {
     setPortalRoot(document.getElementById('portal-root'));
   }, []);
@@ -107,8 +106,8 @@ export function PlaceDetailSheet({ place, onClose }: Props) {
 
   const statusLabel =
     place.openingStatus === 'open'
-      ? `Ouvert${place.closingTime ? ` jusqu'\u00e0 ${place.closingTime}` : ''}`
-      : place.openingStatus === 'closed' ? 'Ferm\u00e9' : 'Horaires inconnus';
+      ? `Ouvert${place.closingTime ? ` jusqu'à ${place.closingTime}` : ''}`
+      : place.openingStatus === 'closed' ? 'Fermé' : 'Horaires inconnus';
 
   if (!portalRoot) return null;
 
@@ -130,7 +129,7 @@ export function PlaceDetailSheet({ place, onClose }: Props) {
       <div
         role="dialog"
         aria-modal="true"
-        aria-label={`D\u00e9tails : ${place.name}`}
+        aria-label={`Détails : ${place.name}`}
         style={{
           position: 'fixed',
           bottom: 0, left: 0, right: 0,
@@ -173,14 +172,14 @@ export function PlaceDetailSheet({ place, onClose }: Props) {
               onClick={onClose}
               style={{ fontSize: 22, color: 'var(--color-text-muted)', padding: 'var(--space-2)', background: 'none', border: 'none', cursor: 'pointer', flexShrink: 0 }}
             >
-              \u00d7
+              ×
             </button>
           </div>
 
           {/* Status + distance */}
           <div style={{ display: 'flex', gap: 'var(--space-4)', alignItems: 'center' }}>
             <span style={{ fontSize: 'var(--text-sm)', color: statusColor, fontWeight: 600 }}>
-              \u25cf {statusLabel}
+              ● {statusLabel}
             </span>
             {place.distanceMeters != null && (
               <span style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-muted)' }}>
@@ -192,7 +191,7 @@ export function PlaceDetailSheet({ place, onClose }: Props) {
           {/* Adresse */}
           {place.shortAddress && (
             <p style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-muted)', margin: 0 }}>
-              \ud83d\udccd {place.shortAddress}
+              📍 {place.shortAddress}
             </p>
           )}
 
@@ -219,10 +218,10 @@ export function PlaceDetailSheet({ place, onClose }: Props) {
               >+</button>
             </div>
             {logsLoading ? (
-              <p style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-faint)', fontFamily: 'monospace' }}>Chargement\u2026</p>
+              <p style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-faint)', fontFamily: 'monospace' }}>Chargement…</p>
             ) : logs.length === 0 ? (
               <p style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)', fontStyle: 'italic', fontFamily: 'monospace' }}>
-                Aucun log \u2014 soyez le premier \u00e0 signaler quelque chose.
+                Aucun log — soyez le premier à signaler quelque chose.
               </p>
             ) : (
               <div>{logs.map((log) => <LogItem key={log.id} log={log} />)}</div>
@@ -245,13 +244,13 @@ export function PlaceDetailSheet({ place, onClose }: Props) {
                 cursor: 'pointer',
               }}
             >
-              {isFav ? '\u2605 Retirer' : '\u2606 Favori'}
+              {isFav ? '★ Retirer' : '☆ Favori'}
             </button>
           </div>
 
           {bearing != null && (
             <p style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-faint)', textAlign: 'center' }}>
-              Direction : {Math.round(bearing)}\u00b0
+              Direction : {Math.round(bearing)}°
             </p>
           )}
         </div>
@@ -333,7 +332,7 @@ export function PlaceDetailSheet({ place, onClose }: Props) {
                     minWidth: 90,
                   }}
                 >
-                  {isPosting ? '\u2026' : 'Envoyer'}
+                  {isPosting ? '…' : 'Envoyer'}
                 </button>
               </div>
             </div>
