@@ -24,7 +24,6 @@ export default function HomePage() {
   const { filters, setFilters } = useFiltersStore();
   const [detailPlace, setDetailPlace] = useState<Place | null>(null);
   const [requesting, setRequesting] = useState(false);
-  // Garde en mémoire si l'utilisateur a manuellement déselectionné
   const userClearedRef = useRef(false);
 
   useEffect(() => {
@@ -53,14 +52,10 @@ export default function HomePage() {
 
   const { places, target, loading, error } = useNearbyPlaces(userCoords);
 
-  // Auto-sélectionne le commerce le plus proche dès que la liste est chargée,
-  // SAUF si l'utilisateur a volontairement annulé le guidage.
   useEffect(() => {
     if (loading) return;
     if (userClearedRef.current) return;
-    if (target && !selectedPlace) {
-      setSelectedPlace(target);
-    }
+    if (target && !selectedPlace) setSelectedPlace(target);
   }, [target, loading, selectedPlace, setSelectedPlace]);
 
   const handleClearSelection = () => {
@@ -70,12 +65,7 @@ export default function HomePage() {
 
   const bearing =
     coords && selectedPlace
-      ? getBearingDeg(
-          coords.latitude,
-          coords.longitude,
-          selectedPlace.coordinates.latitude,
-          selectedPlace.coordinates.longitude,
-        )
+      ? getBearingDeg(coords.latitude, coords.longitude, selectedPlace.coordinates.latitude, selectedPlace.coordinates.longitude)
       : null;
 
   const distanceStr =
@@ -118,11 +108,31 @@ export default function HomePage() {
   }
 
   // ── VUE PRINCIPALE ───────────────────────────────────────────────────────
+  // Layout : height 100dvh, pas de scroll page.
+  // ┌ header fixe────────────────────────────────────┐
+  // │ boussole hero fixe                               │
+  // │ adsense fixe                                      │
+  // │ liste places ↑ overflow-y scroll                  │
+  // └ bottom nav fixe──────────────────────────────────┘
   return (
-    <main style={{ minHeight: '100dvh', backgroundColor: 'var(--color-bg)', paddingBottom: '80px' }}>
+    <div style={{
+      height: '100dvh',
+      display: 'flex',
+      flexDirection: 'column',
+      backgroundColor: 'var(--color-bg)',
+      overflow: 'hidden', // empêche tout scroll page
+    }}>
 
       {/* HEADER */}
-      <header style={{ padding: 'var(--space-4) var(--space-5)', borderBottom: '1px solid var(--color-border)', position: 'sticky', top: 0, backgroundColor: 'var(--color-bg)', zIndex: 10, backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
+      <header style={{
+        flexShrink: 0,
+        padding: 'var(--space-4) var(--space-5)',
+        borderBottom: '1px solid var(--color-border)',
+        backgroundColor: 'var(--color-bg)',
+        zIndex: 10,
+        backdropFilter: 'blur(12px)',
+        WebkitBackdropFilter: 'blur(12px)',
+      }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 'var(--space-3)' }}>
           <div>
             <h1 style={{ fontSize: 'var(--text-xl)', fontFamily: 'var(--font-display)', color: 'var(--color-text)', margin: 0, letterSpacing: '-0.01em' }}>
@@ -151,7 +161,15 @@ export default function HomePage() {
       </header>
 
       {/* BOUSSOLE HERO */}
-      <section style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: 'var(--space-8) var(--space-5) var(--space-6)', borderBottom: '1px solid var(--color-border)', backgroundColor: 'var(--color-surface)' }}>
+      <section style={{
+        flexShrink: 0,
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        padding: 'var(--space-6) var(--space-5)',
+        borderBottom: '1px solid var(--color-border)',
+        backgroundColor: 'var(--color-surface)',
+      }}>
         <CompassRing
           targetBearing={bearing}
           placeName={selectedPlace?.name ?? null}
@@ -174,12 +192,24 @@ export default function HomePage() {
       </section>
 
       {/* ADSENSE */}
-      <AdBanner style={{ margin: 'var(--space-3) var(--space-5) 0', minHeight: 60 }} />
+      <div style={{ flexShrink: 0 }}>
+        <AdBanner style={{ margin: 'var(--space-3) var(--space-5) 0', minHeight: 60 }} />
+      </div>
 
-      {/* LISTE */}
-      <div style={{ padding: 'var(--space-4) var(--space-5)', display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
+      {/* LISTE — seule zone scrollable */}
+      <div style={{
+        flex: 1,
+        overflowY: 'auto',
+        overflowX: 'hidden',
+        WebkitOverflowScrolling: 'touch', // momentum scroll iOS
+        padding: 'var(--space-4) var(--space-5)',
+        paddingBottom: 'var(--space-4)', // BottomNav est en dehors du scroll
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 'var(--space-3)',
+      }}>
         {loading && Array.from({ length: 4 }).map((_, i) => (
-          <div key={i} className="skeleton" style={{ height: 80, borderRadius: 'var(--radius-xl)' }} />
+          <div key={i} className="skeleton" style={{ height: 80, borderRadius: 'var(--radius-xl)', flexShrink: 0 }} />
         ))}
         {!loading && error && (
           <div style={{ textAlign: 'center', padding: 'var(--space-8)', color: 'var(--color-error)', fontSize: 'var(--text-sm)' }}>{error}</div>
@@ -197,7 +227,7 @@ export default function HomePage() {
             place={place}
             isActive={selectedPlace?.id === place.id}
             onSelect={(p) => {
-              userClearedRef.current = false; // reset si l'utilisateur rechoisit manuellement
+              userClearedRef.current = false;
               setSelectedPlace(p);
               setDetailPlace(p);
             }}
@@ -205,8 +235,10 @@ export default function HomePage() {
         ))}
       </div>
 
-      {detailPlace && <PlaceDetailSheet place={detailPlace} onClose={() => setDetailPlace(null)} />}
+      {/* BOTTOM NAV — fixe en bas, hors du scroll */}
       <BottomNav />
-    </main>
+
+      {detailPlace && <PlaceDetailSheet place={detailPlace} onClose={() => setDetailPlace(null)} />}
+    </div>
   );
 }
