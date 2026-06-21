@@ -11,7 +11,11 @@ const routes = [
   { href: '/profile',    icon: User,  label: 'Profil'   },
 ] as const;
 
-export function BottomNav() {
+interface BottomNavProps {
+  transparent?: boolean;
+}
+
+export function BottomNav({ transparent = false }: BottomNavProps) {
   const pathname = usePathname();
 
   return (
@@ -22,10 +26,12 @@ export function BottomNav() {
         left: 0,
         right: 0,
         zIndex: 50,
-        backgroundColor: 'var(--color-surface)',
-        borderTop: '1px solid var(--color-border)',
+        backgroundColor: transparent ? 'transparent' : 'var(--color-surface)',
+        borderTop: transparent ? 'none' : '1px solid var(--color-border)',
         paddingBottom: 'env(safe-area-inset-bottom)',
         display: 'flex',
+        backdropFilter: transparent ? 'blur(12px)' : undefined,
+        WebkitBackdropFilter: transparent ? 'blur(12px)' : undefined,
       }}
       aria-label="Navigation principale"
     >
