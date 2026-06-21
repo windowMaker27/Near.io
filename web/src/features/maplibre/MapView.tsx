@@ -13,9 +13,9 @@ import type { Coordinates, Place } from '@/types/place';
 import { PLACE_TYPE_LABELS } from '@/constants/placeTypes';
 import { formatDistance } from '@/features/compass/utils/distance';
 
-const ACCENT = '#00d4aa';
-const RADAR_FILL_DARK = 'rgba(0, 212, 170, 0.06)';
-const RADAR_SWEEP_DARK = 'rgba(0, 212, 170, 0.18)';
+const ACCENT = '#e63946';
+const RADAR_FILL = 'rgba(230, 57, 70, 0.06)';
+const RADAR_SWEEP = 'rgba(230, 57, 70, 0.18)';
 const OPEN_COLOR = '#51cf66';
 const CLOSED_COLOR = '#ff6b6b';
 
@@ -25,9 +25,6 @@ function emptyFC(): FeatureCollection {
   return { type: 'FeatureCollection', features: [] };
 }
 
-// Singleton guard: ensures only one MapLibre instance exists at a time.
-// React StrictMode mounts twice in dev — this prevents the second mount
-// from creating a duplicate map on the same container.
 let activeMapContainer: HTMLDivElement | null = null;
 
 export default function MapView({ onPlaceSelect }: Props) {
@@ -45,14 +42,10 @@ export default function MapView({ onPlaceSelect }: Props) {
     filters.radiusMeters,
   );
 
-  // ── Init map ────────────────────────────────────────────────────────
   useEffect(() => {
     const container = containerRef.current;
     if (!container) return;
-
-    // Abort if another instance already owns a container (StrictMode double-mount)
     if (activeMapContainer && activeMapContainer !== container) return;
-    // Already initialised on this container
     if (mapRef.current) return;
 
     activeMapContainer = container;
@@ -78,8 +71,7 @@ export default function MapView({ onPlaceSelect }: Props) {
                 'https://c.tile.openstreetmap.org/{z}/{x}/{y}.png',
               ],
               tileSize: 256,
-              attribution:
-                '\u00a9 <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a> contributors',
+              attribution: '\u00a9 <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a> contributors',
               maxzoom: 19,
             },
           },
@@ -88,9 +80,7 @@ export default function MapView({ onPlaceSelect }: Props) {
           ],
           glyphs: 'https://demotiles.maplibre.org/font/{fontstack}/{range}.pbf',
         },
-        center: coords
-          ? [coords.longitude, coords.latitude]
-          : [2.3488, 48.8534],
+        center: coords ? [coords.longitude, coords.latitude] : [2.3488, 48.8534],
         zoom: 15,
         attributionControl: true,
       });
@@ -103,9 +93,9 @@ export default function MapView({ onPlaceSelect }: Props) {
         map.addSource('radar-sweep', { type: 'geojson', data: emptyFC() });
         map.addSource('places', { type: 'geojson', data: emptyFC() });
 
-        map.addLayer({ id: 'radar-fill', type: 'fill', source: 'radar-circle', paint: { 'fill-color': RADAR_FILL_DARK } });
-        map.addLayer({ id: 'radar-stroke', type: 'line', source: 'radar-circle', paint: { 'line-color': ACCENT, 'line-width': 1.2, 'line-opacity': 0.5 } });
-        map.addLayer({ id: 'radar-sweep-layer', type: 'fill', source: 'radar-sweep', paint: { 'fill-color': RADAR_SWEEP_DARK } });
+        map.addLayer({ id: 'radar-fill', type: 'fill', source: 'radar-circle', paint: { 'fill-color': RADAR_FILL } });
+        map.addLayer({ id: 'radar-stroke', type: 'line', source: 'radar-circle', paint: { 'line-color': ACCENT, 'line-width': 1.2, 'line-opacity': 0.6 } });
+        map.addLayer({ id: 'radar-sweep-layer', type: 'fill', source: 'radar-sweep', paint: { 'fill-color': RADAR_SWEEP } });
 
         map.addLayer({
           id: 'places-circle',
@@ -153,21 +143,16 @@ export default function MapView({ onPlaceSelect }: Props) {
 
     return () => {
       cancelled = true;
-      if (mapRef.current) {
-        mapRef.current.remove();
-        mapRef.current = null;
-      }
+      if (mapRef.current) { mapRef.current.remove(); mapRef.current = null; }
       if (activeMapContainer === container) activeMapContainer = null;
       setMapReady(false);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // ── Update user dot + radar circle ──────────────────────────────────
   useEffect(() => {
     const map = mapRef.current;
     if (!mapReady || !map || !coords) return;
-
     (map.getSource('user-dot') as GeoJSONSource)?.setData({
       type: 'FeatureCollection',
       features: [{ type: 'Feature', id: 'user', geometry: { type: 'Point', coordinates: [coords.longitude, coords.latitude] }, properties: {} }],
@@ -178,14 +163,12 @@ export default function MapView({ onPlaceSelect }: Props) {
     });
   }, [mapReady, coords, filters.radiusMeters]);
 
-  // ── Update radar sweep ───────────────────────────────────────────────
   useEffect(() => {
     const map = mapRef.current;
     if (!mapReady || !map || !sweepGeoJSON) return;
     (map.getSource('radar-sweep') as GeoJSONSource)?.setData(sweepGeoJSON);
   }, [mapReady, sweepGeoJSON]);
 
-  // ── Update places ────────────────────────────────────────────────────
   const updatePlaces = useCallback(() => {
     const map = mapRef.current;
     if (!mapReady || !map) return;
@@ -208,14 +191,12 @@ export default function MapView({ onPlaceSelect }: Props) {
 
   useEffect(() => { updatePlaces(); }, [updatePlaces]);
 
-  // ── Center on user ───────────────────────────────────────────────────
   useEffect(() => {
     const map = mapRef.current;
     if (!mapReady || !map || !coords) return;
     map.easeTo({ center: [coords.longitude, coords.latitude], duration: 600 });
   }, [mapReady, coords]);
 
-  // ── Watch location ───────────────────────────────────────────────────
   useEffect(() => {
     return watchPosition((c: Coordinates) => useLocationStore.getState().setCoords(c));
   }, []);
@@ -224,7 +205,7 @@ export default function MapView({ onPlaceSelect }: Props) {
     <div
       ref={containerRef}
       style={{ width: '100%', height: '100%', minHeight: '100dvh' }}
-      aria-label="Carte des commerces à proximité"
+      aria-label="Carte des commerces \u00e0 proximit\u00e9"
     />
   );
 }
