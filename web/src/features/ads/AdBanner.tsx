@@ -9,7 +9,7 @@ import { useAdsStore } from '@/store/adsStore';
  * À faire avant le déploiement :
  * 1. Créer un compte AdSense sur https://adsense.google.com
  * 2. Ajouter le domaine Vercel (ou custom) et attendre validation (1-3j)
- * 3. Créer une unité d’annonce — copier client + slot dans .env.local :
+ * 3. Créer une unité d'annonce — copier client + slot dans .env.local :
  *      NEXT_PUBLIC_ADSENSE_CLIENT=ca-pub-XXXXXXXXXXXXXXXX
  *      NEXT_PUBLIC_ADSENSE_SLOT=XXXXXXXXXX
  * 4. Ajouter le script global dans web/src/app/layout.tsx :
@@ -31,12 +31,12 @@ type Props = {
 };
 
 export function AdBanner({ className, style }: Props) {
-  const { removeAds } = useAdsStore();
+  const { adsRemoved } = useAdsStore();
   const adRef = useRef<HTMLModElement>(null);
   const pushed = useRef(false);
 
   useEffect(() => {
-    if (removeAds || pushed.current) return;
+    if (adsRemoved || pushed.current) return;
     try {
       window.adsbygoogle = window.adsbygoogle || [];
       window.adsbygoogle.push({});
@@ -44,15 +44,14 @@ export function AdBanner({ className, style }: Props) {
     } catch (e) {
       console.warn('[AdBanner] adsbygoogle push failed:', e);
     }
-  }, [removeAds]);
+  }, [adsRemoved]);
 
-  if (removeAds) return null;
+  if (adsRemoved) return null;
 
   const client = process.env.NEXT_PUBLIC_ADSENSE_CLIENT;
   const slot = process.env.NEXT_PUBLIC_ADSENSE_SLOT;
 
   if (!client || !slot) {
-    // Dev : placeholder visible
     return (
       <div
         style={{
