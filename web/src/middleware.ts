@@ -4,12 +4,19 @@ import type { CookieMethodsServer } from '@supabase/ssr';
 
 type CookiesToSet = Parameters<NonNullable<CookieMethodsServer['setAll']>>[0];
 
-const PUBLIC_PATHS = ['/login', '/register', '/forgot-password', '/reset-password'];
+const PUBLIC_PATHS = [
+  '/',
+  '/compass',
+  '/login',
+  '/register',
+  '/forgot-password',
+  '/reset-password',
+];
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  if (PUBLIC_PATHS.some((p) => pathname.startsWith(p))) {
+  if (PUBLIC_PATHS.some((p) => pathname === p || pathname.startsWith(p + '/'))) {
     return NextResponse.next();
   }
 
