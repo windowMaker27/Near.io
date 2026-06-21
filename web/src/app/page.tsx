@@ -114,7 +114,7 @@ export default function HomePage() {
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 'var(--space-3)' }}>
           <div>
             <h1 style={{ fontSize: 'var(--text-xl)', fontFamily: 'var(--font-display)', color: 'var(--color-text)', margin: 0, letterSpacing: '-0.01em' }}>
-              near<span style={{ color: 'var(--color-primary)' }}>.</span>
+              near<span style={{ color: 'var(--color-primary)' }}>.io</span>
             </h1>
             <p style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)', margin: '2px 0 0' }}>
               {coords ? `${places.length} commerce${places.length !== 1 ? 's' : ''} à proximité` : 'Géolocalisation…'}
