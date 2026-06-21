@@ -22,34 +22,29 @@ function haversineDistanceMeters(lat1: number, lon1: number, lat2: number, lon2:
   );
 }
 
+function withDistance(places: Place[], lat: number, lon: number): Place[] {
+  return places.map((p) => ({
+    ...p,
+    distanceMeters: haversineDistanceMeters(lat, lon, p.coordinates.latitude, p.coordinates.longitude),
+  }));
+}
+
 function deduplicatePlaces(places: Place[]): Place[] {
   const result: Place[] = [];
   for (const candidate of places) {
-    const isDuplicate = result.some((existing) => {
+    const dupIdx = result.findIndex((e) => {
       const d = haversineDistanceMeters(
-        existing.coordinates.latitude, existing.coordinates.longitude,
+        e.coordinates.latitude, e.coordinates.longitude,
         candidate.coordinates.latitude, candidate.coordinates.longitude,
       );
       if (d > 30) return false;
-      const nameA = existing.name.toLowerCase();
-      const nameB = candidate.name.toLowerCase();
-      return nameA === nameB || nameA.includes(nameB) || nameB.includes(nameA);
+      const a = e.name.toLowerCase(), b = candidate.name.toLowerCase();
+      return a === b || a.includes(b) || b.includes(a);
     });
-    if (!isDuplicate) {
+    if (dupIdx === -1) {
       result.push(candidate);
-    } else {
-      const existingIdx = result.findIndex((e) => {
-        const d = haversineDistanceMeters(
-          e.coordinates.latitude, e.coordinates.longitude,
-          candidate.coordinates.latitude, candidate.coordinates.longitude,
-        );
-        return d <= 30;
-      });
-      if (existingIdx !== -1) {
-        const existing = result[existingIdx];
-        if ((candidate.qualityScore ?? 0) > (existing.qualityScore ?? 0))
-          result[existingIdx] = candidate;
-      }
+    } else if ((candidate.qualityScore ?? 0) > (result[dupIdx].qualityScore ?? 0)) {
+      result[dupIdx] = candidate;
     }
   }
   return result;
@@ -75,23 +70,21 @@ export function useNearbyPlaces(userLocation?: Coordinates) {
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const cancelRef = useRef<(() => void) | null>(null);
 
-  // Debounce GPS drift — ne refetch que si déplacement > seuil
+  // Debounce GPS drift
   useEffect(() => {
     if (lat == null || lon == null) return;
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(() => {
       setStableCoords((prev) => {
-        if (prev) {
-          const d = haversineDistanceMeters(prev.lat, prev.lon, lat, lon);
-          if (d < OSM_REFETCH_THRESHOLD_M) return prev;
-        }
+        if (prev && haversineDistanceMeters(prev.lat, prev.lon, lat, lon) < OSM_REFETCH_THRESHOLD_M)
+          return prev;
         return { lat, lon };
       });
     }, DEBOUNCE_MS);
     return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
   }, [lat, lon]);
 
-  // Retour en foreground → invalide le cache et force un reload
+  // Retour en foreground → invalide cache
   useEffect(() => {
     const handleVisibility = () => {
       if (document.visibilityState === 'visible') {
@@ -103,17 +96,12 @@ export function useNearbyPlaces(userLocation?: Coordinates) {
     return () => document.removeEventListener('visibilitychange', handleVisibility);
   }, [lat, lon, invalidatePlacesCache]);
 
-  const load = useCallback(async (
-    lat: number,
-    lon: number,
-    radius: number,
-    filtersKey: string,
-  ) => {
+  const load = useCallback(async (lat: number, lon: number, radius: number, filtersKey: string) => {
     cancelRef.current?.();
     let cancelled = false;
     cancelRef.current = () => { cancelled = true; };
 
-    // Vérifie le cache au moment de l'appel (évite la closure stale)
+    // 1. Cache hit → affichage immédiat, pas de réseau
     const cache = useAppStore.getState().placesCache;
     if (
       cache &&
@@ -130,50 +118,44 @@ export function useNearbyPlaces(userLocation?: Coordinates) {
     setError(undefined);
 
     try {
+      // 2. Supabase en premier — rapide, affiche immédiatement
+      const supabaseRaw = await fetchApprovedPlaces(lat, lon, radius).catch(() => []);
+      if (cancelled) return;
+
+      const supabasePlaces = rankPlaces(withDistance(supabaseRaw.map(normalizeSupabasePlace), lat, lon));
+
+      if (supabasePlaces.length > 0) {
+        setPlaces(supabasePlaces);
+      }
+
+      // 3. Overpass en arrière-plan — enrichit sans bloquer
       let osmPlaces: Place[] = [];
       try {
         osmPlaces = await fetchNearbyOverpassPlaces(lat, lon, radius);
       } catch (e) {
         console.warn('[useNearbyPlaces] Overpass failed (429?):', e);
-        // En cas de 429 : réutilise le cache existant plutôt que de tout vider
-        const staleCache = useAppStore.getState().placesCache;
-        if (staleCache?.places.length) {
-          if (!cancelled) {
-            setPlaces(staleCache.places);
-            setLoading(false);
-          }
-          return;
+        // Overpass KO : on garde ce qu'on a (Supabase ou cache périmé)
+        const stale = useAppStore.getState().placesCache;
+        if (!cancelled) {
+          const fallback = stale?.places.length ? stale.places : supabasePlaces;
+          setPlaces(fallback);
+          setLoading(false);
         }
+        return;
       }
       if (cancelled) return;
 
-      const supabaseResult = await fetchApprovedPlaces(lat, lon, radius).catch(() => []);
-      if (cancelled) return;
-
-      const userPlaces = supabaseResult.map(normalizeSupabasePlace);
-      const merged = deduplicatePlaces([...osmPlaces, ...userPlaces]);
-
-      const withDistance = merged.map((place) => ({
-        ...place,
-        distanceMeters: haversineDistanceMeters(
+      // 4. Merge Supabase + Overpass, déduplique, rank
+      const merged = rankPlaces(
+        withDistance(
+          deduplicatePlaces([...osmPlaces, ...supabaseRaw.map(normalizeSupabasePlace)]),
           lat, lon,
-          place.coordinates.latitude,
-          place.coordinates.longitude,
         ),
-      }));
-
-      const ranked = rankPlaces(withDistance);
+      );
 
       if (!cancelled) {
-        setPlacesCache({
-          places: ranked,
-          lat,
-          lon,
-          radius,
-          filters: filtersKey,
-          fetchedAt: Date.now(),
-        });
-        setPlaces(ranked);
+        setPlacesCache({ places: merged, lat, lon, radius, filters: filtersKey, fetchedAt: Date.now() });
+        setPlaces(merged);
         setTargetIndex(0);
       }
     } catch (e) {
