@@ -26,8 +26,10 @@ const nextConfig: NextConfig = {
           { key: 'X-Frame-Options', value: 'DENY' },
           { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
           {
+            // geolocation=*  → autorise le site lui-même
+            // gyroscope/accelerometer=* → autorise la boussole DeviceOrientation
             key: 'Permissions-Policy',
-            value: 'geolocation=(), gyroscope=(), accelerometer=()',
+            value: 'geolocation=*, gyroscope=*, accelerometer=*',
           },
         ],
       },
