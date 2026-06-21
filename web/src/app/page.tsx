@@ -5,7 +5,6 @@ import { useNearbyPlaces } from '@/features/places/hooks/useNearbyPlaces';
 import { PlaceCard } from '@/features/places/PlaceCard';
 import { PlaceDetailSheet } from '@/features/places/PlaceDetailSheet';
 import { AdBanner } from '@/features/ads/AdBanner';
-import { BottomNav } from '@/components/BottomNav';
 import { BurgerMenu } from '@/components/BurgerMenu';
 import { CompassRing } from '@/features/compass/CompassRing';
 import { useLocationStore } from '@/store/locationStore';
@@ -198,7 +197,6 @@ export default function HomePage() {
       </div>
 
       {detailPlace && <PlaceDetailSheet place={detailPlace} onClose={() => setDetailPlace(null)} />}
-      <BottomNav />
     </div>
   );
 }
