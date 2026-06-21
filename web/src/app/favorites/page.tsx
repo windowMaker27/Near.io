@@ -1,79 +1,73 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import { useFavoritesStore } from '@/store/favoritesStore';
-import { PlaceCard } from '@/features/places/PlaceCard';
-import { PlaceDetailSheet } from '@/features/places/PlaceDetailSheet';
-import { BottomNav } from '@/components/BottomNav';
-import { useState } from 'react';
+import { PlaceDetailSheet } from '@/components/PlaceDetailSheet';
+import { AppHeader } from '@/components/AppHeader';
 import type { Place } from '@/types/place';
 
 export default function FavoritesPage() {
-  const { favorites } = useFavoritesStore();
+  const { favorites, loadFavorites, toggleFavorite } = useFavoritesStore();
   const [selected, setSelected] = useState<Place | null>(null);
 
-  return (
-    <main
-      style={{
-        minHeight: '100dvh',
-        backgroundColor: 'var(--color-bg)',
-        paddingBottom: '80px',
-      }}
-    >
-      <header
-        style={{
-          padding: 'var(--space-6) var(--space-4) var(--space-4)',
-          borderBottom: '1px solid var(--color-divider)',
-        }}
-      >
-        <h1
-          style={{
-            fontSize: 'var(--text-xl)',
-            fontFamily: 'var(--font-display)',
-            color: 'var(--color-text)',
-            margin: 0,
-          }}
-        >
-          Favoris
-        </h1>
-        <p style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-muted)', margin: '4px 0 0' }}>
-          {favorites.length} lieu{favorites.length !== 1 ? 'x' : ''} sauvegardé{favorites.length !== 1 ? 's' : ''}
-        </p>
-      </header>
+  useEffect(() => { loadFavorites(); }, [loadFavorites]);
 
-      <div
-        style={{
-          padding: 'var(--space-4)',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: 'var(--space-3)',
-        }}
-      >
+  return (
+    <main style={{ minHeight: '100dvh', backgroundColor: 'var(--color-bg)' }}>
+      <AppHeader title="Favoris" showBack />
+
+      <div style={{ padding: 'var(--space-4)' }}>
         {favorites.length === 0 ? (
-          <div
-            style={{
-              textAlign: 'center',
-              padding: 'var(--space-16) var(--space-8)',
-              color: 'var(--color-text-muted)',
-            }}
-          >
-            <div style={{ fontSize: 48, marginBottom: 'var(--space-4)' }}>☆</div>
-            <p style={{ fontWeight: 600, color: 'var(--color-text)', marginBottom: 'var(--space-2)' }}>
-              Aucun favori pour l'instant
-            </p>
-            <p style={{ fontSize: 'var(--text-sm)', maxWidth: '28ch', margin: '0 auto' }}>
-              Tape l'étoile sur un commerce pour l'enregistrer ici.
-            </p>
+          <div style={{ textAlign: 'center', padding: 'var(--space-16) var(--space-8)', color: 'var(--color-text-muted)' }}>
+            <p style={{ fontSize: 32, marginBottom: 'var(--space-3)' }}>❤️</p>
+            <p style={{ fontWeight: 600, color: 'var(--color-text)', marginBottom: 'var(--space-2)' }}>Aucun favori</p>
+            <p style={{ fontSize: 'var(--text-sm)' }}>Ajoutez des commerces depuis la boussole.</p>
           </div>
         ) : (
-          favorites.map((place) => (
-            <PlaceCard key={place.id} place={place} onSelect={setSelected} />
-          ))
+          <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
+            {favorites.map((place) => (
+              <li
+                key={place.id}
+                onClick={() => setSelected(place)}
+                style={{
+                  backgroundColor: 'var(--color-surface)',
+                  border: '1px solid var(--color-border)',
+                  borderRadius: 'var(--radius-lg)',
+                  padding: 'var(--space-4)',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 'var(--space-3)',
+                }}
+              >
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <p style={{ fontWeight: 600, color: 'var(--color-text)', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {place.name}
+                  </p>
+                  <p style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)', margin: '2px 0 0' }}>
+                    {place.category}
+                  </p>
+                </div>
+                <button
+                  onClick={(e) => { e.stopPropagation(); toggleFavorite(place); }}
+                  aria-label="Retirer des favoris"
+                  style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 20, color: 'var(--color-error)', flexShrink: 0 }}
+                >
+                  ❤️
+                </button>
+              </li>
+            ))}
+          </ul>
         )}
       </div>
 
-      {selected && <PlaceDetailSheet place={selected} onClose={() => setSelected(null)} />}
-
-      <BottomNav />
+      {selected && (
+        <PlaceDetailSheet
+          place={selected}
+          onClose={() => setSelected(null)}
+          userLocation={null}
+        />
+      )}
     </main>
   );
 }

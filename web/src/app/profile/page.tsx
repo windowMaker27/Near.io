@@ -5,7 +5,7 @@ import { useAuthStore } from '@/store/authStore';
 import { supabase } from '@/lib/supabase';
 import { RemoveAdsButton } from '@/features/ads/FreemiumGate';
 import { useAdsStore } from '@/store/adsStore';
-import { BottomNav } from '@/components/BottomNav';
+import { AppHeader } from '@/components/AppHeader';
 
 export default function ProfilePage() {
   const { user } = useAuthStore();
@@ -21,18 +21,8 @@ export default function ProfilePage() {
   const name = (user?.user_metadata?.full_name ?? user?.email) as string;
 
   return (
-    <main
-      style={{
-        minHeight: '100dvh',
-        backgroundColor: 'var(--color-bg)',
-        paddingBottom: '80px',
-      }}
-    >
-      <header style={{ padding: 'var(--space-6) var(--space-4) var(--space-4)', borderBottom: '1px solid var(--color-divider)' }}>
-        <h1 style={{ fontSize: 'var(--text-xl)', fontFamily: 'var(--font-display)', color: 'var(--color-text)', margin: 0 }}>
-          Profil
-        </h1>
-      </header>
+    <main style={{ minHeight: '100dvh', backgroundColor: 'var(--color-bg)' }}>
+      <AppHeader title="Profil" showBack />
 
       <div style={{ padding: 'var(--space-6) var(--space-4)', display: 'flex', flexDirection: 'column', gap: 'var(--space-6)' }}>
         {/* Avatar + nom */}
@@ -81,7 +71,7 @@ export default function ProfilePage() {
           </p>
           <p style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-muted)', margin: '0 0 var(--space-3)' }}>
             {adsRemoved
-              ? 'Vous profitez d\u2019une expérience sans pubs.'
+              ? 'Vous profitez d\'une expérience sans pubs.'
               : 'Supprimez les publicités pour une expérience optimale.'}
           </p>
           {!adsRemoved && <RemoveAdsButton />}
@@ -105,8 +95,6 @@ export default function ProfilePage() {
           Se déconnecter
         </button>
       </div>
-
-      <BottomNav />
     </main>
   );
 }
