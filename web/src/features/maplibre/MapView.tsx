@@ -5,7 +5,6 @@ import type { Map as MapLibreMap, GeoJSONSource } from 'maplibre-gl';
 import type { FeatureCollection } from 'geojson';
 import { makeCirclePolygon } from '@/utils/geoCircle';
 import { useRadarSweep } from '@/hooks/useRadarSweep';
-import { useNearbyPlaces } from '@/features/places/hooks/useNearbyPlaces';
 import { useFiltersStore } from '@/store/filtersStore';
 import { useLocationStore } from '@/store/locationStore';
 import { watchPosition } from '@/services/locationService';
@@ -18,7 +17,10 @@ const ACCENT = '#e63946';
 const OPEN_COLOR = '#51cf66';
 const CLOSED_COLOR = '#ff6b6b';
 
-type Props = { onPlaceSelect?: (place: Place) => void };
+type Props = {
+  places: Place[];
+  onPlaceSelect?: (place: Place) => void;
+};
 
 function emptyFC(): FeatureCollection {
   return { type: 'FeatureCollection', features: [] };
@@ -31,19 +33,21 @@ function isDarkTheme() {
 
 let activeMapContainer: HTMLDivElement | null = null;
 
-export default function MapView({ onPlaceSelect }: Props) {
+export default function MapView({ places, onPlaceSelect }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<MapLibreMap | null>(null);
   const [mapReady, setMapReady] = useState(false);
 
+  // Ref pour éviter la stale closure dans le handler MapLibre
+  const onPlaceSelectRef = useRef(onPlaceSelect);
+  useEffect(() => { onPlaceSelectRef.current = onPlaceSelect; }, [onPlaceSelect]);
+
+  // Ref pour accéder aux places à jour depuis le handler MapLibre
+  const placesRef = useRef(places);
+  useEffect(() => { placesRef.current = places; }, [places]);
+
   const coords = useLocationStore((s) => s.coords);
   const { filters } = useFiltersStore();
-
-  // Pass coords so the hook actually fetches places
-  const userCoords: Coordinates | undefined = coords
-    ? { latitude: coords.latitude, longitude: coords.longitude }
-    : undefined;
-  const { places } = useNearbyPlaces(userCoords);
 
   const sweepGeoJSON = useRadarSweep(
     coords?.longitude ?? null,
@@ -83,9 +87,13 @@ export default function MapView({ onPlaceSelect }: Props) {
         setMapReady(true);
       });
 
+      // Utilise les refs → jamais de stale closure
       map.on('click', 'places-circle', (e) => {
         if (!e.features?.length) return;
-        onPlaceSelect?.(e.features[0].properties as Place);
+        const id = e.features[0].properties?.id as string | undefined;
+        if (!id) return;
+        const full = placesRef.current.find((p) => p.id === id);
+        if (full) onPlaceSelectRef.current?.(full);
       });
       map.on('mouseenter', 'places-circle', () => { map.getCanvas().style.cursor = 'pointer'; });
       map.on('mouseleave', 'places-circle', () => { map.getCanvas().style.cursor = ''; });
@@ -181,17 +189,16 @@ function addOverlayLayers(map: MapLibreMap) {
   const dark = isDarkTheme();
   const rf = dark ? 'rgba(231,76,60,0.04)' : 'rgba(231,76,60,0.03)';
   const sf = dark ? 'rgba(231,76,60,0.18)' : 'rgba(231,76,60,0.12)';
-
   const emptyFC: FeatureCollection = { type: 'FeatureCollection', features: [] };
 
-  if (!map.getSource('user-dot'))    map.addSource('user-dot',     { type: 'geojson', data: emptyFC });
+  if (!map.getSource('user-dot'))     map.addSource('user-dot',     { type: 'geojson', data: emptyFC });
   if (!map.getSource('radar-circle')) map.addSource('radar-circle', { type: 'geojson', data: emptyFC });
   if (!map.getSource('radar-sweep'))  map.addSource('radar-sweep',  { type: 'geojson', data: emptyFC });
-  if (!map.getSource('places'))       map.addSource('places',        { type: 'geojson', data: emptyFC });
+  if (!map.getSource('places'))       map.addSource('places',       { type: 'geojson', data: emptyFC });
 
-  if (!map.getLayer('radar-fill'))        map.addLayer({ id: 'radar-fill',        type: 'fill',   source: 'radar-circle', paint: { 'fill-color': rf } });
-  if (!map.getLayer('radar-stroke'))      map.addLayer({ id: 'radar-stroke',      type: 'line',   source: 'radar-circle', paint: { 'line-color': ACCENT, 'line-width': 1.2, 'line-opacity': 0.6 } });
-  if (!map.getLayer('radar-sweep-layer')) map.addLayer({ id: 'radar-sweep-layer', type: 'fill',   source: 'radar-sweep',  paint: { 'fill-color': sf } });
+  if (!map.getLayer('radar-fill'))        map.addLayer({ id: 'radar-fill',        type: 'fill', source: 'radar-circle', paint: { 'fill-color': rf } });
+  if (!map.getLayer('radar-stroke'))      map.addLayer({ id: 'radar-stroke',      type: 'line', source: 'radar-circle', paint: { 'line-color': ACCENT, 'line-width': 1.2, 'line-opacity': 0.6 } });
+  if (!map.getLayer('radar-sweep-layer')) map.addLayer({ id: 'radar-sweep-layer', type: 'fill', source: 'radar-sweep',  paint: { 'fill-color': sf } });
 
   if (!map.getLayer('places-circle')) {
     map.addLayer({
@@ -221,8 +228,8 @@ function addOverlayLayers(map: MapLibreMap) {
         'text-font': ['Noto Sans Regular'],
       },
       paint: {
-        'text-color':       dark ? '#cccccc' : '#111111',
-        'text-halo-color':  dark ? '#080808' : '#ffffff',
+        'text-color':      dark ? '#cccccc' : '#111111',
+        'text-halo-color': dark ? '#080808' : '#ffffff',
         'text-halo-width': 1.5,
       },
     });
