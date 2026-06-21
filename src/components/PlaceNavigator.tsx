@@ -1,4 +1,4 @@
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+'use client';
 import { useTheme } from '@/hooks/useTheme';
 
 type Props = {
@@ -12,56 +12,47 @@ export function PlaceNavigator({ currentIndex, total, onNext, onPrev }: Props) {
   const t = useTheme();
   if (total <= 1) return null;
 
-  const canPrev = currentIndex > 0;
-  const canNext = currentIndex < total - 1;
+  const btnStyle = (disabled: boolean) => ({
+    width: 36,
+    height: 36,
+    borderRadius: '50%',
+    border: `1px solid ${t.border}`,
+    background: t.surface,
+    color: disabled ? t.textFaint : t.text,
+    cursor: disabled ? 'not-allowed' : 'pointer',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    fontSize: 18,
+    lineHeight: 1,
+  } as React.CSSProperties);
 
   return (
-    <View style={[s.container, { backgroundColor: t.surface, borderColor: t.border }]}>
-      <Pressable
-        style={[s.btn, !canNext && s.btnDisabled]}
-        onPress={onNext}
-        disabled={!canNext}
-        hitSlop={8}
-        accessibilityLabel="Commerce suivant"
+    <div
+      style={{
+        position: 'absolute',
+        right: 16,
+        bottom: '50%',
+        transform: 'translateY(50%)',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 6,
+        alignItems: 'center',
+        zIndex: 5,
+      }}
+    >
+      <button onClick={onPrev} style={btnStyle(false)} aria-label="Commerce précédent">∧</button>
+      <span
+        style={{
+          fontFamily: 'var(--font-mono)',
+          fontSize: 11,
+          color: t.textMuted,
+          textAlign: 'center',
+        }}
       >
-        <Text style={[s.arrow, { color: t.accent, fontFamily: t.fontMonoBold }, !canNext && { color: t.textMuted }]}>⌃</Text>
-      </Pressable>
-
-      <Text style={[s.counter, { color: t.text, fontFamily: t.fontMonoBold }]}>
-        {currentIndex + 1}<Text style={[s.counterTotal, { color: t.textMuted, fontFamily: t.fontMono }]}>/{total}</Text>
-      </Text>
-
-      <Pressable
-        style={[s.btn, !canPrev && s.btnDisabled]}
-        onPress={onPrev}
-        disabled={!canPrev}
-        hitSlop={8}
-        accessibilityLabel="Commerce précédent"
-      >
-        <Text style={[s.arrow, { color: t.accent, fontFamily: t.fontMonoBold }, !canPrev && { color: t.textMuted }]}>⌄</Text>
-      </Pressable>
-    </View>
+        {currentIndex + 1}/{total}
+      </span>
+      <button onClick={onNext} style={btnStyle(false)} aria-label="Commerce suivant">∨</button>
+    </div>
   );
 }
-
-const s = StyleSheet.create({
-  container: {
-    position: 'absolute',
-    right: 0,
-    top: '80%',
-    borderTopLeftRadius: 8,
-    borderBottomLeftRadius: 8,
-    borderWidth: 1,
-    borderRightWidth: 0,
-    paddingVertical: 12,
-    paddingHorizontal: 6,
-    alignItems: 'center',
-    gap: 6,
-    zIndex: 10,
-  },
-  btn: { padding: 4, alignItems: 'center', justifyContent: 'center' },
-  btnDisabled: { opacity: 0.25 },
-  arrow: { fontSize: 20, lineHeight: 22 },
-  counter: { fontSize: 12, lineHeight: 16 },
-  counterTotal: { fontSize: 11 },
-});

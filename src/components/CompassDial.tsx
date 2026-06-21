@@ -1,135 +1,160 @@
-import { useEffect, useRef } from 'react';
-import { Animated, StyleSheet, View, Text } from 'react-native';
+'use client';
+import { useEffect, useRef, useState } from 'react';
 import { useTheme } from '@/hooks/useTheme';
 
 type Props = {
-  deltaAngle?: number;
-  instruction?: string;
+  deltaAngle?: number | null;
 };
+
+const DIAL_SIZE = 240;
+const ARROW_H = 90;
+
+const TICKS = [0, 45, 90, 135, 180, 225, 270, 315];
 
 export function CompassDial({ deltaAngle }: Props) {
   const t = useTheme();
-  const rotation = useRef(new Animated.Value(0)).current;
-  const prevAngle = useRef(0);
-
-  useEffect(() => {
-    const target = deltaAngle ?? 0;
-    let delta = target - prevAngle.current;
-    if (delta > 180) delta -= 360;
-    if (delta < -180) delta += 360;
-    const next = prevAngle.current + delta;
-    prevAngle.current = next;
-
-    Animated.spring(rotation, {
-      toValue: next,
-      useNativeDriver: true,
-      damping: 18,
-      stiffness: 120,
-    }).start();
-  }, [deltaAngle, rotation]);
-
-  const spin = rotation.interpolate({
-    inputRange: [-360, 360],
-    outputRange: ['-360deg', '360deg'],
-  });
+  const currentAngle = useRef(0);
+  const [displayAngle, setDisplayAngle] = useState(0);
+  const rafRef = useRef<number | null>(null);
 
   const aligned = deltaAngle != null && Math.abs(deltaAngle) < 15;
 
-  // Fond gris en mode clair, surface sombre en mode sombre
+  // Spring physique JS — même comportement que Animated.spring RN
+  useEffect(() => {
+    if (deltaAngle == null) return;
+
+    let target = deltaAngle;
+    // Normalisation pour éviter les rotations 360° inutiles
+    let delta = target - currentAngle.current;
+    if (delta > 180) delta -= 360;
+    if (delta < -180) delta += 360;
+    const destination = currentAngle.current + delta;
+
+    let velocity = 0;
+    const stiffness = 120;
+    const damping = 18;
+    const mass = 1;
+
+    const animate = () => {
+      const spring = -stiffness * (currentAngle.current - destination);
+      const damp = -damping * velocity;
+      const acc = (spring + damp) / mass;
+      velocity += acc * 0.016;
+      currentAngle.current += velocity * 0.016;
+
+      setDisplayAngle(currentAngle.current);
+
+      if (Math.abs(currentAngle.current - destination) > 0.1 || Math.abs(velocity) > 0.1) {
+        rafRef.current = requestAnimationFrame(animate);
+      } else {
+        currentAngle.current = destination;
+        setDisplayAngle(destination);
+      }
+    };
+
+    if (rafRef.current) cancelAnimationFrame(rafRef.current);
+    rafRef.current = requestAnimationFrame(animate);
+
+    return () => { if (rafRef.current) cancelAnimationFrame(rafRef.current); };
+  }, [deltaAngle]);
+
   const isDark = t.bg === '#080808';
   const ringBg = isDark ? t.surface : '#E8E8E8';
 
   return (
-    <View style={s.container}>
-      <View style={[
-        s.ring,
-        { backgroundColor: ringBg, borderColor: aligned ? t.accent : t.border },
-        aligned && { shadowColor: t.accent, shadowOpacity: 0.4, shadowRadius: 12, shadowOffset: { width: 0, height: 0 }, elevation: 8 },
-      ]}>
-        {[0, 45, 90, 135, 180, 225, 270, 315].map((deg) => (
-          <View
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16 }}>
+      {/* Cadran circulaire */}
+      <div
+        style={{
+          width: DIAL_SIZE,
+          height: DIAL_SIZE,
+          borderRadius: '50%',
+          backgroundColor: ringBg,
+          border: `1px solid ${aligned ? t.accent : t.border}`,
+          position: 'relative',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          boxShadow: aligned ? `0 0 24px ${t.accent}66` : 'none',
+          transition: 'border-color 0.3s, box-shadow 0.3s',
+        }}
+      >
+        {/* Ticks 8 directions */}
+        {TICKS.map((deg) => (
+          <div
             key={deg}
-            style={[
-              s.tick,
-              { backgroundColor: t.textFaint },
-              {
-                transform: [
-                  { rotate: `${deg}deg` },
-                  { translateY: -108 },
-                ],
-              },
-            ]}
+            style={{
+              position: 'absolute',
+              width: 1,
+              height: 8,
+              backgroundColor: t.textFaint,
+              top: '50%',
+              left: '50%',
+              transformOrigin: '0 0',
+              transform: `rotate(${deg}deg) translateY(-${DIAL_SIZE / 2 - 4}px) translateX(-0.5px)`,
+            }}
           />
         ))}
 
-        <Animated.View style={[s.arrowContainer, { transform: [{ rotate: spin }] }]}>
-          <View style={[s.arrowNorth, { borderBottomColor: t.accent }]} />
-          <View style={[s.arrowSouth, { borderTopColor: t.textFaint }]} />
-        </Animated.View>
+        {/* Flèche rotative */}
+        <div
+          style={{
+            position: 'absolute',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            transform: `rotate(${displayAngle}deg)`,
+            // Pas de CSS transition ici — le spring JS gère l'animation
+          }}
+        >
+          {/* Pointe nord (rouge/accent) */}
+          <div
+            style={{
+              width: 0,
+              height: 0,
+              borderLeft: '8px solid transparent',
+              borderRight: '8px solid transparent',
+              borderBottom: `${ARROW_H}px solid ${t.accent}`,
+            }}
+          />
+          {/* Pointe sud (grise) */}
+          <div
+            style={{
+              width: 0,
+              height: 0,
+              borderLeft: '8px solid transparent',
+              borderRight: '8px solid transparent',
+              borderTop: `${ARROW_H}px solid ${t.textFaint}`,
+            }}
+          />
+        </div>
 
-        <View style={[
-          s.centerDot,
-          { backgroundColor: aligned ? t.accent : t.text },
-        ]} />
-      </View>
+        {/* Point central */}
+        <div
+          style={{
+            position: 'absolute',
+            width: 10,
+            height: 10,
+            borderRadius: '50%',
+            backgroundColor: aligned ? t.accent : t.text,
+            transition: 'background-color 0.3s',
+          }}
+        />
+      </div>
 
+      {/* Degré affiché */}
       {deltaAngle != null && (
-        <Text style={[s.degLabel, { color: t.textMuted, fontFamily: t.fontMono }]}>
+        <span
+          style={{
+            fontSize: 13,
+            letterSpacing: 1,
+            color: t.textMuted,
+            fontFamily: 'var(--font-mono)',
+          }}
+        >
           {deltaAngle > 0 ? '+' : ''}{Math.round(deltaAngle)}°
-        </Text>
+        </span>
       )}
-    </View>
+    </div>
   );
 }
-
-const DIAL_SIZE = 240;
-const ARROW_W = 3;
-const ARROW_H = 90;
-
-const s = StyleSheet.create({
-  container: { alignItems: 'center', gap: 16 },
-  ring: {
-    width: DIAL_SIZE,
-    height: DIAL_SIZE,
-    borderRadius: DIAL_SIZE / 2,
-    borderWidth: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  tick: {
-    position: 'absolute',
-    width: 1,
-    height: 8,
-  },
-  arrowContainer: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    height: ARROW_H * 2,
-    width: ARROW_W * 6,
-  },
-  arrowNorth: {
-    width: 0,
-    height: 0,
-    borderLeftWidth: 8,
-    borderRightWidth: 8,
-    borderBottomWidth: ARROW_H,
-    borderLeftColor: 'transparent',
-    borderRightColor: 'transparent',
-  },
-  arrowSouth: {
-    width: 0,
-    height: 0,
-    borderLeftWidth: 8,
-    borderRightWidth: 8,
-    borderTopWidth: ARROW_H,
-    borderLeftColor: 'transparent',
-    borderRightColor: 'transparent',
-  },
-  centerDot: {
-    position: 'absolute',
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-  },
-  degLabel: { fontSize: 13, letterSpacing: 1 },
-});
