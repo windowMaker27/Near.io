@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic';
+
 /**
  * GET /api/payments/status
  * Vérifie si l'utilisateur connecté a acheté Remove Ads.

@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic';
+
 /**
  * POST /api/payments/checkout
  * Crée une session de paiement Lemon Squeezy pour "Remove Ads".

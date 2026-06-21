@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic';
+
 /**
  * POST /api/payments/webhook
  * Réceptionne les webhooks Lemon Squeezy et met à jour Supabase.
