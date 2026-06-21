@@ -1,57 +1,50 @@
-import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { theme } from '@/constants/theme';
+'use client';
+import { useTheme } from '@/hooks/useTheme';
 
-type Props = { onPress: () => void };
+type Props = {
+  onPress: () => void;
+};
 
 export function PermissionGate({ onPress }: Props) {
+  const t = useTheme();
   return (
-    <View style={s.container}>
-      <Text style={s.icon}>◎</Text>
-      <Text style={s.title}>Localisation requise</Text>
-      <Text style={s.desc}>
-        Near.io utilise votre position pour pointer vers le commerce alimentaire ouvert le plus proche.
-      </Text>
-      <Pressable style={s.btn} onPress={onPress}>
-        <Text style={s.btnText}>Autoriser la localisation</Text>
-      </Pressable>
-    </View>
+    <div
+      style={{
+        position: 'fixed',
+        inset: 0,
+        background: t.bg,
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 24,
+        padding: 32,
+        textAlign: 'center',
+      }}
+    >
+      <span style={{ fontSize: 48 }}>📍</span>
+      <h2 style={{ fontFamily: 'var(--font-mono-bold)', fontSize: 18, color: t.text, margin: 0 }}>
+        Localisation requise
+      </h2>
+      <p style={{ fontFamily: 'var(--font-mono)', fontSize: 13, color: t.textMuted, maxWidth: 280, margin: 0 }}>
+        Near.io a besoin de votre position pour trouver les commerces proches et orienter la boussole.
+      </p>
+      <button
+        onClick={onPress}
+        style={{
+          background: t.accent,
+          color: '#fff',
+          border: 'none',
+          borderRadius: 12,
+          padding: '14px 32px',
+          fontFamily: 'var(--font-mono-bold)',
+          fontSize: 14,
+          cursor: 'pointer',
+          letterSpacing: 0.5,
+        }}
+      >
+        Autoriser la localisation
+      </button>
+    </div>
   );
 }
-
-const s = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: theme.bg,
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 32,
-    gap: 16,
-  },
-  icon: { fontSize: 56, color: theme.accent },
-  title: {
-    fontFamily: theme.fontMonoBold,
-    fontSize: 20,
-    color: theme.text,
-    textAlign: 'center',
-  },
-  desc: {
-    fontFamily: theme.fontMono,
-    fontSize: 13,
-    color: theme.textMuted,
-    textAlign: 'center',
-    lineHeight: 20,
-    maxWidth: 300,
-  },
-  btn: {
-    marginTop: 8,
-    backgroundColor: theme.accent,
-    paddingVertical: 15,
-    paddingHorizontal: 32,
-    borderRadius: theme.radius,
-  },
-  btnText: {
-    fontFamily: theme.fontMonoBold,
-    fontSize: 14,
-    color: theme.white,
-  },
-});

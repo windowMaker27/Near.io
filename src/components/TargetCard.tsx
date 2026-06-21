@@ -1,80 +1,92 @@
-import { StyleSheet, Text, View } from 'react-native';
+'use client';
 import { Place } from '@/types/place';
-import { theme } from '@/constants/theme';
 import { PLACE_TYPE_LABELS } from '@/constants/placeTypes';
-import { formatDistance } from '@/features/compass/utils/distance';
+import { formatDistance } from '@/lib/geo';
+import { useTheme } from '@/hooks/useTheme';
 
-type Props = { place?: Place | null };
+type Props = { place?: Place | null; onClick?: () => void };
 
-export function TargetCard({ place }: Props) {
+export function TargetCard({ place, onClick }: Props) {
+  const t = useTheme();
   if (!place) return null;
 
   const statusColor =
-    place.openingStatus === 'open'   ? theme.colorOpen
-    : place.openingStatus === 'closed' ? theme.colorClosed
-    : theme.textMuted;
+    place.openingStatus === 'open' ? t.colorOpen
+    : place.openingStatus === 'closed' ? t.colorClosed
+    : t.textMuted;
 
   const statusLabel =
-    place.openingStatus === 'open'   ? 'Ouvert'
+    place.openingStatus === 'open' ? 'Ouvert'
     : place.openingStatus === 'closed' ? 'Fermé'
     : 'Horaires inconnus';
 
   return (
-    <View style={s.card}>
-      <View style={s.row}>
-        <Text style={s.name} numberOfLines={1}>{place.name}</Text>
-        <View style={[s.badge, { borderColor: statusColor }]}>
-          <Text style={[s.badgeText, { color: statusColor }]}>{statusLabel}</Text>
-        </View>
-      </View>
-      <View style={s.meta}>
-        <Text style={s.metaText}>{PLACE_TYPE_LABELS[place.category]}</Text>
-        {place.distanceMeters != null && (
-          <Text style={s.metaText}>{formatDistance(place.distanceMeters)}</Text>
-        )}
-        {place.shortAddress ? (
-          <Text style={s.metaText} numberOfLines={1}>{place.shortAddress}</Text>
-        ) : null}
-      </View>
-    </View>
+    <button
+      onClick={onClick}
+      style={{
+        background: t.surface,
+        border: `1px solid ${t.border}`,
+        borderRadius: 12,
+        padding: '14px 16px',
+        width: '100%',
+        textAlign: 'left',
+        cursor: onClick ? 'pointer' : 'default',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 6,
+      }}
+    >
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+        <span
+          style={{
+            fontFamily: 'var(--font-mono-bold)',
+            fontSize: 15,
+            color: t.text,
+            flex: 1,
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap',
+          }}
+        >
+          {place.name}
+        </span>
+        <span
+          style={{
+            border: `1px solid ${statusColor}`,
+            borderRadius: 9999,
+            padding: '2px 8px',
+            fontSize: 11,
+            color: statusColor,
+            fontFamily: 'var(--font-mono)',
+            whiteSpace: 'nowrap',
+          }}
+        >
+          {statusLabel}
+        </span>
+      </div>
+      <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+        {[
+          PLACE_TYPE_LABELS[place.category],
+          place.distanceMeters != null ? formatDistance(place.distanceMeters) : null,
+          place.shortAddress ?? null,
+        ]
+          .filter(Boolean)
+          .map((item, i) => (
+            <span
+              key={i}
+              style={{
+                fontFamily: 'var(--font-mono)',
+                fontSize: 12,
+                color: t.textMuted,
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              {item}
+            </span>
+          ))}
+      </div>
+    </button>
   );
 }
-
-const s = StyleSheet.create({
-  card: {
-    backgroundColor: theme.surface,
-    borderRadius: theme.radius,
-    borderWidth: 1,
-    borderColor: theme.border,
-    padding: theme.textMd,
-    gap: theme.sp2,
-  },
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: theme.sp2,
-  },
-  name: {
-    fontFamily: theme.fontMonoBold,
-    fontSize: theme.textLg,
-    color: theme.text,
-    flex: 1,
-  },
-  badge: {
-    borderWidth: 1,
-    borderRadius: theme.radiusFull,
-    paddingHorizontal: theme.sp2,
-    paddingVertical: 3,
-  },
-  badgeText: {
-    fontFamily: theme.fontMono,
-    fontSize: theme.textSm,
-  },
-  meta: { flexDirection: 'row', gap: theme.sp3, flexWrap: 'wrap' },
-  metaText: {
-    fontFamily: theme.fontMono,
-    fontSize: theme.textXs + 2,
-    color: theme.textMuted,
-  },
-});

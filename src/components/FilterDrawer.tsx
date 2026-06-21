@@ -1,19 +1,11 @@
-import { useRef, useState } from 'react';
-import {
-  Animated,
-  Dimensions,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native';
+'use client';
+import { useState, useRef } from 'react';
+import { AnimatePresence, motion } from 'framer-motion';
 import { useFiltersStore } from '@/store/filtersStore';
-import { theme } from '@/constants/theme';
 import { useTheme } from '@/hooks/useTheme';
 import { PLACE_TYPE_LABELS } from '@/constants/placeTypes';
 import { PlaceCategory } from '@/types/place';
-import { formatDistance } from '@/features/compass/utils/distance';
+import { formatDistance } from '@/lib/geo';
 
 const DRAWER_WIDTH = 280;
 const RADIUS_OPTIONS = [100, 300, 500, 1000, 2000, 3000];
@@ -21,207 +13,242 @@ const RADIUS_OPTIONS = [100, 300, 500, 1000, 2000, 3000];
 export function FilterDrawer() {
   const t = useTheme();
   const [open, setOpen] = useState(false);
-  const translateX = useRef(new Animated.Value(-DRAWER_WIDTH)).current;
   const { filters, setRadius, toggleOpenOnly, toggleCategory, reset } = useFiltersStore();
 
-  const openDrawer = () => {
-    setOpen(true);
-    Animated.spring(translateX, {
-      toValue: 0,
-      useNativeDriver: true,
-      damping: 20,
-      stiffness: 150,
-    }).start();
+  // Swipe-to-open sur mobile (pointer events)
+  const dragStartX = useRef<number | null>(null);
+
+  const handlePointerDown = (e: React.PointerEvent) => {
+    dragStartX.current = e.clientX;
+  };
+  const handlePointerUp = (e: React.PointerEvent) => {
+    if (dragStartX.current == null) return;
+    const dx = e.clientX - dragStartX.current;
+    if (dx > 50) setOpen(true);
+    dragStartX.current = null;
   };
 
-  const closeDrawer = () => {
-    Animated.spring(translateX, {
-      toValue: -DRAWER_WIDTH,
-      useNativeDriver: true,
-      damping: 20,
-      stiffness: 150,
-    }).start(() => setOpen(false));
-  };
-
-  const categories = Object.keys(PLACE_TYPE_LABELS).filter(
+  const categories = (Object.keys(PLACE_TYPE_LABELS) as PlaceCategory[]).filter(
     (k) => k !== 'unknown',
-  ) as PlaceCategory[];
+  );
+
+  const chipStyle = (active: boolean): React.CSSProperties => ({
+    border: `1px solid ${active ? t.accent : t.border}`,
+    borderRadius: 9999,
+    padding: '5px 12px',
+    fontSize: 12,
+    fontFamily: 'var(--font-mono)',
+    color: active ? t.text : t.textMuted,
+    background: active ? t.accentDim : 'transparent',
+    cursor: 'pointer',
+  });
 
   return (
     <>
+      {/* Handle latéral (toujours visible) */}
       {!open && (
-        <Pressable
-          style={[s.handle, { backgroundColor: t.surface, borderColor: t.border }]}
-          onPress={openDrawer}
+        <div
+          onPointerDown={handlePointerDown}
+          onPointerUp={handlePointerUp}
+          style={{
+            position: 'fixed',
+            left: 0,
+            top: 0,
+            bottom: 0,
+            width: 28,
+            zIndex: 10,
+            display: 'flex',
+            alignItems: 'center',
+          }}
         >
-          <Text style={[s.handleIcon, { color: t.accent, fontFamily: t.fontMonoBold }]}>›</Text>
-          <Text style={[s.handleLabel, { color: t.textMuted, fontFamily: t.fontMono }]}>Filtres</Text>
-        </Pressable>
+          <button
+            onClick={() => setOpen(true)}
+            style={{
+              position: 'absolute',
+              left: 0,
+              top: '35%',
+              background: t.surface,
+              border: `1px solid ${t.border}`,
+              borderLeft: 'none',
+              borderTopRightRadius: 8,
+              borderBottomRightRadius: 8,
+              padding: '12px 6px',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              gap: 6,
+              cursor: 'pointer',
+            }}
+            aria-label="Ouvrir les filtres"
+          >
+            <span
+              style={{
+                fontSize: 9,
+                letterSpacing: 1.5,
+                color: t.textMuted,
+                fontFamily: 'var(--font-mono)',
+                textTransform: 'uppercase',
+                writingMode: 'vertical-rl',
+                textOrientation: 'mixed',
+                transform: 'rotate(180deg)',
+              }}
+            >
+              FILTRES
+            </span>
+            <span style={{ fontSize: 18, color: t.accent, fontFamily: 'var(--font-mono-bold)' }}>›</span>
+          </button>
+        </div>
       )}
 
-      {open && <Pressable style={s.backdrop} onPress={closeDrawer} />}
+      <AnimatePresence>
+        {open && (
+          <>
+            {/* Backdrop */}
+            <motion.div
+              key="filter-backdrop"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setOpen(false)}
+              style={{
+                position: 'fixed',
+                inset: 0,
+                backgroundColor: 'rgba(0,0,0,0.6)',
+                zIndex: 20,
+              }}
+            />
 
-      <Animated.View
-        style={[s.drawer, { transform: [{ translateX }], backgroundColor: t.surface, borderRightColor: t.border }]}
-      >
-        <View style={[s.drawerHeader, { borderBottomColor: t.border }]}>
-          <Text style={[s.drawerTitle, { color: t.text, fontFamily: t.fontMonoBold }]}>Filtres</Text>
-          <Pressable onPress={closeDrawer} hitSlop={12}>
-            <Text style={[s.closeBtn, { color: t.textMuted, fontFamily: t.fontMono }]}>✕</Text>
-          </Pressable>
-        </View>
+            {/* Drawer panel */}
+            <motion.div
+              key="filter-drawer"
+              initial={{ x: -DRAWER_WIDTH }}
+              animate={{ x: 0 }}
+              exit={{ x: -DRAWER_WIDTH }}
+              transition={{ type: 'spring', damping: 20, stiffness: 200 }}
+              style={{
+                position: 'fixed',
+                left: 0,
+                top: 0,
+                bottom: 0,
+                width: DRAWER_WIDTH,
+                background: t.surface,
+                borderRight: `1px solid ${t.border}`,
+                zIndex: 30,
+                display: 'flex',
+                flexDirection: 'column',
+                paddingTop: 56,
+                overflowY: 'auto',
+              }}
+            >
+              {/* Header */}
+              <div
+                style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  padding: '0 20px 16px',
+                  borderBottom: `1px solid ${t.border}`,
+                }}
+              >
+                <span style={{ fontFamily: 'var(--font-mono-bold)', fontSize: 16, color: t.text }}>Filtres</span>
+                <button
+                  onClick={() => setOpen(false)}
+                  style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 16, color: t.textMuted }}
+                  aria-label="Fermer les filtres"
+                >✕</button>
+              </div>
 
-        <ScrollView style={s.drawerContent} showsVerticalScrollIndicator={false}>
-          <Pressable style={s.toggleRow} onPress={toggleOpenOnly}>
-            <Text style={[s.toggleLabel, { color: t.text, fontFamily: t.fontMono }]}>Ouverts uniquement</Text>
-            <View style={[s.toggle, { backgroundColor: t.border }, filters.openOnly && { backgroundColor: t.accentDim }]}>
-              <View style={[s.toggleThumb, { backgroundColor: t.textMuted }, filters.openOnly && { backgroundColor: t.accent, alignSelf: 'flex-end' as const }]} />
-            </View>
-          </Pressable>
-
-          <View style={[s.divider, { backgroundColor: t.border }]} />
-
-          <Text style={[s.sectionLabel, { color: t.textMuted, fontFamily: t.fontMono }]}>Rayon de recherche</Text>
-          <Text style={[s.radiusValue, { color: t.accent, fontFamily: t.fontMonoBold }]}>{formatDistance(filters.radiusMeters)}</Text>
-          <View style={s.radiusRow}>
-            {RADIUS_OPTIONS.map((r) => {
-              const active = filters.radiusMeters === r;
-              return (
-                <Pressable
-                  key={r}
-                  style={[s.chip, { borderColor: active ? t.accent : t.border, backgroundColor: active ? t.accentDim : 'transparent' }]}
-                  onPress={() => setRadius(r)}
+              <div style={{ padding: '0 20px', flex: 1 }}>
+                {/* Toggle ouvert uniquement */}
+                <div
+                  style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    padding: '16px 0',
+                  }}
                 >
-                  <Text style={[s.chipLabel, { color: active ? t.text : t.textMuted, fontFamily: t.fontMono }]}>
-                    {formatDistance(r)}
-                  </Text>
-                </Pressable>
-              );
-            })}
-          </View>
+                  <span style={{ fontFamily: 'var(--font-mono)', fontSize: 13, color: t.text }}>Ouverts uniquement</span>
+                  <button
+                    onClick={toggleOpenOnly}
+                    role="switch"
+                    aria-checked={filters.openOnly}
+                    style={{
+                      width: 44,
+                      height: 24,
+                      borderRadius: 12,
+                      background: filters.openOnly ? t.accentDim : t.border,
+                      border: 'none',
+                      position: 'relative',
+                      cursor: 'pointer',
+                      transition: 'background 0.2s',
+                    }}
+                  >
+                    <span
+                      style={{
+                        position: 'absolute',
+                        top: 3,
+                        left: filters.openOnly ? 'calc(100% - 21px)' : 3,
+                        width: 18,
+                        height: 18,
+                        borderRadius: '50%',
+                        background: filters.openOnly ? t.accent : t.textMuted,
+                        transition: 'left 0.2s, background 0.2s',
+                      }}
+                    />
+                  </button>
+                </div>
 
-          <View style={[s.divider, { backgroundColor: t.border }]} />
+                <div style={{ height: 1, background: t.border, margin: '4px 0' }} />
 
-          <Text style={[s.sectionLabel, { color: t.textMuted, fontFamily: t.fontMono }]}>Catégories</Text>
-          <View style={s.categories}>
-            {categories.map((cat) => {
-              const active = filters.categories.includes(cat);
-              return (
-                <Pressable
-                  key={cat}
-                  style={[s.chip, { borderColor: active ? t.accent : t.border, backgroundColor: active ? t.accentDim : 'transparent' }]}
-                  onPress={() => toggleCategory(cat)}
+                {/* Rayon */}
+                <p style={{ fontFamily: 'var(--font-mono)', fontSize: 10, letterSpacing: 1.5, textTransform: 'uppercase', color: t.textMuted, margin: '12px 0 6px' }}>Rayon de recherche</p>
+                <p style={{ fontFamily: 'var(--font-mono-bold)', fontSize: 22, color: t.accent, margin: '0 0 8px' }}>{formatDistance(filters.radiusMeters)}</p>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 4 }}>
+                  {RADIUS_OPTIONS.map((r) => (
+                    <button key={r} style={chipStyle(filters.radiusMeters === r)} onClick={() => setRadius(r)}>
+                      {formatDistance(r)}
+                    </button>
+                  ))}
+                </div>
+
+                <div style={{ height: 1, background: t.border, margin: '12px 0' }} />
+
+                {/* Catégories */}
+                <p style={{ fontFamily: 'var(--font-mono)', fontSize: 10, letterSpacing: 1.5, textTransform: 'uppercase', color: t.textMuted, margin: '12px 0 6px' }}>Catégories</p>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 4 }}>
+                  {categories.map((cat) => (
+                    <button key={cat} style={chipStyle(filters.categories.includes(cat))} onClick={() => toggleCategory(cat)}>
+                      {PLACE_TYPE_LABELS[cat]}
+                    </button>
+                  ))}
+                </div>
+
+                <div style={{ height: 1, background: t.border, margin: '12px 0' }} />
+
+                {/* Reset */}
+                <button
+                  onClick={reset}
+                  style={{
+                    width: '100%',
+                    margin: '8px 0 20px',
+                    padding: '12px',
+                    border: `1px solid ${t.border}`,
+                    borderRadius: 12,
+                    background: 'none',
+                    color: t.textMuted,
+                    fontFamily: 'var(--font-mono)',
+                    fontSize: 13,
+                    cursor: 'pointer',
+                  }}
                 >
-                  <Text style={[s.chipLabel, { color: active ? t.text : t.textMuted, fontFamily: t.fontMono }]}>
-                    {PLACE_TYPE_LABELS[cat]}
-                  </Text>
-                </Pressable>
-              );
-            })}
-          </View>
-
-          <View style={[s.divider, { backgroundColor: t.border }]} />
-
-          <Pressable style={[s.resetBtn, { borderColor: t.border }]} onPress={reset}>
-            <Text style={[s.resetLabel, { color: t.textMuted, fontFamily: t.fontMono }]}>Réinitialiser</Text>
-          </Pressable>
-        </ScrollView>
-      </Animated.View>
+                  Réinitialiser
+                </button>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
     </>
   );
 }
-
-const s = StyleSheet.create({
-  handle: {
-    position: 'absolute',
-    left: 0,
-    top: '80%',
-    borderTopRightRadius: 8,
-    borderBottomRightRadius: 8,
-    borderWidth: 1,
-    borderLeftWidth: 0,
-    paddingVertical: 20,
-    paddingHorizontal: 6,
-    alignItems: 'center',
-    gap: 4,
-    zIndex: 10,
-  },
-  handleIcon: { fontSize: 18 },
-  handleLabel: {
-    fontSize: 9,
-    letterSpacing: 1,
-    textTransform: 'uppercase',
-    transform: [{ rotate: '90deg' }],
-    marginTop: 8,
-  },
-  backdrop: {
-    position: 'absolute',
-    top: 0, left: 0, right: 0, bottom: 0,
-    backgroundColor: 'rgba(0,0,0,0.6)',
-    zIndex: 20,
-  },
-  drawer: {
-    position: 'absolute',
-    top: 0, bottom: 0, left: 0,
-    width: DRAWER_WIDTH,
-    borderRightWidth: 1,
-    zIndex: 30,
-    paddingTop: 56,
-  },
-  drawerHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingBottom: 16,
-    borderBottomWidth: 1,
-  },
-  drawerTitle: { fontSize: 16 },
-  closeBtn: { fontSize: 16 },
-  drawerContent: { flex: 1, paddingHorizontal: 20 },
-  toggleRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 16,
-  },
-  toggleLabel: { fontSize: 13 },
-  toggle: {
-    width: 44,
-    height: 24,
-    borderRadius: 12,
-    justifyContent: 'center',
-    paddingHorizontal: 3,
-  },
-  toggleThumb: {
-    width: 18,
-    height: 18,
-    borderRadius: 9,
-  },
-  divider: { height: 1, marginVertical: 8 },
-  sectionLabel: {
-    fontSize: 10,
-    letterSpacing: 1.5,
-    textTransform: 'uppercase',
-    marginTop: 12,
-    marginBottom: 6,
-  },
-  radiusValue: { fontSize: 22, marginBottom: 8 },
-  radiusRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 4 },
-  chip: {
-    borderWidth: 1,
-    borderRadius: 20,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-  },
-  chipLabel: { fontSize: 12 },
-  categories: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 4 },
-  resetBtn: {
-    marginVertical: 20,
-    paddingVertical: 12,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderRadius: theme.radius,
-  },
-  resetLabel: { fontSize: 13 },
-});

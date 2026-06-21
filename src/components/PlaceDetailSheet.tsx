@@ -1,19 +1,11 @@
 /**
- * PlaceDetailSheet — overlay absolu (pas de Modal) pour laisser la carte
- * interactive en arrière-plan.
+ * PlaceDetailSheet — bottom sheet web.
+ * Remplace Animated + PanResponder + react-native-safe-area-context
+ * par framer-motion drag + CSS.
  */
-import {
-  Animated,
-  PanResponder,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native';
-import { useRef, useEffect } from 'react';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { theme } from '@/constants/theme';
+'use client';
+import { useEffect, useRef } from 'react';
+import { AnimatePresence, motion, PanInfo } from 'framer-motion';
 import { useTheme } from '@/hooks/useTheme';
 import { Place } from '@/types/place';
 import { PLACE_TYPE_LABELS } from '@/constants/placeTypes';
@@ -29,194 +21,238 @@ type Props = {
 };
 
 export function PlaceDetailSheet({ visible, place, onClose }: Props) {
-  // Toujours monté — le sheet s'anime in/out mais ne bloque pas la carte
-  return (
-    <PlaceDetailSheetInner visible={visible} place={place} onClose={onClose} />
-  );
-}
-
-function PlaceDetailSheetInner({ visible, place, onClose }: Props) {
   const t = useTheme();
-  const insets = useSafeAreaInsets();
-  const translateY = useRef(new Animated.Value(600)).current;
-  const backdropOpacity = useRef(new Animated.Value(0)).current;
+  const scrollRef = useRef<HTMLDivElement>(null);
 
+  // Réinitialise le scroll à chaque ouverture
   useEffect(() => {
-    if (visible && place) {
-      translateY.setValue(600);
-      Animated.parallel([
-        Animated.spring(translateY, { toValue: 0, useNativeDriver: true, tension: 80, friction: 12 }),
-        Animated.timing(backdropOpacity, { toValue: 1, duration: 200, useNativeDriver: true }),
-      ]).start();
-    } else {
-      Animated.parallel([
-        Animated.timing(translateY, { toValue: 600, duration: 220, useNativeDriver: true }),
-        Animated.timing(backdropOpacity, { toValue: 0, duration: 200, useNativeDriver: true }),
-      ]).start();
-    }
+    if (visible && scrollRef.current) scrollRef.current.scrollTop = 0;
   }, [visible, place?.id]);
 
-  const dismiss = () => {
-    Animated.parallel([
-      Animated.timing(translateY, { toValue: 600, duration: 220, useNativeDriver: true }),
-      Animated.timing(backdropOpacity, { toValue: 0, duration: 200, useNativeDriver: true }),
-    ]).start(({ finished }) => { if (finished) onClose(); });
+  const handleDragEnd = (_: unknown, info: PanInfo) => {
+    if (info.offset.y > 80 || info.velocity.y > 300) onClose();
   };
-
-  const panResponder = useRef(
-    PanResponder.create({
-      onStartShouldSetPanResponder: () => true,
-      onMoveShouldSetPanResponder: (_, g) => Math.abs(g.dy) > 5,
-      onPanResponderMove: (_, g) => { if (g.dy > 0) translateY.setValue(g.dy); },
-      onPanResponderRelease: (_, g) => {
-        if (g.dy > 80 || g.vy > 0.5) {
-          dismiss();
-        } else {
-          Animated.spring(translateY, { toValue: 0, useNativeDriver: true, tension: 80, friction: 10 }).start();
-        }
-      },
-    })
-  ).current;
-
-  // Si invisible et pas de place — ne rien rendre du tout
-  if (!visible && !place) return null;
 
   const openingLabel = () => {
     if (!place) return null;
     if (place.openingStatus === 'open') {
       return (
-        <Text style={{ fontFamily: t.fontMonoBold, fontSize: t.textBase, color: t.colorOpen }}>
+        <span style={{ fontFamily: 'var(--font-mono-bold)', fontSize: 14, color: t.colorOpen }}>
           ● Ouvert
-          {place.closingTime ? (
-            <Text style={{ fontFamily: t.fontMono, fontSize: t.textBase, color: t.textMuted }}>
-              {' '}jusqu'à {place.closingTime}
-            </Text>
-          ) : null}
-        </Text>
+          {place.closingTime && (
+            <span style={{ fontFamily: 'var(--font-mono)', fontSize: 14, color: t.textMuted }}>
+              {' '}jusqu&apos;à {place.closingTime}
+            </span>
+          )}
+        </span>
       );
     }
     if (place.openingStatus === 'closed')
-      return <Text style={{ fontFamily: t.fontMonoBold, fontSize: t.textBase, color: t.colorClosed }}>● Fermé</Text>;
-    return <Text style={{ fontFamily: t.fontMonoBold, fontSize: t.textBase, color: t.textMuted }}>● Horaires inconnus</Text>;
+      return <span style={{ fontFamily: 'var(--font-mono-bold)', fontSize: 14, color: t.colorClosed }}>● Fermé</span>;
+    return <span style={{ fontFamily: 'var(--font-mono-bold)', fontSize: 14, color: t.textMuted }}>● Horaires inconnus</span>;
   };
 
   const hoursGroups = place ? formatOpeningHours(place.openingHoursText, place.osmOpeningHours) : null;
 
   return (
-    <View style={StyleSheet.absoluteFill} pointerEvents="box-none">
-      {/* Backdrop semi-transparent — pointerEvents="none" quand invisible */}
-      <Animated.View
-        style={[s.backdrop, { opacity: backdropOpacity }]}
-        pointerEvents={visible ? 'auto' : 'none'}
-      >
-        <Pressable style={StyleSheet.absoluteFill} onPress={dismiss} />
-      </Animated.View>
+    <AnimatePresence>
+      {visible && place && (
+        <>
+          {/* Backdrop */}
+          <motion.div
+            key="pds-backdrop"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            onClick={onClose}
+            style={{
+              position: 'fixed',
+              inset: 0,
+              backgroundColor: 'rgba(0,0,0,0.55)',
+              zIndex: 40,
+            }}
+          />
 
-      {/* Sheet */}
-      <Animated.View
-        style={[
-          s.sheet,
-          {
-            backgroundColor: t.surface,
-            borderTopColor: t.border,
-            paddingBottom: insets.bottom + theme.sp4,
-            transform: [{ translateY }],
-          },
-        ]}
-        pointerEvents={visible ? 'auto' : 'none'}
-      >
-        <View style={s.handleZone} {...panResponder.panHandlers}>
-          <View style={[s.handle, { backgroundColor: t.border }]} />
-        </View>
-
-        {place && (
-          <ScrollView
-            contentContainerStyle={s.content}
-            showsVerticalScrollIndicator={false}
-            scrollEventThrottle={16}
+          {/* Sheet */}
+          <motion.div
+            key="pds-sheet"
+            drag="y"
+            dragConstraints={{ top: 0, bottom: 0 }}
+            dragElastic={{ top: 0, bottom: 0.3 }}
+            onDragEnd={handleDragEnd}
+            initial={{ y: 600, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: 600, opacity: 0 }}
+            transition={{ type: 'spring', damping: 28, stiffness: 260 }}
+            style={{
+              position: 'fixed',
+              bottom: 0,
+              left: 0,
+              right: 0,
+              zIndex: 50,
+              backgroundColor: t.surface,
+              borderTop: `1px solid ${t.border}`,
+              borderTopLeftRadius: 20,
+              borderTopRightRadius: 20,
+              maxHeight: '75dvh',
+              display: 'flex',
+              flexDirection: 'column',
+              touchAction: 'none',
+            }}
           >
-            <View style={s.titleRow}>
-              <View style={{ flex: 1 }}>
-                <Text style={[s.name, { color: t.text, fontFamily: t.fontMonoBold }]}>{place.name}</Text>
-                <Text style={[s.category, { color: t.textMuted, fontFamily: t.fontMono }]}>
-                  {PLACE_TYPE_LABELS[place.category]}
-                </Text>
-                <SourceBadge place={place} />
-              </View>
-              <Pressable onPress={dismiss} hitSlop={theme.sp3}>
-                <Text style={[s.closeBtn, { color: t.textMuted, fontFamily: t.fontMono }]}>✕</Text>
-              </Pressable>
-            </View>
+            {/* Handle draggable */}
+            <div
+              style={{
+                display: 'flex',
+                justifyContent: 'center',
+                padding: '12px 0 4px',
+                cursor: 'grab',
+                flexShrink: 0,
+              }}
+            >
+              <div
+                style={{
+                  width: 36,
+                  height: 4,
+                  borderRadius: 2,
+                  backgroundColor: t.border,
+                }}
+              />
+            </div>
 
-            {place.distanceMeters != null && (
-              <View style={s.row}>
-                <Text style={s.rowIcon}>📍</Text>
-                <Text style={[s.rowText, { color: t.text, fontFamily: t.fontMono }]}>
-                  {formatDistance(place.distanceMeters)}
-                  {place.shortAddress ? `  ·  ${place.shortAddress}` : ''}
-                </Text>
-              </View>
-            )}
+            {/* Scrollable content */}
+            <div
+              ref={scrollRef}
+              style={{
+                overflowY: 'auto',
+                flex: 1,
+                padding: '0 20px 40px',
+                WebkitOverflowScrolling: 'touch',
+              }}
+            >
+              {/* Titre + close */}
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'flex-start',
+                  justifyContent: 'space-between',
+                  marginBottom: 12,
+                }}
+              >
+                <div style={{ flex: 1 }}>
+                  <p
+                    style={{
+                      fontFamily: 'var(--font-mono-bold)',
+                      fontSize: 20,
+                      color: t.text,
+                      margin: 0,
+                    }}
+                  >
+                    {place.name}
+                  </p>
+                  <p
+                    style={{
+                      fontFamily: 'var(--font-mono)',
+                      fontSize: 12,
+                      color: t.textMuted,
+                      margin: '2px 0 0',
+                    }}
+                  >
+                    {PLACE_TYPE_LABELS[place.category]}
+                  </p>
+                  <SourceBadge place={place} />
+                </div>
+                <button
+                  onClick={onClose}
+                  aria-label="Fermer"
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    cursor: 'pointer',
+                    fontSize: 20,
+                    color: t.textMuted,
+                    paddingLeft: 12,
+                    paddingTop: 2,
+                    fontFamily: 'var(--font-mono)',
+                  }}
+                >
+                  ✕
+                </button>
+              </div>
 
-            <View style={s.row}>
-              <Text style={s.rowIcon}>🕐</Text>
-              <View>{openingLabel()}</View>
-            </View>
+              {/* Distance + adresse */}
+              {place.distanceMeters != null && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+                  <span style={{ fontSize: 16 }}>📍</span>
+                  <span style={{ fontFamily: 'var(--font-mono)', fontSize: 14, color: t.text }}>
+                    {formatDistance(place.distanceMeters)}
+                    {place.shortAddress ? `  ·  ${place.shortAddress}` : ''}
+                  </span>
+                </div>
+              )}
 
-            {hoursGroups && hoursGroups.length > 0 && (
-              <View style={[s.hoursBox, { backgroundColor: t.bg, borderColor: t.border }]}>
-                <Text style={[s.hoursLabel, { color: t.textFaint, fontFamily: t.fontMono }]}>HORAIRES</Text>
-                {hoursGroups.map((group, i) => (
-                  <View key={i} style={s.hoursRow}>
-                    <Text style={[s.hoursDayText, { color: t.textMuted, fontFamily: t.fontMono }]}>{group.label}</Text>
-                    {group.hours ? (
-                      <Text style={[s.hoursTimeText, { color: t.text, fontFamily: t.fontMonoBold }]}>{group.hours}</Text>
-                    ) : null}
-                  </View>
-                ))}
-              </View>
-            )}
+              {/* Statut ouverture */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+                <span style={{ fontSize: 16 }}>🕐</span>
+                <div>{openingLabel()}</div>
+              </div>
 
-            <PlaceLogsSection placeId={place.id} onCloseParent={dismiss} />
-          </ScrollView>
-        )}
-      </Animated.View>
-    </View>
+              {/* Horaires détaillés */}
+              {hoursGroups && hoursGroups.length > 0 && (
+                <div
+                  style={{
+                    marginTop: 4,
+                    borderRadius: 12,
+                    padding: 12,
+                    border: `1px solid ${t.border}`,
+                    backgroundColor: t.bg,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: 6,
+                    marginBottom: 16,
+                  }}
+                >
+                  <span
+                    style={{
+                      fontSize: 10,
+                      letterSpacing: 1.5,
+                      textTransform: 'uppercase',
+                      color: t.textFaint,
+                      fontFamily: 'var(--font-mono)',
+                      marginBottom: 2,
+                    }}
+                  >
+                    HORAIRES
+                  </span>
+                  {hoursGroups.map((group, i) => (
+                    <div
+                      key={i}
+                      style={{
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        gap: 12,
+                      }}
+                    >
+                      <span style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: t.textMuted, flexShrink: 1 }}>
+                        {group.label}
+                      </span>
+                      {group.hours && (
+                        <span style={{ fontFamily: 'var(--font-mono-bold)', fontSize: 12, color: t.text, textAlign: 'right' }}>
+                          {group.hours}
+                        </span>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              <PlaceLogsSection placeId={place.id} onCloseParent={onClose} />
+            </div>
+          </motion.div>
+        </>
+      )}
+    </AnimatePresence>
   );
 }
-
-const s = StyleSheet.create({
-  backdrop: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.55)',
-  },
-  sheet: {
-    position: 'absolute',
-    bottom: 0, left: 0, right: 0,
-    borderTopLeftRadius: theme.radiusLg,
-    borderTopRightRadius: theme.radiusLg,
-    borderTopWidth: 1,
-    maxHeight: '75%',
-  },
-  handleZone: { alignItems: 'center', paddingVertical: 12 },
-  handle: { width: 36, height: 4, borderRadius: 2 },
-  content: { padding: theme.pagePad, paddingBottom: theme.sp12 },
-  titleRow: { flexDirection: 'row', alignItems: 'flex-start', marginBottom: theme.sp3 },
-  name: { fontSize: theme.textXl, flexShrink: 1 },
-  category: { fontSize: theme.textXs + 2, marginTop: 2 },
-  closeBtn: { fontSize: theme.textXl, paddingLeft: theme.sp4, paddingTop: 2 },
-  row: { flexDirection: 'row', alignItems: 'center', gap: theme.sp2 + 2, marginBottom: theme.sp3 },
-  rowIcon: { fontSize: theme.sp4, width: 22 },
-  rowText: { fontSize: theme.textBase, flexShrink: 1 },
-  hoursBox: {
-    marginTop: theme.sp1,
-    borderRadius: theme.radius,
-    padding: theme.textMd,
-    borderWidth: 1,
-    gap: theme.sp1 + 2,
-  },
-  hoursLabel: { fontSize: theme.textXs, letterSpacing: theme.trackingWide, textTransform: 'uppercase', marginBottom: 2 },
-  hoursRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: theme.sp3 },
-  hoursDayText: { fontSize: theme.textXs + 2, flexShrink: 1 },
-  hoursTimeText: { fontSize: theme.textXs + 2, textAlign: 'right' },
-});

@@ -2,7 +2,6 @@ import { useEffect, useRef, useState } from 'react';
 import { Animated, Dimensions, Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import MapLibre from '@maplibre/maplibre-react-native';
 import * as Location from 'expo-location';
 import { useTheme } from '@/hooks/useTheme';
 import { nearMapStyleDark, nearMapStyleLight } from '@/features/maplibre/style/nearMapStyle';
@@ -15,10 +14,10 @@ import { useFiltersStore } from '@/store/filtersStore';
 import { makeCirclePolygon } from '@/utils/geoCircle';
 import { useRadarSweep } from '@/hooks/useRadarSweep';
 
-const { MapView, Camera, ShapeSource, CircleLayer, FillLayer, LineLayer } = MapLibre;
 const { width, height } = Dimensions.get('window');
 
 export default function MapScreen() {
+  const [mapLibre, setMapLibre] = useState<any>(null);
   const t = useTheme();
   const isDark = t.bg === '#080808';
   const mapStyle = isDark ? nearMapStyleDark : nearMapStyleLight;
@@ -41,6 +40,8 @@ export default function MapScreen() {
   const [detailVisible, setDetailVisible] = useState(false);
   const tooltipAnim = useRef(new Animated.Value(0)).current;
 
+  const { places } = useNearbyPlaces(userLocation);
+
   const sweepGeoJSON = useRadarSweep(
     coords ? coords[0] : null,
     coords ? coords[1] : null,
@@ -51,29 +52,72 @@ export default function MapScreen() {
     ? { type: 'FeatureCollection', features: [makeCirclePolygon(coords[0], coords[1], filters.radiusMeters)] }
     : null;
 
+  // Chargement lazy de MapLibre — jamais au top-level pour éviter
+  // tout crash JSI/TurboModule au boot sur New Architecture (release build).
+  // setAccessToken est appelé dans un try/catch séparé pour ne pas
+  // faire avorter le chargement du module si la méthode native n'est
+  // pas encore disponible (race condition New Arch au démarrage).
+  useEffect(() => {
+    let isMounted = true;
+
+    try {
+      const mod = require('@maplibre/maplibre-react-native');
+      const resolved = (mod && (mod.default || mod)) as any;
+
+      if (resolved) {
+        // Appel natif isolé : s'il échoue (TurboModule pas encore prêt),
+        // le module est quand même utilisable pour le rendu.
+        try {
+          if (typeof resolved.setAccessToken === 'function') {
+            resolved.setAccessToken('');
+          }
+        } catch (tokenError) {
+          console.warn('[MapScreen] setAccessToken failed (non-fatal)', tokenError);
+        }
+
+        if (isMounted) {
+          setMapLibre(resolved);
+        }
+      }
+    } catch (error) {
+      console.warn('[MapScreen] MapLibre module unavailable', error);
+    }
+
+    return () => { isMounted = false; };
+  }, []);
+
   useEffect(() => {
     let sub: Location.LocationSubscription | null = null;
     (async () => {
-      const { status } = await Location.requestForegroundPermissionsAsync();
-      if (status !== 'granted') return;
-      const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
-      applyLocation(loc.coords);
-      sub = await Location.watchPositionAsync(
-        { accuracy: Location.Accuracy.Balanced, distanceInterval: 5 },
-        (l) => applyLocation(l.coords),
-      );
+      try {
+        const { status } = await Location.requestForegroundPermissionsAsync();
+        if (status !== 'granted') return;
+        const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+        applyLocation(loc.coords);
+        sub = await Location.watchPositionAsync(
+          { accuracy: Location.Accuracy.Balanced, distanceInterval: 5 },
+          (l) => applyLocation(l.coords),
+        );
+      } catch (error) {
+        console.warn('[MapScreen] location initialization failed', error);
+      }
     })();
     return () => { sub?.remove(); };
   }, []);
 
-  const applyLocation = (c: { latitude: number; longitude: number }) => {
+  function applyLocation(c: { latitude: number; longitude: number }) {
     const next: [number, number] = [c.longitude, c.latitude];
     coordsRef.current = next;
     setCoords(next);
     setUserLocation({ latitude: c.latitude, longitude: c.longitude });
-  };
+  }
 
-  const { places } = useNearbyPlaces(userLocation);
+  function showTooltip(place: Place) {
+    setTooltip(place);
+    setSelectedId(place.id);
+    tapCountRef.current = 0;
+    Animated.spring(tooltipAnim, { toValue: 1, useNativeDriver: true, tension: 80, friction: 8 }).start();
+  }
 
   useEffect(() => {
     if (placeId && places.length > 0) {
@@ -82,12 +126,13 @@ export default function MapScreen() {
     }
   }, [placeId, places]);
 
-  const showTooltip = (place: Place) => {
-    setTooltip(place);
-    setSelectedId(place.id);
-    tapCountRef.current = 0;
-    Animated.spring(tooltipAnim, { toValue: 1, useNativeDriver: true, tension: 80, friction: 8 }).start();
-  };
+  const resolvedMapLibre = (mapLibre && (mapLibre.default || mapLibre)) as any;
+  const { MapView, Camera, ShapeSource, CircleLayer, FillLayer, LineLayer } = resolvedMapLibre ?? {};
+  const isMapLibreReady = Boolean(MapView && Camera && ShapeSource && CircleLayer && FillLayer && LineLayer);
+
+  if (!isMapLibreReady) {
+    return <View style={[styles.container, { backgroundColor: t.bg }]} />;
+  }
 
   const hideTooltip = () => {
     Animated.timing(tooltipAnim, { toValue: 0, duration: 150, useNativeDriver: true }).start(() => {
@@ -243,7 +288,6 @@ export default function MapScreen() {
         )}
       </MapView>
 
-      {/* Bouton retour — haut gauche */}
       <Pressable
         style={[styles.backBtn, { top: insets.top + 12, backgroundColor: t.surface, borderColor: t.border }]}
         onPress={handleBack}
@@ -251,7 +295,6 @@ export default function MapScreen() {
         <Text style={[styles.backLabel, { color: t.text, fontFamily: t.fontMono }]}>← Retour</Text>
       </Pressable>
 
-      {/* Bouton recentrer — haut droite */}
       <Pressable
         style={[styles.recenterBtn, { top: insets.top + 12, backgroundColor: t.surface, borderColor: t.border }]}
         onPress={recenter}

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { StyleSheet, Text, View, useWindowDimensions } from 'react-native';
-import { CameraView, useCameraPermissions } from 'expo-camera';
+import { useCameraPermissions } from 'expo-camera';
 import { AROverlay } from '@/features/ar/components/AROverlay';
 import { useAppStore } from '@/store/appStore';
 import { useTargetBearing } from '@/features/compass/hooks/useTargetBearing';
@@ -13,6 +13,7 @@ export default function ARScreen() {
   const t = useTheme();
   const { width, height } = useWindowDimensions();
   const [permission, requestPermission] = useCameraPermissions();
+  const [CameraViewComponent, setCameraViewComponent] = useState<any>(null);
   const { userLocation, userHeading, selectedTarget, setUserHeading } = useAppStore();
   const { deltaAngle } = useTargetBearing(userLocation, userHeading, selectedTarget);
   const instruction = getDirectionInstruction(deltaAngle);
@@ -30,7 +31,9 @@ export default function ARScreen() {
           setUserHeading(raw);
         });
         headingSubRef.current = sub;
-      } catch {}
+      } catch (error) {
+        console.warn('[ARScreen] watchHeadingAsync failed', error);
+      }
     })();
     return () => {
       cancelled = true;
@@ -45,6 +48,15 @@ export default function ARScreen() {
     }
   }, [permission, requestPermission, requested]);
 
+  useEffect(() => {
+    try {
+      const mod = require('expo-camera');
+      setCameraViewComponent(mod.CameraView);
+    } catch (error) {
+      console.warn('[ARScreen] expo-camera CameraView unavailable', error);
+    }
+  }, []);
+
   if (!permission?.granted) {
     return (
       <View style={[styles.fallback, { backgroundColor: t.bg }]}>
@@ -56,11 +68,20 @@ export default function ARScreen() {
     );
   }
 
+  if (!CameraViewComponent) {
+    return (
+      <View style={[styles.fallback, { backgroundColor: t.bg }]}> 
+        <Text style={[styles.title, { color: t.text, fontFamily: t.fontMonoBold }]}>Mode AR indisponible</Text>
+        <Text style={[styles.text, { color: t.textMuted, fontFamily: t.fontMono }]}>Le module caméra n'est pas disponible.</Text>
+      </View>
+    );
+  }
+
   return (
     // Dimensions explicites : nécessaire en EAS build pour que le layer natif
     // CameraView se rende correctement (flex:1 seul est insuffisant sur certains builds)
     <View style={{ width, height, backgroundColor: '#000' }}>
-      <CameraView
+      <CameraViewComponent
         style={{ position: 'absolute', top: 0, left: 0, width, height }}
         facing="back"
       />

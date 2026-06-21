@@ -12,18 +12,24 @@ export function useAuthInit() {
 
   useEffect(() => {
     // Récupère la session courante au démarrage
-    supabase.auth.getSession().then(async ({ data }) => {
-      setSession(data.session);
-      if (data.session?.user) {
-        try {
-          const profile = await fetchProfile(data.session.user.id);
-          setProfile(profile);
-        } catch {
-          // profil absent — rare, on ignore
+    (async () => {
+      try {
+        const { data } = await supabase.auth.getSession();
+        setSession(data.session);
+        if (data.session?.user) {
+          try {
+            const profile = await fetchProfile(data.session.user.id);
+            setProfile(profile);
+          } catch {
+            // profil absent — rare, on ignore
+          }
         }
+      } catch (error) {
+        console.warn('[useAuthInit] supabase auth session failed', error);
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
-    });
+    })();
 
     // Écoute les changements de session (login / logout)
     const { data: listener } = supabase.auth.onAuthStateChange(async (event, session) => {
