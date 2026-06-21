@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import type { Place } from '@/types/place';
 import { PLACE_TYPE_LABELS } from '@/constants/placeTypes';
 import { formatDistance } from '@/features/compass/utils/distance';
@@ -29,7 +30,7 @@ function LogItem({ log }: { log: PlaceLog }) {
     <div style={{ marginBottom: 'var(--space-2)', fontSize: 'var(--text-xs)', lineHeight: 1.5, fontFamily: 'monospace', color: 'var(--color-text)' }}>
       <span style={{ color: 'var(--color-text-muted)' }}>{formatLogDate(log.createdAt)}</span>
       <span style={{ color: 'var(--color-primary)' }}>@{log.username}</span>
-      <span style={{ color: 'var(--color-text-muted)' }}>&gt; </span>
+      <span style={{ color: 'var(--color-text-muted)'}}>&gt; </span>
       <span>{log.content}</span>
     </div>
   );
@@ -52,6 +53,10 @@ export function PlaceDetailSheet({ place, onClose }: Props) {
   const [modalOpen, setModalOpen] = useState(false);
   const [draft, setDraft] = useState('');
   const [postError, setPostError] = useState<string | null>(null);
+  const [mounted, setMounted] = useState(false);
+
+  // Needed for SSR-safe portal
+  useEffect(() => { setMounted(true); }, []);
 
   const bearing = coords
     ? getBearingDeg(coords.latitude, coords.longitude, place.coordinates.latitude, place.coordinates.longitude)
@@ -67,12 +72,6 @@ export function PlaceDetailSheet({ place, onClose }: Props) {
     document.body.style.overflow = 'hidden';
     return () => { document.body.style.overflow = ''; };
   }, []);
-
-  const navigateToCompass = () => {
-    useAppStore.getState().setSelectedPlace(place);
-    router.push('/compass');
-    onClose();
-  };
 
   const handleFavToggle = () => {
     if (isFav) removeFavorite(place.id);
@@ -106,10 +105,12 @@ export function PlaceDetailSheet({ place, onClose }: Props) {
 
   const statusLabel =
     place.openingStatus === 'open'
-      ? `Ouvert${place.closingTime ? ` jusqu'à ${place.closingTime}` : ''}`
+      ? `Ouvert${place.closingTime ? ` jusqu\'à ${place.closingTime}` : ''}`
       : place.openingStatus === 'closed' ? 'Fermé' : 'Horaires inconnus';
 
-  return (
+  if (!mounted) return null;
+
+  return createPortal(
     <>
       {/* Overlay */}
       <div
@@ -133,6 +134,7 @@ export function PlaceDetailSheet({ place, onClose }: Props) {
           zIndex: 101,
           backgroundColor: 'var(--color-surface)',
           borderRadius: 'var(--radius-xl) var(--radius-xl) 0 0',
+          borderTop: '1px solid var(--color-border)',
           padding: 'var(--space-6) var(--space-5) calc(80px + env(safe-area-inset-bottom))',
           display: 'flex', flexDirection: 'column', gap: 'var(--space-4)',
           boxShadow: 'var(--shadow-lg)',
@@ -234,22 +236,6 @@ export function PlaceDetailSheet({ place, onClose }: Props) {
           >
             {isFav ? '★ Retirer' : '☆ Favori'}
           </button>
-          <button
-            onClick={navigateToCompass}
-            style={{
-              flex: 1,
-              padding: 'var(--space-3)',
-              borderRadius: 'var(--radius-md)',
-              border: '1px solid var(--color-primary-border)',
-              backgroundColor: 'var(--color-primary-highlight)',
-              color: 'var(--color-primary)',
-              fontWeight: 600,
-              fontSize: 'var(--text-sm)',
-              cursor: 'pointer',
-            }}
-          >
-            🧭 Boussole
-          </button>
         </div>
 
         {/* Direction */}
@@ -260,7 +246,7 @@ export function PlaceDetailSheet({ place, onClose }: Props) {
         )}
       </div>
 
-      {/* Modal nouveau log */}
+      {/* Modal nouveau log — aussi dans le portal, z-index > sheet */}
       {modalOpen && (
         <>
           <div
@@ -336,6 +322,7 @@ export function PlaceDetailSheet({ place, onClose }: Props) {
         @keyframes fadeIn  { from { opacity: 0 } to { opacity: 1 } }
         @keyframes slideUp { from { transform: translateY(100%) } to { transform: translateY(0) } }
       `}</style>
-    </>
+    </>,
+    document.body
   );
 }
