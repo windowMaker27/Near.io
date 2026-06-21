@@ -19,10 +19,24 @@ export default function LoginPage() {
     setError(null);
     setLoading(true);
     try {
-      const { data, error: err } = await supabase.auth.signInWithPassword({
-        email: identifier.trim(),
-        password,
-      });
+      const raw = identifier.trim();
+      let email = raw;
+
+      // Si l'identifiant ne contient pas '@', c'est un username → résolution email
+      if (!raw.includes('@')) {
+        const { data: rows, error: lookupErr } = await supabase
+          .from('profiles')
+          .select('email')
+          .eq('username', raw)
+          .limit(1)
+          .single();
+        if (lookupErr || !rows?.email) {
+          throw new Error('Nom d\'utilisateur introuvable.');
+        }
+        email = rows.email;
+      }
+
+      const { data, error: err } = await supabase.auth.signInWithPassword({ email, password });
       if (err) throw err;
       if (data.user) setUser(data.user);
       router.replace('/');
@@ -40,15 +54,15 @@ export default function LoginPage() {
         <p style={styles.subtitle}>Connexion</p>
 
         <form onSubmit={handleSubmit} style={styles.form} noValidate>
-          <label style={styles.label} htmlFor="email">Email</label>
+          <label style={styles.label} htmlFor="identifier">Nom d&apos;utilisateur ou email</label>
           <input
-            id="email"
-            type="email"
-            autoComplete="email"
+            id="identifier"
+            type="text"
+            autoComplete="username"
             required
             value={identifier}
             onChange={(e) => setIdentifier(e.target.value)}
-            placeholder="vous@exemple.com"
+            placeholder="username ou vous@exemple.com"
             style={styles.input}
           />
 

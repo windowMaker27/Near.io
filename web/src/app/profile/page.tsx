@@ -8,7 +8,7 @@ import { useAdsStore } from '@/store/adsStore';
 import { AppHeader } from '@/components/AppHeader';
 
 export default function ProfilePage() {
-  const { user } = useAuthStore();
+  const { user, profile } = useAuthStore();
   const { adsRemoved } = useAdsStore();
   const router = useRouter();
 
@@ -18,7 +18,10 @@ export default function ProfilePage() {
   };
 
   const avatar = user?.user_metadata?.avatar_url as string | undefined;
-  const name = (user?.user_metadata?.full_name ?? user?.email) as string;
+  const username = profile?.username ?? user?.user_metadata?.full_name as string | undefined;
+  const email = user?.email;
+  // Initiale pour l'avatar placeholder
+  const initial = (username ?? email ?? '?')[0].toUpperCase();
 
   return (
     <main style={{ minHeight: '100dvh', backgroundColor: 'var(--color-bg)' }}>
@@ -31,12 +34,20 @@ export default function ProfilePage() {
             <img src={avatar} alt="Avatar" width={56} height={56} style={{ borderRadius: '50%', border: '2px solid var(--color-border)' }} />
           ) : (
             <div style={{ width: 56, height: 56, borderRadius: '50%', backgroundColor: 'var(--color-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24, color: 'var(--color-text-inverse)', fontWeight: 700 }}>
-              {name?.[0]?.toUpperCase() ?? '?'}
+              {initial}
             </div>
           )}
           <div>
-            <p style={{ fontWeight: 700, color: 'var(--color-text)', margin: 0 }}>{name}</p>
-            <p style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-muted)', margin: '2px 0 0' }}>{user?.email}</p>
+            {username && (
+              <p style={{ fontWeight: 700, color: 'var(--color-text)', margin: 0, fontFamily: 'var(--font-mono)' }}>
+                @{username}
+              </p>
+            )}
+            {email && (
+              <p style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-muted)', margin: username ? '2px 0 0' : 0 }}>
+                {email}
+              </p>
+            )}
           </div>
         </div>
 

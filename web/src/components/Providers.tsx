@@ -1,8 +1,9 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useThemeStore } from '@/store/themeStore';
 import { useAuthInit } from '@/features/auth/useAuth';
+import { SplashLoader } from '@/components/SplashLoader';
 
 function ThemeApplier() {
   const mode = useThemeStore((s) => s.mode);
@@ -32,10 +33,13 @@ function AuthInitializer() {
 }
 
 export function Providers({ children }: { children: React.ReactNode }) {
+  const [splashDone, setSplashDone] = useState(false);
+
   return (
     <>
       <ThemeApplier />
       <AuthInitializer />
+      {!splashDone && <SplashLoader onDone={() => setSplashDone(true)} />}
       {children}
     </>
   );
