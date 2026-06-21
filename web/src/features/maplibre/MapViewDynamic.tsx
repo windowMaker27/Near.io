@@ -5,8 +5,11 @@
  * 'use client' requis : next/dynamic avec ssr:false est interdit dans les Server Components.
  */
 import dynamic from 'next/dynamic';
+import type { Place } from '@/types/place';
 
-export const MapViewDynamic = dynamic(
+type Props = { onPlaceSelect?: (place: Place) => void };
+
+export const MapViewDynamic = dynamic<Props>(
   () => import('./MapView'),
   {
     ssr: false,
