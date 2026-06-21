@@ -106,14 +106,11 @@ export default function HomePage() {
     );
   }
 
-  // ── VUE PRINCIPALE
-  // overflow:hidden retiré du conteneur racine — il clippait les portals (fixed)
-  // La liste scrollable garde son propre overflowY:auto
   return (
     <div style={{ height: '100dvh', display: 'flex', flexDirection: 'column', backgroundColor: 'var(--color-bg)' }}>
 
-      {/* HEADER */}
-      <header style={{ flexShrink: 0, padding: 'var(--space-4) var(--space-5)', borderBottom: '1px solid var(--color-border)', backgroundColor: 'var(--color-bg)', zIndex: 10, backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
+      {/* HEADER — sans backdropFilter pour éviter le stacking context */}
+      <header style={{ flexShrink: 0, padding: 'var(--space-4) var(--space-5)', borderBottom: '1px solid var(--color-border)', backgroundColor: 'var(--color-bg)', zIndex: 10 }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 'var(--space-3)' }}>
           <div>
             <h1 style={{ fontSize: 'var(--text-xl)', fontFamily: 'var(--font-display)', color: 'var(--color-text)', margin: 0, letterSpacing: '-0.01em' }}>
@@ -169,7 +166,7 @@ export default function HomePage() {
         <AdBanner style={{ margin: 'var(--space-3) var(--space-5) 0', minHeight: 60 }} />
       </div>
 
-      {/* LISTE — seule zone scrollable */}
+      {/* LISTE */}
       <div style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden', WebkitOverflowScrolling: 'touch', padding: 'var(--space-4) var(--space-5)', paddingBottom: 'var(--space-4)', display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
         {loading && Array.from({ length: 4 }).map((_, i) => (
           <div key={i} className="skeleton" style={{ height: 80, borderRadius: 'var(--radius-xl)', flexShrink: 0 }} />

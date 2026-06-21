@@ -34,6 +34,8 @@ export default function RootLayout({
       <head />
       <body className={`${jetbrainsMono.variable} font-mono antialiased`}>
         <Providers>{children}</Providers>
+        {/* Portal root — enfant direct du body, sans transform ni stacking context */}
+        <div id="portal-root" />
       </body>
     </html>
   );

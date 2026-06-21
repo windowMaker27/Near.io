@@ -53,9 +53,12 @@ export function PlaceDetailSheet({ place, onClose }: Props) {
   const [modalOpen, setModalOpen] = useState(false);
   const [draft, setDraft] = useState('');
   const [postError, setPostError] = useState<string | null>(null);
-  const [mounted, setMounted] = useState(false);
+  const [portalRoot, setPortalRoot] = useState<HTMLElement | null>(null);
 
-  useEffect(() => { setMounted(true); }, []);
+  // Résout le portal-root côté client uniquement
+  useEffect(() => {
+    setPortalRoot(document.getElementById('portal-root'));
+  }, []);
 
   const bearing = coords
     ? getBearingDeg(coords.latitude, coords.longitude, place.coordinates.latitude, place.coordinates.longitude)
@@ -104,10 +107,10 @@ export function PlaceDetailSheet({ place, onClose }: Props) {
 
   const statusLabel =
     place.openingStatus === 'open'
-      ? `Ouvert${place.closingTime ? ` jusqu\'\u00e0 ${place.closingTime}` : ''}`
+      ? `Ouvert${place.closingTime ? ` jusqu'\u00e0 ${place.closingTime}` : ''}`
       : place.openingStatus === 'closed' ? 'Ferm\u00e9' : 'Horaires inconnus';
 
-  if (!mounted) return null;
+  if (!portalRoot) return null;
 
   return createPortal(
     <>
@@ -123,11 +126,7 @@ export function PlaceDetailSheet({ place, onClose }: Props) {
         }}
       />
 
-      {/*
-        OUTER : gère position + animation de slide.
-        Pas d'overflow ici — sinon le clip intervient pendant le translateY.
-        La hauteur max est contrainte via flex sur l'inner.
-      */}
+      {/* Sheet */}
       <div
         role="dialog"
         aria-modal="true"
@@ -143,11 +142,9 @@ export function PlaceDetailSheet({ place, onClose }: Props) {
           borderTop: '1px solid var(--color-border)',
           backgroundColor: 'var(--color-surface)',
           boxShadow: 'var(--shadow-lg)',
-          /* Animation sur l'outer — pas d'overflow:hidden ici */
           animation: 'slideUp 250ms cubic-bezier(0.16,1,0.3,1) forwards',
         }}
       >
-        {/* INNER : scrollable, prend tout l'espace disponible dans l'outer */}
         <div
           style={{
             flex: 1,
@@ -343,12 +340,7 @@ export function PlaceDetailSheet({ place, onClose }: Props) {
           </div>
         </>
       )}
-
-      <style>{`
-        @keyframes fadeIn  { from { opacity: 0 } to { opacity: 1 } }
-        @keyframes slideUp { from { transform: translateY(100%) } to { transform: translateY(0) } }
-      `}</style>
     </>,
-    document.body
+    portalRoot
   );
 }
