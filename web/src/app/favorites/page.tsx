@@ -1,22 +1,15 @@
 'use client';
 
 import { useFavoritesStore } from '@/store/favoritesStore';
-import { useAppStore } from '@/store/appStore';
 import { PlaceCard } from '@/features/places/PlaceCard';
 import { PlaceDetailSheet } from '@/features/places/PlaceDetailSheet';
 import { BottomNav } from '@/components/BottomNav';
-import { useState, useMemo } from 'react';
+import { useState } from 'react';
 import type { Place } from '@/types/place';
 
 export default function FavoritesPage() {
   const { favorites } = useFavoritesStore();
-  const places = useAppStore((s) => s.cachedPlaces ?? []);
   const [selected, setSelected] = useState<Place | null>(null);
-
-  const favPlaces = useMemo(
-    () => places.filter((p) => favorites.includes(p.id)),
-    [places, favorites],
-  );
 
   return (
     <main
@@ -43,7 +36,7 @@ export default function FavoritesPage() {
           Favoris
         </h1>
         <p style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-muted)', margin: '4px 0 0' }}>
-          {favPlaces.length} lieu{favPlaces.length !== 1 ? 'x' : ''} sauvegardé{favPlaces.length !== 1 ? 's' : ''}
+          {favorites.length} lieu{favorites.length !== 1 ? 'x' : ''} sauvegardé{favorites.length !== 1 ? 's' : ''}
         </p>
       </header>
 
@@ -55,7 +48,7 @@ export default function FavoritesPage() {
           gap: 'var(--space-3)',
         }}
       >
-        {favPlaces.length === 0 ? (
+        {favorites.length === 0 ? (
           <div
             style={{
               textAlign: 'center',
@@ -65,14 +58,14 @@ export default function FavoritesPage() {
           >
             <div style={{ fontSize: 48, marginBottom: 'var(--space-4)' }}>☆</div>
             <p style={{ fontWeight: 600, color: 'var(--color-text)', marginBottom: 'var(--space-2)' }}>
-              Aucun favori pour l’instant
+              Aucun favori pour l'instant
             </p>
             <p style={{ fontSize: 'var(--text-sm)', maxWidth: '28ch', margin: '0 auto' }}>
-              Tape l’étoile sur un commerce pour l’enregistrer ici.
+              Tape l'étoile sur un commerce pour l'enregistrer ici.
             </p>
           </div>
         ) : (
-          favPlaces.map((place) => (
+          favorites.map((place) => (
             <PlaceCard key={place.id} place={place} onSelect={setSelected} />
           ))
         )}
