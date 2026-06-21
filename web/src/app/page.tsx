@@ -7,18 +7,25 @@ import { PlaceDetailSheet } from '@/features/places/PlaceDetailSheet';
 import { AdBanner } from '@/features/ads/AdBanner';
 import { BottomNav } from '@/components/BottomNav';
 import { BurgerMenu } from '@/components/BurgerMenu';
+import { CompassRing } from '@/features/compass/CompassRing';
 import { useLocationStore } from '@/store/locationStore';
+import { useAppStore } from '@/store/appStore';
 import { watchPosition, getCurrentPosition } from '@/services/locationService';
 import { useFiltersStore } from '@/store/filtersStore';
+import { getBearingDeg } from '@/features/compass/utils/bearing';
+import { formatDistance } from '@/features/compass/utils/distance';
 import type { Place } from '@/types/place';
 
 export default function HomePage() {
   const coords = useLocationStore((s) => s.coords);
   const permissionState = useLocationStore((s) => s.permissionState);
+  const selectedPlace = useAppStore((s) => s.selectedPlace);
+  const setSelectedPlace = useAppStore((s) => s.setSelectedPlace);
   const { filters, setFilters } = useFiltersStore();
-  const [selected, setSelected] = useState<Place | null>(null);
+  const [detailPlace, setDetailPlace] = useState<Place | null>(null);
   const [requesting, setRequesting] = useState(false);
 
+  // Permission géo au montage si déjà accordée
   useEffect(() => {
     if (!navigator.geolocation) return;
     navigator.permissions
@@ -45,6 +52,22 @@ export default function HomePage() {
 
   const { places, loading, error } = useNearbyPlaces(userCoords);
 
+  // Bearing + distance vers le lieu sélectionné
+  const bearing =
+    coords && selectedPlace
+      ? getBearingDeg(
+          coords.latitude,
+          coords.longitude,
+          selectedPlace.coordinates.latitude,
+          selectedPlace.coordinates.longitude,
+        )
+      : null;
+
+  const distanceStr =
+    coords && selectedPlace?.distanceMeters != null
+      ? formatDistance(selectedPlace.distanceMeters)
+      : null;
+
   // ── PERMISSION GATE ──────────────────────────────────────────────────────
   if ((permissionState === 'idle' || permissionState === 'denied' || permissionState === 'unavailable') && !coords) {
     return (
@@ -61,15 +84,7 @@ export default function HomePage() {
         }}
       >
         <div style={{ fontSize: 48 }}>📍</div>
-        <h1
-          style={{
-            fontFamily: 'var(--font-display)',
-            fontSize: 'var(--text-xl)',
-            color: 'var(--color-text)',
-            margin: 0,
-            textAlign: 'center',
-          }}
-        >
+        <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 'var(--text-xl)', color: 'var(--color-text)', margin: 0, textAlign: 'center' }}>
           near<span style={{ color: 'var(--color-primary)' }}>.</span>
         </h1>
         {permissionState === 'denied' ? (
@@ -112,7 +127,8 @@ export default function HomePage() {
   // ── VUE PRINCIPALE ───────────────────────────────────────────────────────
   return (
     <main style={{ minHeight: '100dvh', backgroundColor: 'var(--color-bg)', paddingBottom: '80px' }}>
-      {/* Header sticky */}
+
+      {/* ── HEADER ── */}
       <header
         style={{
           padding: 'var(--space-4) var(--space-5)',
@@ -125,29 +141,15 @@ export default function HomePage() {
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 'var(--space-3)' }}>
-          {/* Logo */}
           <div>
-            <h1
-              style={{
-                fontSize: 'var(--text-xl)',
-                fontFamily: 'var(--font-display)',
-                color: 'var(--color-text)',
-                margin: 0,
-                letterSpacing: '-0.01em',
-              }}
-            >
+            <h1 style={{ fontSize: 'var(--text-xl)', fontFamily: 'var(--font-display)', color: 'var(--color-text)', margin: 0, letterSpacing: '-0.01em' }}>
               near<span style={{ color: 'var(--color-primary)' }}>.</span>
             </h1>
             <p style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)', margin: '2px 0 0' }}>
-              {coords
-                ? `${places.length} commerce${places.length !== 1 ? 's' : ''} à proximité`
-                : 'Géolocalisation…'}
+              {coords ? `${places.length} commerce${places.length !== 1 ? 's' : ''} à proximité` : 'Géolocalisation…'}
             </p>
           </div>
-
-          {/* Contrôles droite */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)' }}>
-            {/* Filtre rayon */}
             <select
               value={filters.radiusMeters}
               onChange={(e) => setFilters({ radiusMeters: Number(e.target.value) })}
@@ -168,17 +170,55 @@ export default function HomePage() {
               <option value={2000}>2 km</option>
               <option value={5000}>5 km</option>
             </select>
-
-            {/* Burger */}
             <BurgerMenu />
           </div>
         </div>
       </header>
 
-      {/* AdSense banner */}
+      {/* ── BOUSSOLE HERO ── */}
+      <section
+        style={{
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          padding: 'var(--space-8) var(--space-5) var(--space-6)',
+          borderBottom: '1px solid var(--color-border)',
+          backgroundColor: 'var(--color-surface)',
+        }}
+      >
+        <CompassRing
+          targetBearing={bearing}
+          placeName={selectedPlace?.name ?? null}
+          distance={distanceStr}
+        />
+        {!selectedPlace && (
+          <p style={{ marginTop: 'var(--space-4)', fontSize: 'var(--text-xs)', color: 'var(--color-text-faint)', textAlign: 'center', maxWidth: '28ch' }}>
+            Appuie sur un commerce ci-dessous pour activer le guidage
+          </p>
+        )}
+        {selectedPlace && (
+          <button
+            onClick={() => setSelectedPlace(null)}
+            aria-label="Désélectionner le commerce"
+            style={{
+              marginTop: 'var(--space-3)',
+              fontSize: 'var(--text-xs)',
+              color: 'var(--color-text-muted)',
+              background: 'none',
+              border: 'none',
+              cursor: 'pointer',
+              textDecoration: 'underline',
+            }}
+          >
+            ✕ Annuler le guidage
+          </button>
+        )}
+      </section>
+
+      {/* ── ADSENSE ── */}
       <AdBanner style={{ margin: 'var(--space-3) var(--space-5) 0', minHeight: 60 }} />
 
-      {/* Liste places */}
+      {/* ── LISTE COMMERCES ── */}
       <div style={{ padding: 'var(--space-4) var(--space-5)', display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
         {loading && Array.from({ length: 4 }).map((_, i) => (
           <div key={i} className="skeleton" style={{ height: 80, borderRadius: 'var(--radius-xl)' }} />
@@ -199,11 +239,20 @@ export default function HomePage() {
         )}
 
         {!loading && places.map((place) => (
-          <PlaceCard key={place.id} place={place} onSelect={setSelected} />
+          <PlaceCard
+            key={place.id}
+            place={place}
+            onSelect={(p) => {
+              // Tap : sélectionne pour la boussole ET ouvre le détail
+              setSelectedPlace(p);
+              setDetailPlace(p);
+            }}
+            isActive={selectedPlace?.id === place.id}
+          />
         ))}
       </div>
 
-      {selected && <PlaceDetailSheet place={selected} onClose={() => setSelected(null)} />}
+      {detailPlace && <PlaceDetailSheet place={detailPlace} onClose={() => setDetailPlace(null)} />}
 
       <BottomNav />
     </main>
