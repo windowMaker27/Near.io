@@ -56,13 +56,33 @@ export default function MapView({ onPlaceSelect }: Props) {
         container: containerRef.current!,
         style: {
           version: 8,
-          sources: {},
-          layers: [],
+          sources: {
+            'osm-tiles': {
+              type: 'raster',
+              tiles: [
+                'https://a.tile.openstreetmap.org/{z}/{x}/{y}.png',
+                'https://b.tile.openstreetmap.org/{z}/{x}/{y}.png',
+                'https://c.tile.openstreetmap.org/{z}/{x}/{y}.png',
+              ],
+              tileSize: 256,
+              attribution: '© <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a> contributors',
+              maxzoom: 19,
+            },
+          },
+          layers: [
+            {
+              id: 'osm-layer',
+              type: 'raster',
+              source: 'osm-tiles',
+              minzoom: 0,
+              maxzoom: 22,
+            },
+          ],
           glyphs: 'https://demotiles.maplibre.org/font/{fontstack}/{range}.pbf',
         },
         center: coords ? [coords.longitude, coords.latitude] : [2.3488, 48.8534],
         zoom: 15,
-        attributionControl: false,
+        attributionControl: true,
       });
 
       map.on('load', () => {
@@ -83,7 +103,7 @@ export default function MapView({ onPlaceSelect }: Props) {
             'circle-radius': 7,
             'circle-color': ['case', ['==', ['get', 'openingStatus'], 'open'], OPEN_COLOR, ['==', ['get', 'openingStatus'], 'closed'], CLOSED_COLOR, '#888'],
             'circle-stroke-width': 1.5,
-            'circle-stroke-color': '#000',
+            'circle-stroke-color': '#fff',
           },
         });
 
@@ -98,10 +118,10 @@ export default function MapView({ onPlaceSelect }: Props) {
             'text-anchor': 'top',
             'text-optional': true,
           },
-          paint: { 'text-color': '#e8e8e8', 'text-halo-color': '#000', 'text-halo-width': 1 },
+          paint: { 'text-color': '#111', 'text-halo-color': '#fff', 'text-halo-width': 1.5 },
         });
 
-        map.addLayer({ id: 'user-dot-layer', type: 'circle', source: 'user-dot', paint: { 'circle-radius': 8, 'circle-color': ACCENT, 'circle-stroke-width': 2, 'circle-stroke-color': '#000' } });
+        map.addLayer({ id: 'user-dot-layer', type: 'circle', source: 'user-dot', paint: { 'circle-radius': 8, 'circle-color': ACCENT, 'circle-stroke-width': 2, 'circle-stroke-color': '#fff' } });
 
         mapRef.current = map;
         setMapReady(true);
@@ -124,7 +144,7 @@ export default function MapView({ onPlaceSelect }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // ── Update user position + radar circle ─────────────────────────────────
+  // ── Update user position + radar circle ──────────────────────────────────
   useEffect(() => {
     const map = mapRef.current;
     if (!mapReady || !map || !coords) return;
@@ -142,14 +162,14 @@ export default function MapView({ onPlaceSelect }: Props) {
     (map.getSource('radar-circle') as GeoJSONSource)?.setData(circleFC);
   }, [mapReady, coords, filters.radiusMeters]);
 
-  // ── Update radar sweep ──────────────────────────────────────────────────
+  // ── Update radar sweep ────────────────────────────────────────────────────
   useEffect(() => {
     const map = mapRef.current;
     if (!mapReady || !map || !sweepGeoJSON) return;
     (map.getSource('radar-sweep') as GeoJSONSource)?.setData(sweepGeoJSON);
   }, [mapReady, sweepGeoJSON]);
 
-  // ── Update places ──────────────────────────────────────────────────────────
+  // ── Update places ─────────────────────────────────────────────────────────
   const updatePlaces = useCallback(() => {
     const map = mapRef.current;
     if (!mapReady || !map) return;
@@ -174,14 +194,14 @@ export default function MapView({ onPlaceSelect }: Props) {
 
   useEffect(() => { updatePlaces(); }, [updatePlaces]);
 
-  // ── Center on user ─────────────────────────────────────────────────────────
+  // ── Center on user ────────────────────────────────────────────────────────
   useEffect(() => {
     const map = mapRef.current;
     if (!mapReady || !map || !coords) return;
     map.easeTo({ center: [coords.longitude, coords.latitude], duration: 600 });
   }, [mapReady, coords]);
 
-  // ── Watch location ─────────────────────────────────────────────────────────
+  // ── Watch location ────────────────────────────────────────────────────────
   useEffect(() => {
     const unsub = watchPosition(
       (c: Coordinates) => useLocationStore.getState().setCoords(c),
