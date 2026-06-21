@@ -107,8 +107,10 @@ export default function HomePage() {
   }
 
   // ── VUE PRINCIPALE
+  // overflow:hidden retiré du conteneur racine — il clippait les portals (fixed)
+  // La liste scrollable garde son propre overflowY:auto
   return (
-    <div style={{ height: '100dvh', display: 'flex', flexDirection: 'column', backgroundColor: 'var(--color-bg)', overflow: 'hidden' }}>
+    <div style={{ height: '100dvh', display: 'flex', flexDirection: 'column', backgroundColor: 'var(--color-bg)' }}>
 
       {/* HEADER */}
       <header style={{ flexShrink: 0, padding: 'var(--space-4) var(--space-5)', borderBottom: '1px solid var(--color-border)', backgroundColor: 'var(--color-bg)', zIndex: 10, backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
