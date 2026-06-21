@@ -1,47 +1,25 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useCompass } from '@/hooks/useCompass';
 
-// Couleurs alignées sur src/constants/theme.ts
-const ACCENT         = '#E8392A';
-const ACCENT_ALIGNED = '#4CAF72'; // colorSuccess
-const SIZE = 280;
+const ACCENT          = '#E8392A';
+const ACCENT_ALIGNED  = '#4CAF72';
+const DIAL_SIZE       = 280;
+const ARROW_H         = 90;
 const ALIGNMENT_THRESHOLD_DEG = 12;
+const TICKS = [0, 45, 90, 135, 180, 225, 270, 315];
 
 type Props = {
-  /** Bearing absolu vers le lieu cible (0-359, 0 = Nord géo) */
   targetBearing?: number | null;
   placeName?: string | null;
   distance?: string | null;
 };
 
-/**
- * CompassRing — guidage directionnel vers un commerce
- *
- * Affiche UNE seule flèche qui pointe vers le lieu cible.
- * Le Nord n'apparaît pas — ce n'est pas une boussole cartographique,
- * c'est un guidage proximité.
- *
- * Formule : relativeAngle = (targetBearing - heading + 360) % 360
- * La flèche tourne dans le SVG fixe — l'anneau ne bouge plus.
- * Quand |relativeAngle| < seuil : feedback "En face" + couleur verte.
- *
- * Permission iOS : bouton déclenché sur geste utilisateur (exigence Apple).
- */
 export function CompassRing({ targetBearing = null, placeName, distance }: Props) {
   const { heading, granted, supported, requestPermission, error } = useCompass();
-  const arrowRef     = useRef<SVGPolygonElement>(null);
-  const arrowLineRef = useRef<SVGLineElement>(null);
-  const ringRef      = useRef<SVGCircleElement>(null);
-  const prevAngleRef = useRef<number>(0);
 
-  const needsPermission =
-    supported &&
-    !granted &&
-    typeof (DeviceOrientationEvent as unknown as { requestPermission?: unknown }).requestPermission === 'function';
-
-  // Angle relatif vers la cible
+  // ── Angle relatif vers la cible ────────────────────────────────────
   const relativeAngle: number | null =
     targetBearing != null && heading != null
       ? (targetBearing - heading + 360) % 360
@@ -49,47 +27,60 @@ export function CompassRing({ targetBearing = null, placeName, distance }: Props
       ? targetBearing
       : null;
 
-  // Normalisation [-180, 180]
   const normalizedAngle: number | null =
     relativeAngle != null
-      ? relativeAngle > 180 ? relativeAngle - 360 : relativeAngle
+      ? (relativeAngle > 180 ? relativeAngle - 360 : relativeAngle)
       : null;
 
-  const isAligned =
-    normalizedAngle != null && Math.abs(normalizedAngle) < ALIGNMENT_THRESHOLD_DEG;
+  const isAligned = normalizedAngle != null && Math.abs(normalizedAngle) < ALIGNMENT_THRESHOLD_DEG;
+  const accentColor = isAligned ? ACCENT_ALIGNED : ACCENT;
 
-  const arrowColor = isAligned ? ACCENT_ALIGNED : ACCENT;
+  // ── Spring physique JS (port exact du mobile) ──────────────────────
+  const currentAngleRef = useRef(0);
+  const [displayAngle, setDisplayAngle] = useState(0);
+  const rafRef = useRef<number | null>(null);
 
-  // Animation fluide de la flèche (gère le passage 359->0)
   useEffect(() => {
-    if (relativeAngle == null || !arrowRef.current || !arrowLineRef.current) return;
-    const prev = prevAngleRef.current;
-    let delta = relativeAngle - prev;
-    if (delta > 180) delta -= 360;
-    if (delta < -180) delta += 360;
-    const next = prev + delta;
-    prevAngleRef.current = next;
+    if (relativeAngle == null) return;
 
-    const cx = SIZE / 2;
-    const cy = SIZE / 2;
-    arrowRef.current.style.transition = 'transform 180ms cubic-bezier(0.16,1,0.3,1)';
-    arrowRef.current.style.transformOrigin = `${cx}px ${cy}px`;
-    arrowRef.current.style.transform = `rotate(${next}deg)`;
-    arrowLineRef.current.style.transition = 'transform 180ms cubic-bezier(0.16,1,0.3,1)';
-    arrowLineRef.current.style.transformOrigin = `${cx}px ${cy}px`;
-    arrowLineRef.current.style.transform = `rotate(${next}deg)`;
+    let delta = relativeAngle - currentAngleRef.current;
+    if (delta > 180)  delta -= 360;
+    if (delta < -180) delta += 360;
+    const destination = currentAngleRef.current + delta;
+
+    let velocity = 0;
+    const stiffness = 120;
+    const damping   = 18;
+    const mass      = 1;
+
+    const animate = () => {
+      const spring = -stiffness * (currentAngleRef.current - destination);
+      const damp   = -damping * velocity;
+      const acc    = (spring + damp) / mass;
+      velocity += acc * 0.016;
+      currentAngleRef.current += velocity * 0.016;
+      setDisplayAngle(currentAngleRef.current);
+
+      if (Math.abs(currentAngleRef.current - destination) > 0.1 || Math.abs(velocity) > 0.1) {
+        rafRef.current = requestAnimationFrame(animate);
+      } else {
+        currentAngleRef.current = destination;
+        setDisplayAngle(destination);
+      }
+    };
+
+    if (rafRef.current) cancelAnimationFrame(rafRef.current);
+    rafRef.current = requestAnimationFrame(animate);
+    return () => { if (rafRef.current) cancelAnimationFrame(rafRef.current); };
   }, [relativeAngle]);
 
-  // Couleur anneau via attribut SVG
-  useEffect(() => {
-    if (!ringRef.current) return;
-    ringRef.current.setAttribute('stroke', isAligned ? ACCENT_ALIGNED : 'var(--color-border)');
-  }, [isAligned]);
+  // ── Permission iOS ────────────────────────────────────────────────
+  const needsPermission =
+    supported &&
+    !granted &&
+    typeof (DeviceOrientationEvent as unknown as { requestPermission?: unknown }).requestPermission === 'function';
 
-  const cx = SIZE / 2;
-  const cy = SIZE / 2;
-  const R = 110;
-
+  // ── Label directionnel ────────────────────────────────────────────
   const directionLabel = (): string => {
     if (targetBearing == null) return 'Sélectionne un commerce';
     if (heading == null) return 'Activation...';
@@ -102,110 +93,113 @@ export function CompassRing({ targetBearing = null, placeName, distance }: Props
     return '';
   };
 
+  const cx = DIAL_SIZE / 2;
+  const cy = DIAL_SIZE / 2;
+
   return (
-    <div
-      style={{
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        gap: 'var(--space-4)',
-        userSelect: 'none',
-      }}
-    >
-      {/* SVG boussole */}
-      <div style={{ position: 'relative', width: SIZE, height: SIZE }}>
-        <svg
-          width={SIZE}
-          height={SIZE}
-          viewBox={`0 0 ${SIZE} ${SIZE}`}
-          aria-label={targetBearing != null ? `Direction vers ${placeName ?? 'la cible'}` : 'Aucun lieu sélectionné'}
-        >
-          {/* Fond */}
-          <circle cx={cx} cy={cy} r={R + 20} fill="var(--color-surface)" />
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 'var(--space-4)', userSelect: 'none' }}>
 
-          {/* Anneau */}
-          <circle
-            ref={ringRef}
-            cx={cx} cy={cy} r={R}
-            fill="none"
-            stroke="var(--color-border)"
-            strokeWidth={1.5}
-            style={{ transition: 'stroke 300ms' }}
+      {/* Cadran circulaire */}
+      <div
+        style={{
+          width: DIAL_SIZE,
+          height: DIAL_SIZE,
+          borderRadius: '50%',
+          backgroundColor: 'var(--color-surface)',
+          border: `1px solid ${isAligned ? accentColor : 'var(--color-border)'}`,
+          position: 'relative',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          boxShadow: isAligned ? `0 0 24px ${accentColor}66` : 'none',
+          transition: 'border-color 0.3s, box-shadow 0.3s',
+        }}
+      >
+        {/* Ticks 8 directions */}
+        {TICKS.map((deg) => (
+          <div
+            key={deg}
+            style={{
+              position: 'absolute',
+              width: 1,
+              height: 8,
+              backgroundColor: 'var(--color-text-faint)',
+              top: '50%',
+              left: '50%',
+              transformOrigin: '0 0',
+              transform: `rotate(${deg}deg) translateY(-${DIAL_SIZE / 2 - 4}px) translateX(-0.5px)`,
+            }}
           />
+        ))}
 
-          {/* Ticks — 4 repères cardinaux discrets */}
-          {[0, 90, 180, 270].map((deg) => {
-            const rad = (deg - 90) * (Math.PI / 180);
-            const x1 = cx + R * Math.cos(rad);
-            const y1 = cy + R * Math.sin(rad);
-            const x2 = cx + (R - 10) * Math.cos(rad);
-            const y2 = cy + (R - 10) * Math.sin(rad);
-            return (
-              <line
-                key={deg}
-                x1={x1} y1={y1} x2={x2} y2={y2}
-                stroke="var(--color-border)"
-                strokeWidth={2}
-              />
-            );
-          })}
-
-          {/* Flèche vers la cible */}
-          {relativeAngle != null ? (
-            <>
-              <line
-                ref={arrowLineRef}
-                x1={cx}
-                y1={cy + 20}
-                x2={cx}
-                y2={cy - 80}
-                stroke={arrowColor}
-                strokeWidth={3}
-                strokeLinecap="round"
-                style={{ transition: 'stroke 300ms' }}
-              />
-              <polygon
-                ref={arrowRef}
-                points={`${cx},${cy - 92} ${cx - 8},${cy - 72} ${cx + 8},${cy - 72}`}
-                fill={arrowColor}
-                style={{ transition: 'fill 300ms' }}
-              />
-              {/* Contre-flèche (queue) */}
-              <polygon
-                points={`${cx},${cy + 28} ${cx - 5},${cy + 14} ${cx + 5},${cy + 14}`}
-                fill="var(--color-border)"
-                style={{
-                  transformOrigin: `${cx}px ${cy}px`,
-                  transform: arrowRef.current?.style.transform ?? 'rotate(0deg)',
-                  transition: 'transform 180ms cubic-bezier(0.16,1,0.3,1)',
-                }}
-              />
-            </>
-          ) : (
-            <circle cx={cx} cy={cy} r={8} fill="var(--color-border)" />
-          )}
-
-          {/* Point central */}
-          <circle
-            cx={cx} cy={cy} r={5}
-            fill={relativeAngle != null ? arrowColor : 'var(--color-border)'}
-            style={{ transition: 'fill 300ms' }}
-          />
-
-          {/* Label directionnel */}
-          <text
-            x={cx}
-            y={cy + R + 30}
-            fill={isAligned ? ACCENT_ALIGNED : 'var(--color-text-muted)'}
-            fontSize={13}
-            fontWeight={isAligned ? 700 : 400}
-            fontFamily="var(--font-body)"
-            textAnchor="middle"
-            style={{ transition: 'fill 300ms' }}
+        {/* Flèche rotative via spring */}
+        {relativeAngle != null ? (
+          <div
+            style={{
+              position: 'absolute',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              transform: `rotate(${displayAngle}deg)`,
+            }}
           >
-            {directionLabel()}
-          </text>
-        </svg>
+            {/* Pointe nord (accent) */}
+            <div
+              style={{
+                width: 0,
+                height: 0,
+                borderLeft: '8px solid transparent',
+                borderRight: '8px solid transparent',
+                borderBottom: `${ARROW_H}px solid ${accentColor}`,
+                transition: 'border-bottom-color 0.3s',
+              }}
+            />
+            {/* Pointe sud (grise) */}
+            <div
+              style={{
+                width: 0,
+                height: 0,
+                borderLeft: '8px solid transparent',
+                borderRight: '8px solid transparent',
+                borderTop: `${ARROW_H}px solid var(--color-text-faint)`,
+              }}
+            />
+          </div>
+        ) : (
+          /* Pas de cible — cercle d'attente */
+          <div style={{ width: 16, height: 16, borderRadius: '50%', backgroundColor: 'var(--color-border)' }} />
+        )}
+
+        {/* Point central */}
+        <div
+          style={{
+            position: 'absolute',
+            width: 10,
+            height: 10,
+            borderRadius: '50%',
+            backgroundColor: relativeAngle != null ? accentColor : 'var(--color-border)',
+            transition: 'background-color 0.3s',
+          }}
+        />
+      </div>
+
+      {/* Degré + label directionnel */}
+      <div style={{ textAlign: 'center', display: 'flex', flexDirection: 'column', gap: 4 }}>
+        {normalizedAngle != null && (
+          <span style={{ fontSize: 13, letterSpacing: 1, color: 'var(--color-text-muted)', fontFamily: 'var(--font-mono)' }}>
+            {normalizedAngle > 0 ? '+' : ''}{Math.round(normalizedAngle)}°
+          </span>
+        )}
+        <span
+          style={{
+            fontSize: 'var(--text-sm)',
+            fontWeight: isAligned ? 700 : 400,
+            color: isAligned ? accentColor : 'var(--color-text-muted)',
+            transition: 'color 0.3s',
+          }}
+        >
+          {directionLabel()}
+        </span>
       </div>
 
       {/* Permission iOS */}
@@ -228,9 +222,7 @@ export function CompassRing({ targetBearing = null, placeName, distance }: Props
       )}
 
       {error && (
-        <p style={{ fontSize: 'var(--text-xs)', color: 'var(--color-error)', textAlign: 'center' }}>
-          {error}
-        </p>
+        <p style={{ fontSize: 'var(--text-xs)', color: 'var(--color-error)', textAlign: 'center' }}>{error}</p>
       )}
 
       {/* Infos lieu */}
