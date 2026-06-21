@@ -30,7 +30,7 @@ function LogItem({ log }: { log: PlaceLog }) {
     <div style={{ marginBottom: 'var(--space-2)', fontSize: 'var(--text-xs)', lineHeight: 1.5, fontFamily: 'monospace', color: 'var(--color-text)' }}>
       <span style={{ color: 'var(--color-text-muted)' }}>{formatLogDate(log.createdAt)}</span>
       <span style={{ color: 'var(--color-primary)' }}>@{log.username}</span>
-      <span style={{ color: 'var(--color-text-muted)'}}>&gt; </span>
+      <span style={{ color: 'var(--color-text-muted)' }}>&gt; </span>
       <span>{log.content}</span>
     </div>
   );
@@ -55,7 +55,6 @@ export function PlaceDetailSheet({ place, onClose }: Props) {
   const [postError, setPostError] = useState<string | null>(null);
   const [mounted, setMounted] = useState(false);
 
-  // Needed for SSR-safe portal
   useEffect(() => { setMounted(true); }, []);
 
   const bearing = coords
@@ -105,8 +104,8 @@ export function PlaceDetailSheet({ place, onClose }: Props) {
 
   const statusLabel =
     place.openingStatus === 'open'
-      ? `Ouvert${place.closingTime ? ` jusqu\'à ${place.closingTime}` : ''}`
-      : place.openingStatus === 'closed' ? 'Fermé' : 'Horaires inconnus';
+      ? `Ouvert${place.closingTime ? ` jusqu\'\u00e0 ${place.closingTime}` : ''}`
+      : place.openingStatus === 'closed' ? 'Ferm\u00e9' : 'Horaires inconnus';
 
   if (!mounted) return null;
 
@@ -120,133 +119,148 @@ export function PlaceDetailSheet({ place, onClose }: Props) {
           position: 'fixed', inset: 0,
           backgroundColor: 'oklch(0 0 0 / 0.5)',
           zIndex: 100,
-          animation: 'fadeIn 180ms ease-out',
+          animation: 'fadeIn 180ms ease-out forwards',
         }}
       />
 
-      {/* Sheet */}
+      {/*
+        OUTER : gère position + animation de slide.
+        Pas d'overflow ici — sinon le clip intervient pendant le translateY.
+        La hauteur max est contrainte via flex sur l'inner.
+      */}
       <div
         role="dialog"
         aria-modal="true"
-        aria-label={`Détails : ${place.name}`}
+        aria-label={`D\u00e9tails : ${place.name}`}
         style={{
-          position: 'fixed', bottom: 0, left: 0, right: 0,
+          position: 'fixed',
+          bottom: 0, left: 0, right: 0,
           zIndex: 101,
-          backgroundColor: 'var(--color-surface)',
+          maxHeight: '80dvh',
+          display: 'flex',
+          flexDirection: 'column',
           borderRadius: 'var(--radius-xl) var(--radius-xl) 0 0',
           borderTop: '1px solid var(--color-border)',
-          padding: 'var(--space-6) var(--space-5) calc(80px + env(safe-area-inset-bottom))',
-          display: 'flex', flexDirection: 'column', gap: 'var(--space-4)',
+          backgroundColor: 'var(--color-surface)',
           boxShadow: 'var(--shadow-lg)',
+          /* Animation sur l'outer — pas d'overflow:hidden ici */
           animation: 'slideUp 250ms cubic-bezier(0.16,1,0.3,1) forwards',
-          maxHeight: '80dvh',
-          overflowY: 'auto',
         }}
       >
-        {/* Handle */}
-        <div style={{ width: 40, height: 4, borderRadius: 999, backgroundColor: 'var(--color-border)', margin: '0 auto var(--space-2)' }} />
+        {/* INNER : scrollable, prend tout l'espace disponible dans l'outer */}
+        <div
+          style={{
+            flex: 1,
+            overflowY: 'auto',
+            padding: 'var(--space-6) var(--space-5) calc(80px + env(safe-area-inset-bottom))',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 'var(--space-4)',
+          }}
+        >
+          {/* Handle */}
+          <div style={{ width: 40, height: 4, borderRadius: 999, backgroundColor: 'var(--color-border)', margin: '0 auto var(--space-2)' }} />
 
-        {/* Header */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-          <div style={{ flex: 1 }}>
-            <h2 style={{ fontSize: 'var(--text-xl)', fontFamily: 'var(--font-display)', color: 'var(--color-text)', margin: 0 }}>
-              {place.name}
-            </h2>
-            <p style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-muted)', margin: '4px 0 0' }}>
-              {PLACE_TYPE_LABELS[place.category] ?? place.category}
-            </p>
-          </div>
-          <button
-            aria-label="Fermer"
-            onClick={onClose}
-            style={{ fontSize: 22, color: 'var(--color-text-muted)', padding: 'var(--space-2)', background: 'none', border: 'none', cursor: 'pointer' }}
-          >
-            ×
-          </button>
-        </div>
-
-        {/* Status + distance */}
-        <div style={{ display: 'flex', gap: 'var(--space-4)', alignItems: 'center' }}>
-          <span style={{ fontSize: 'var(--text-sm)', color: statusColor, fontWeight: 600 }}>
-            ● {statusLabel}
-          </span>
-          {place.distanceMeters != null && (
-            <span style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-muted)' }}>
-              {formatDistance(place.distanceMeters)}
-            </span>
-          )}
-        </div>
-
-        {/* Adresse */}
-        {place.shortAddress && (
-          <p style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-muted)', margin: 0 }}>
-            📍 {place.shortAddress}
-          </p>
-        )}
-
-        {/* Horaires */}
-        {place.openingHoursText && (
-          <div>
-            <p style={{ fontSize: 'var(--text-xs)', fontWeight: 600, color: 'var(--color-text-muted)', marginBottom: 'var(--space-1)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-              Horaires
-            </p>
-            {place.openingHoursText.map((line, i) => (
-              <p key={i} style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)', margin: '2px 0' }}>{line}</p>
-            ))}
-          </div>
-        )}
-
-        {/* ── LOGS ── */}
-        <div style={{ marginTop: 'var(--space-2)' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--space-2)' }}>
-            <span style={{ fontSize: 11, letterSpacing: 2, fontWeight: 700, color: 'var(--color-text-muted)', fontFamily: 'monospace', textTransform: 'uppercase' }}>LOGS</span>
+          {/* Header */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+            <div style={{ flex: 1 }}>
+              <h2 style={{ fontSize: 'var(--text-xl)', fontFamily: 'var(--font-display)', color: 'var(--color-text)', margin: 0 }}>
+                {place.name}
+              </h2>
+              <p style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-muted)', margin: '4px 0 0' }}>
+                {PLACE_TYPE_LABELS[place.category] ?? place.category}
+              </p>
+            </div>
             <button
-              onClick={handleAddLogPress}
-              aria-label="Ajouter un log"
-              style={{ fontSize: 22, lineHeight: '24px', color: 'var(--color-primary)', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
-            >+</button>
+              aria-label="Fermer"
+              onClick={onClose}
+              style={{ fontSize: 22, color: 'var(--color-text-muted)', padding: 'var(--space-2)', background: 'none', border: 'none', cursor: 'pointer', flexShrink: 0 }}
+            >
+              \u00d7
+            </button>
           </div>
 
-          {logsLoading ? (
-            <p style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-faint)', fontFamily: 'monospace' }}>Chargement…</p>
-          ) : logs.length === 0 ? (
-            <p style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)', fontStyle: 'italic', fontFamily: 'monospace' }}>
-              Aucun log — soyez le premier à signaler quelque chose.
+          {/* Status + distance */}
+          <div style={{ display: 'flex', gap: 'var(--space-4)', alignItems: 'center' }}>
+            <span style={{ fontSize: 'var(--text-sm)', color: statusColor, fontWeight: 600 }}>
+              \u25cf {statusLabel}
+            </span>
+            {place.distanceMeters != null && (
+              <span style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-muted)' }}>
+                {formatDistance(place.distanceMeters)}
+              </span>
+            )}
+          </div>
+
+          {/* Adresse */}
+          {place.shortAddress && (
+            <p style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-muted)', margin: 0 }}>
+              \ud83d\udccd {place.shortAddress}
             </p>
-          ) : (
-            <div>{logs.map((log) => <LogItem key={log.id} log={log} />)}</div>
+          )}
+
+          {/* Horaires */}
+          {place.openingHoursText && (
+            <div>
+              <p style={{ fontSize: 'var(--text-xs)', fontWeight: 600, color: 'var(--color-text-muted)', marginBottom: 'var(--space-1)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                Horaires
+              </p>
+              {place.openingHoursText.map((line, i) => (
+                <p key={i} style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)', margin: '2px 0' }}>{line}</p>
+              ))}
+            </div>
+          )}
+
+          {/* LOGS */}
+          <div style={{ marginTop: 'var(--space-2)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--space-2)' }}>
+              <span style={{ fontSize: 11, letterSpacing: 2, fontWeight: 700, color: 'var(--color-text-muted)', fontFamily: 'monospace', textTransform: 'uppercase' }}>LOGS</span>
+              <button
+                onClick={handleAddLogPress}
+                aria-label="Ajouter un log"
+                style={{ fontSize: 22, lineHeight: '24px', color: 'var(--color-primary)', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
+              >+</button>
+            </div>
+            {logsLoading ? (
+              <p style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-faint)', fontFamily: 'monospace' }}>Chargement\u2026</p>
+            ) : logs.length === 0 ? (
+              <p style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)', fontStyle: 'italic', fontFamily: 'monospace' }}>
+                Aucun log \u2014 soyez le premier \u00e0 signaler quelque chose.
+              </p>
+            ) : (
+              <div>{logs.map((log) => <LogItem key={log.id} log={log} />)}</div>
+            )}
+          </div>
+
+          {/* Actions */}
+          <div style={{ display: 'flex', gap: 'var(--space-3)', marginTop: 'var(--space-2)' }}>
+            <button
+              onClick={handleFavToggle}
+              style={{
+                flex: 1,
+                padding: 'var(--space-3)',
+                borderRadius: 'var(--radius-md)',
+                border: `1px solid ${isFav ? GOLD_COLOR : 'var(--color-border)'}`,
+                backgroundColor: isFav ? `${GOLD_COLOR}18` : 'var(--color-surface)',
+                color: isFav ? GOLD_COLOR : 'var(--color-text-muted)',
+                fontWeight: 600,
+                fontSize: 'var(--text-sm)',
+                cursor: 'pointer',
+              }}
+            >
+              {isFav ? '\u2605 Retirer' : '\u2606 Favori'}
+            </button>
+          </div>
+
+          {bearing != null && (
+            <p style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-faint)', textAlign: 'center' }}>
+              Direction : {Math.round(bearing)}\u00b0
+            </p>
           )}
         </div>
-
-        {/* Actions */}
-        <div style={{ display: 'flex', gap: 'var(--space-3)', marginTop: 'var(--space-2)' }}>
-          <button
-            onClick={handleFavToggle}
-            style={{
-              flex: 1,
-              padding: 'var(--space-3)',
-              borderRadius: 'var(--radius-md)',
-              border: `1px solid ${isFav ? GOLD_COLOR : 'var(--color-border)'}`,
-              backgroundColor: isFav ? `${GOLD_COLOR}18` : 'var(--color-surface)',
-              color: isFav ? GOLD_COLOR : 'var(--color-text-muted)',
-              fontWeight: 600,
-              fontSize: 'var(--text-sm)',
-              cursor: 'pointer',
-            }}
-          >
-            {isFav ? '★ Retirer' : '☆ Favori'}
-          </button>
-        </div>
-
-        {/* Direction */}
-        {bearing != null && (
-          <p style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-faint)', textAlign: 'center' }}>
-            Direction : {Math.round(bearing)}°
-          </p>
-        )}
       </div>
 
-      {/* Modal nouveau log — aussi dans le portal, z-index > sheet */}
+      {/* Modal nouveau log */}
       {modalOpen && (
         <>
           <div
@@ -257,62 +271,74 @@ export function PlaceDetailSheet({ place, onClose }: Props) {
             style={{
               position: 'fixed', bottom: 0, left: 0, right: 0,
               zIndex: 201,
-              backgroundColor: 'var(--color-surface)',
+              maxHeight: '70dvh',
+              display: 'flex',
+              flexDirection: 'column',
               borderRadius: 'var(--radius-xl) var(--radius-xl) 0 0',
-              padding: 'var(--space-6) var(--space-5) calc(var(--space-10) + env(safe-area-inset-bottom))',
-              display: 'flex', flexDirection: 'column', gap: 'var(--space-4)',
+              backgroundColor: 'var(--color-surface)',
               boxShadow: 'var(--shadow-lg)',
               animation: 'slideUp 220ms cubic-bezier(0.16,1,0.3,1) forwards',
             }}
           >
-            <h3 style={{ fontSize: 'var(--text-sm)', fontFamily: 'monospace', fontWeight: 700, letterSpacing: 1, color: 'var(--color-text)', margin: 0 }}>Nouveau log</h3>
-            <textarea
-              autoFocus
-              value={draft}
-              onChange={(e) => setDraft(e.target.value.slice(0, MAX_CHARS))}
-              placeholder="Que voulez-vous signaler ?"
-              maxLength={MAX_CHARS}
+            <div
               style={{
-                fontSize: 'var(--text-sm)',
-                fontFamily: 'monospace',
-                color: 'var(--color-text)',
-                backgroundColor: 'var(--color-bg)',
-                border: '1px solid var(--color-border)',
-                borderRadius: 'var(--radius-md)',
-                padding: 'var(--space-3)',
-                minHeight: 80,
-                resize: 'vertical',
-                outline: 'none',
+                flex: 1,
+                overflowY: 'auto',
+                padding: 'var(--space-6) var(--space-5) calc(var(--space-10) + env(safe-area-inset-bottom))',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 'var(--space-4)',
               }}
-            />
-            <p style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)', textAlign: 'right', margin: 0, fontFamily: 'monospace' }}>
-              {draft.length}/{MAX_CHARS}
-            </p>
-            {postError && <p style={{ fontSize: 'var(--text-xs)', color: CLOSED_COLOR, margin: 0 }}>{postError}</p>}
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 'var(--space-3)' }}>
-              <button
-                onClick={() => setModalOpen(false)}
-                style={{ padding: 'var(--space-2) var(--space-4)', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-text-muted)', fontSize: 'var(--text-sm)', fontFamily: 'monospace' }}
-              >Annuler</button>
-              <button
-                onClick={handleLogSubmit}
-                disabled={!draft.trim() || isPosting}
+            >
+              <h3 style={{ fontSize: 'var(--text-sm)', fontFamily: 'monospace', fontWeight: 700, letterSpacing: 1, color: 'var(--color-text)', margin: 0 }}>Nouveau log</h3>
+              <textarea
+                autoFocus
+                value={draft}
+                onChange={(e) => setDraft(e.target.value.slice(0, MAX_CHARS))}
+                placeholder="Que voulez-vous signaler ?"
+                maxLength={MAX_CHARS}
                 style={{
-                  padding: 'var(--space-2) var(--space-6)',
-                  borderRadius: 'var(--radius-md)',
-                  backgroundColor: 'var(--color-primary)',
-                  color: '#fff',
-                  fontWeight: 700,
                   fontSize: 'var(--text-sm)',
                   fontFamily: 'monospace',
-                  border: 'none',
-                  cursor: (!draft.trim() || isPosting) ? 'not-allowed' : 'pointer',
-                  opacity: (!draft.trim() || isPosting) ? 0.4 : 1,
-                  minWidth: 90,
+                  color: 'var(--color-text)',
+                  backgroundColor: 'var(--color-bg)',
+                  border: '1px solid var(--color-border)',
+                  borderRadius: 'var(--radius-md)',
+                  padding: 'var(--space-3)',
+                  minHeight: 80,
+                  resize: 'vertical',
+                  outline: 'none',
                 }}
-              >
-                {isPosting ? '…' : 'Envoyer'}
-              </button>
+              />
+              <p style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)', textAlign: 'right', margin: 0, fontFamily: 'monospace' }}>
+                {draft.length}/{MAX_CHARS}
+              </p>
+              {postError && <p style={{ fontSize: 'var(--text-xs)', color: CLOSED_COLOR, margin: 0 }}>{postError}</p>}
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 'var(--space-3)' }}>
+                <button
+                  onClick={() => setModalOpen(false)}
+                  style={{ padding: 'var(--space-2) var(--space-4)', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-text-muted)', fontSize: 'var(--text-sm)', fontFamily: 'monospace' }}
+                >Annuler</button>
+                <button
+                  onClick={handleLogSubmit}
+                  disabled={!draft.trim() || isPosting}
+                  style={{
+                    padding: 'var(--space-2) var(--space-6)',
+                    borderRadius: 'var(--radius-md)',
+                    backgroundColor: 'var(--color-primary)',
+                    color: '#fff',
+                    fontWeight: 700,
+                    fontSize: 'var(--text-sm)',
+                    fontFamily: 'monospace',
+                    border: 'none',
+                    cursor: (!draft.trim() || isPosting) ? 'not-allowed' : 'pointer',
+                    opacity: (!draft.trim() || isPosting) ? 0.4 : 1,
+                    minWidth: 90,
+                  }}
+                >
+                  {isPosting ? '\u2026' : 'Envoyer'}
+                </button>
+              </div>
             </div>
           </div>
         </>
