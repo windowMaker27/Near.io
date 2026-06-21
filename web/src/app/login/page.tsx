@@ -50,7 +50,7 @@ export default function LoginPage() {
   return (
     <main style={styles.page}>
       <div style={styles.card}>
-        <h1 style={styles.title}>near.</h1>
+        <h1 style={styles.title}>near.io</h1>
         <p style={styles.subtitle}>Connexion</p>
 
         <form onSubmit={handleSubmit} style={styles.form} noValidate>

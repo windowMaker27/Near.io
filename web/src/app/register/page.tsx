@@ -90,7 +90,7 @@ export default function RegisterPage() {
               letterSpacing: '-0.02em',
             }}
           >
-            near.
+            near.io
           </h1>
           <p style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-muted)', margin: '4px 0 0' }}>
             Créer un compte

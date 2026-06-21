@@ -78,7 +78,7 @@ export default function HomePage() {
       <main style={{ minHeight: '100dvh', backgroundColor: 'var(--color-bg)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 'var(--space-8)', gap: 'var(--space-6)' }}>
         <div style={{ fontSize: 48 }}>📍</div>
         <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 'var(--text-xl)', color: 'var(--color-text)', margin: 0, textAlign: 'center' }}>
-          near<span style={{ color: 'var(--color-primary)' }}>.</span>
+          near<span style={{ color: 'var(--color-primary)' }}>.io</span>
         </h1>
         {permissionState === 'denied' ? (
           <p style={{ color: 'var(--color-error)', fontSize: 'var(--text-sm)', textAlign: 'center', maxWidth: '32ch', margin: 0 }}>
