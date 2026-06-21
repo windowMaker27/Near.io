@@ -185,7 +185,6 @@ export default function MapView({ onPlaceSelect }: Props) {
   useEffect(() => {
     const unsub = watchPosition(
       (c: Coordinates) => useLocationStore.getState().setCoords(c),
-      (err: GeolocationPositionError) => console.warn('[MapView] location error:', err),
     );
     return unsub;
   }, []);
