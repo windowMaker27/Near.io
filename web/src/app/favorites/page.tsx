@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useFavoritesStore } from '@/store/favoritesStore';
-import { PlaceDetailSheet } from '@/components/PlaceDetailSheet';
+import { PlaceDetailSheet } from '@/features/places/PlaceDetailSheet';
 import { AppHeader } from '@/components/AppHeader';
 import type { Place } from '@/types/place';
 
@@ -14,7 +14,7 @@ export default function FavoritesPage() {
 
   return (
     <main style={{ minHeight: '100dvh', backgroundColor: 'var(--color-bg)' }}>
-      <AppHeader title="Favoris" showBack />
+      <AppHeader subtitle="Favoris" showBack />
 
       <div style={{ padding: 'var(--space-4)' }}>
         {favorites.length === 0 ? (
@@ -26,48 +26,19 @@ export default function FavoritesPage() {
         ) : (
           <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
             {favorites.map((place) => (
-              <li
-                key={place.id}
-                onClick={() => setSelected(place)}
-                style={{
-                  backgroundColor: 'var(--color-surface)',
-                  border: '1px solid var(--color-border)',
-                  borderRadius: 'var(--radius-lg)',
-                  padding: 'var(--space-4)',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 'var(--space-3)',
-                }}
-              >
+              <li key={place.id} onClick={() => setSelected(place)} style={{ backgroundColor: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-lg)', padding: 'var(--space-4)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 'var(--space-3)' }}>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <p style={{ fontWeight: 600, color: 'var(--color-text)', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {place.name}
-                  </p>
-                  <p style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)', margin: '2px 0 0' }}>
-                    {place.category}
-                  </p>
+                  <p style={{ fontWeight: 600, color: 'var(--color-text)', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{place.name}</p>
+                  <p style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)', margin: '2px 0 0' }}>{place.category}</p>
                 </div>
-                <button
-                  onClick={(e) => { e.stopPropagation(); toggleFavorite(place); }}
-                  aria-label="Retirer des favoris"
-                  style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 20, color: 'var(--color-error)', flexShrink: 0 }}
-                >
-                  ❤️
-                </button>
+                <button onClick={(e) => { e.stopPropagation(); toggleFavorite(place); }} aria-label="Retirer des favoris" style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 20, color: 'var(--color-error)', flexShrink: 0 }}>❤️</button>
               </li>
             ))}
           </ul>
         )}
       </div>
 
-      {selected && (
-        <PlaceDetailSheet
-          place={selected}
-          onClose={() => setSelected(null)}
-          userLocation={null}
-        />
-      )}
+      {selected && <PlaceDetailSheet place={selected} onClose={() => setSelected(null)} userLocation={null} />}
     </main>
   );
 }
