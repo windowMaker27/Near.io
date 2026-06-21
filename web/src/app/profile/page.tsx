@@ -18,9 +18,8 @@ export default function ProfilePage() {
   };
 
   const avatar = user?.user_metadata?.avatar_url as string | undefined;
-  const username = profile?.username ?? user?.user_metadata?.full_name as string | undefined;
+  const username = profile?.username ?? (user?.user_metadata?.full_name as string | undefined);
   const email = user?.email;
-  // Initiale pour l'avatar placeholder
   const initial = (username ?? email ?? '?')[0].toUpperCase();
 
   return (
@@ -37,14 +36,14 @@ export default function ProfilePage() {
               {initial}
             </div>
           )}
-          <div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
             {username && (
-              <p style={{ fontWeight: 700, color: 'var(--color-text)', margin: 0, fontFamily: 'var(--font-mono)' }}>
+              <p style={{ fontWeight: 700, color: 'var(--color-text)', margin: 0, fontFamily: 'var(--font-mono)', fontSize: 'var(--text-base)' }}>
                 @{username}
               </p>
             )}
             {email && (
-              <p style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-muted)', margin: username ? '2px 0 0' : 0 }}>
+              <p style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-muted)', margin: 0 }}>
                 {email}
               </p>
             )}

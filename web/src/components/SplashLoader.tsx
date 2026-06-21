@@ -28,7 +28,6 @@ export function SplashLoader({ onDone }: Props) {
     }
   };
 
-  // Barre de progression via rAF
   useEffect(() => {
     const start = performance.now();
     let raf: number;
@@ -74,17 +73,19 @@ export function SplashLoader({ onDone }: Props) {
         pointerEvents: opacity === 0 ? 'none' : 'all',
       }}
     >
+      {/* Titre : near.io avec .io en rouge */}
       <span
         style={{
           fontSize: 32,
-          letterSpacing: 8,
-          color: 'var(--color-text)',
+          letterSpacing: 2,
           fontFamily: 'var(--font-mono)',
           fontWeight: 700,
+          color: 'var(--color-text)',
         }}
       >
-        NEAR.IO
+        near<span style={{ color: 'var(--color-notification)' }}>.io</span>
       </span>
+
       <span
         style={{
           fontSize: 10,
@@ -97,25 +98,10 @@ export function SplashLoader({ onDone }: Props) {
       >
         {tagline}
       </span>
+
       {/* Track */}
-      <div
-        style={{
-          width: 200,
-          height: 2,
-          borderRadius: 2,
-          backgroundColor: 'var(--color-border)',
-          overflow: 'hidden',
-        }}
-      >
-        {/* Bar */}
-        <div
-          style={{
-            height: 2,
-            borderRadius: 2,
-            backgroundColor: 'var(--color-primary)',
-            width: barWidth,
-          }}
-        />
+      <div style={{ width: 200, height: 2, borderRadius: 2, backgroundColor: 'var(--color-border)', overflow: 'hidden' }}>
+        <div style={{ height: 2, borderRadius: 2, backgroundColor: 'var(--color-primary)', width: barWidth }} />
       </div>
     </div>
   );
