@@ -57,9 +57,9 @@ function deduplicatePlaces(places: Place[]): Place[] {
 
 export function useNearbyPlaces(userLocation?: Coordinates) {
   const { filters } = useFiltersStore();
-  const appStore = useAppStore();
+  const { placesCache, setPlacesCache, invalidatePlacesCache } = useAppStore();
 
-  const [places, setPlaces] = useState<Place[]>([]);
+  const [places, setPlaces] = useState<Place[]>(() => placesCache?.places ?? []);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | undefined>();
   const [targetIndex, setTargetIndex] = useState(0);
@@ -75,6 +75,7 @@ export function useNearbyPlaces(userLocation?: Coordinates) {
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const cancelRef = useRef<(() => void) | null>(null);
 
+  // Debounce GPS drift — ne refetch que si déplacement > seuil
   useEffect(() => {
     if (lat == null || lon == null) return;
     if (debounceRef.current) clearTimeout(debounceRef.current);
@@ -90,16 +91,17 @@ export function useNearbyPlaces(userLocation?: Coordinates) {
     return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
   }, [lat, lon]);
 
-  // Web : visibilité page → remplace AppState RN
+  // Retour en foreground → invalide le cache et force un reload
   useEffect(() => {
     const handleVisibility = () => {
-      if (document.visibilityState === 'visible' && lat != null && lon != null) {
-        setStableCoords({ lat, lon });
+      if (document.visibilityState === 'visible') {
+        invalidatePlacesCache();
+        if (lat != null && lon != null) setStableCoords({ lat, lon });
       }
     };
     document.addEventListener('visibilitychange', handleVisibility);
     return () => document.removeEventListener('visibilitychange', handleVisibility);
-  }, [lat, lon]);
+  }, [lat, lon, invalidatePlacesCache]);
 
   const load = useCallback(async (
     lat: number,
@@ -111,6 +113,19 @@ export function useNearbyPlaces(userLocation?: Coordinates) {
     let cancelled = false;
     cancelRef.current = () => { cancelled = true; };
 
+    // Vérifie le cache au moment de l'appel (évite la closure stale)
+    const cache = useAppStore.getState().placesCache;
+    if (
+      cache &&
+      Date.now() - cache.fetchedAt <= CACHE_TTL_MS &&
+      cache.radius === radius &&
+      cache.filters === filtersKey &&
+      haversineDistanceMeters(cache.lat, cache.lon, lat, lon) < OSM_REFETCH_THRESHOLD_M
+    ) {
+      setPlaces(cache.places);
+      return;
+    }
+
     setLoading(true);
     setError(undefined);
 
@@ -119,7 +134,16 @@ export function useNearbyPlaces(userLocation?: Coordinates) {
       try {
         osmPlaces = await fetchNearbyOverpassPlaces(lat, lon, radius);
       } catch (e) {
-        console.warn('[useNearbyPlaces] Overpass failed:', e);
+        console.warn('[useNearbyPlaces] Overpass failed (429?):', e);
+        // En cas de 429 : réutilise le cache existant plutôt que de tout vider
+        const staleCache = useAppStore.getState().placesCache;
+        if (staleCache?.places.length) {
+          if (!cancelled) {
+            setPlaces(staleCache.places);
+            setLoading(false);
+          }
+          return;
+        }
       }
       if (cancelled) return;
 
@@ -139,7 +163,16 @@ export function useNearbyPlaces(userLocation?: Coordinates) {
       }));
 
       const ranked = rankPlaces(withDistance);
+
       if (!cancelled) {
+        setPlacesCache({
+          places: ranked,
+          lat,
+          lon,
+          radius,
+          filters: filtersKey,
+          fetchedAt: Date.now(),
+        });
         setPlaces(ranked);
         setTargetIndex(0);
       }
@@ -149,7 +182,7 @@ export function useNearbyPlaces(userLocation?: Coordinates) {
     } finally {
       if (!cancelled) setLoading(false);
     }
-  }, []);
+  }, [setPlacesCache]);
 
   useEffect(() => {
     if (stableCoords == null) return;
