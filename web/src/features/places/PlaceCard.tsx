@@ -1,13 +1,61 @@
 'use client';
 
 import type { Place } from '@/types/place';
+import type { PlaceCategory } from '@/types/place';
 import { PLACE_TYPE_LABELS } from '@/constants/placeTypes';
 import { formatDistance } from '@/features/compass/utils/distance';
 import { useFavoritesStore } from '@/store/favoritesStore';
 
-// Couleurs alignées sur src/constants/theme.ts
-const OPEN_COLOR   = '#4CAF72'; // colorOpen
-const CLOSED_COLOR = '#E84444'; // colorDanger
+const OPEN_COLOR   = '#4CAF72';
+const CLOSED_COLOR = '#E84444';
+
+/** Catégories qui ont une image PNG dans /public/icons/ */
+const CATEGORY_PNG: Partial<Record<PlaceCategory, string>> = {
+  fast_food:   '/icons/burger.png',
+  supermarket: '/icons/cart.png',
+  convenience: '/icons/cart.png',
+  bakery:      '/icons/bread.png',
+  grocery:     '/icons/bottle.png',
+};
+
+const CATEGORY_EMOJI: Partial<Record<string, string>> = {
+  restaurant:    '🍽',
+  cafe:          '☕',
+  bar:           '🍺',
+  pharmacy:      '💊',
+  hospital:      '🏥',
+  bank:          '🏦',
+  hotel:         '🏨',
+  park:          '🌳',
+  gym:           '🏋',
+  school:        '🏫',
+  museum:        '🏛',
+  cinema:        '🎦',
+  shop:          '🛍',
+  gas_station:   '⛽',
+  parking:       '🅿',
+  atm:           '💳',
+  street_vendor: '🛒',
+};
+
+type IconProps = { category: PlaceCategory; size: number };
+
+function CategoryIcon({ category, size }: IconProps) {
+  const png = CATEGORY_PNG[category];
+  if (png) {
+    return (
+      <img
+        src={png}
+        alt={PLACE_TYPE_LABELS[category] ?? category}
+        width={size}
+        height={size}
+        loading="lazy"
+        style={{ objectFit: 'contain', display: 'block' }}
+      />
+    );
+  }
+  return <span style={{ fontSize: size * 0.55, lineHeight: 1 }}>{CATEGORY_EMOJI[category] ?? '📍'}</span>;
+}
 
 type Props = {
   place: Place;
@@ -18,6 +66,8 @@ type Props = {
 export function PlaceCard({ place, onSelect, compact = false }: Props) {
   const { isFavorite, addFavorite, removeFavorite } = useFavoritesStore();
   const isFav = isFavorite(place.id);
+  const iconSize = compact ? 22 : 28;
+  const containerSize = compact ? 36 : 44;
 
   const statusColor =
     place.openingStatus === 'open'   ? OPEN_COLOR
@@ -59,18 +109,17 @@ export function PlaceCard({ place, onSelect, compact = false }: Props) {
       {/* Icône catégorie */}
       <div
         style={{
-          width: compact ? 36 : 44,
-          height: compact ? 36 : 44,
+          width: containerSize,
+          height: containerSize,
           borderRadius: 'var(--radius-full)',
           backgroundColor: 'var(--color-surface-offset)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
           flexShrink: 0,
-          fontSize: compact ? 18 : 22,
         }}
       >
-        {getCategoryEmoji(place.category)}
+        <CategoryIcon category={place.category} size={iconSize} />
       </div>
 
       {/* Infos */}
@@ -122,28 +171,4 @@ export function PlaceCard({ place, onSelect, compact = false }: Props) {
       </button>
     </article>
   );
-}
-
-function getCategoryEmoji(category: string): string {
-  const map: Record<string, string> = {
-    restaurant:  '🍽',
-    cafe:        '☕',
-    bakery:      '🥐',
-    bar:         '🍺',
-    supermarket: '🛒',
-    pharmacy:    '💊',
-    hospital:    '🏥',
-    bank:        '🏦',
-    hotel:       '🏨',
-    park:        '🌳',
-    gym:         '🏋',
-    school:      '🏫',
-    museum:      '🏛',
-    cinema:      '🎦',
-    shop:        '🛍',
-    gas_station: '⛽',
-    parking:     '🅿',
-    atm:         '💳',
-  };
-  return map[category] ?? '📍';
 }
