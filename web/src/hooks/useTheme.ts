@@ -2,7 +2,6 @@
 
 import { useThemeStore } from '@/store/themeStore';
 
-// Palette Near.io — équivalent de constants/theme.ts
 const DARK_THEME = {
   bg: '#0a0a0a',
   surface: '#111111',
@@ -25,13 +24,21 @@ const LIGHT_THEME = {
   isDark: false,
 } as const;
 
-export type AppTheme = typeof DARK_THEME;
+export type AppTheme = {
+  bg: string;
+  surface: string;
+  surface2: string;
+  text: string;
+  textMuted: string;
+  primary: string;
+  border: string;
+  isDark: boolean;
+};
 
 export function useTheme(): AppTheme {
   const mode = useThemeStore((s) => s.mode);
 
   if (mode === 'system') {
-    // Sécurisé SSR : on ne peut pas appeler matchMedia côté serveur
     if (typeof window === 'undefined') return DARK_THEME;
     const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
     return prefersDark ? DARK_THEME : LIGHT_THEME;
