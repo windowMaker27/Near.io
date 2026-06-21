@@ -9,7 +9,7 @@ import { BottomNav } from '@/components/BottomNav';
 
 export default function ProfilePage() {
   const { user } = useAuthStore();
-  const { removeAds } = useAdsStore();
+  const { adsRemoved } = useAdsStore();
   const router = useRouter();
 
   const handleSignOut = async () => {
@@ -70,21 +70,21 @@ export default function ProfilePage() {
         {/* Statut abonnement */}
         <div
           style={{
-            backgroundColor: removeAds ? 'var(--color-primary-highlight)' : 'var(--color-surface)',
+            backgroundColor: adsRemoved ? 'var(--color-primary-highlight)' : 'var(--color-surface)',
             border: '1px solid var(--color-border)',
             borderRadius: 'var(--radius-xl)',
             padding: 'var(--space-4)',
           }}
         >
           <p style={{ fontWeight: 600, color: 'var(--color-text)', margin: '0 0 var(--space-2)' }}>
-            {removeAds ? '✨ Sans publicités' : 'Compte gratuit'}
+            {adsRemoved ? '✨ Sans publicités' : 'Compte gratuit'}
           </p>
           <p style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-muted)', margin: '0 0 var(--space-3)' }}>
-            {removeAds
-              ? 'Vous profitez d’une expérience sans pubs.'
+            {adsRemoved
+              ? 'Vous profitez d\u2019une expérience sans pubs.'
               : 'Supprimez les publicités pour une expérience optimale.'}
           </p>
-          {!removeAds && <RemoveAdsButton />}
+          {!adsRemoved && <RemoveAdsButton />}
         </div>
 
         {/* Déconnexion */}
