@@ -13,26 +13,19 @@ import type { Coordinates, Place } from '@/types/place';
 import { PLACE_TYPE_LABELS } from '@/constants/placeTypes';
 import { formatDistance } from '@/features/compass/utils/distance';
 
-// Couleurs radar
 const ACCENT = '#00d4aa';
 const RADAR_FILL_DARK = 'rgba(0, 212, 170, 0.06)';
 const RADAR_SWEEP_DARK = 'rgba(0, 212, 170, 0.18)';
 const OPEN_COLOR = '#51cf66';
 const CLOSED_COLOR = '#ff6b6b';
 
-// ─── Types ────────────────────────────────────────────────────────────────────
-
 type Props = {
   onPlaceSelect?: (place: Place) => void;
 };
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-
 function emptyFC(): FeatureCollection {
   return { type: 'FeatureCollection', features: [] };
 }
-
-// ─── Component ────────────────────────────────────────────────────────────────
 
 export default function MapView({ onPlaceSelect }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -42,7 +35,12 @@ export default function MapView({ onPlaceSelect }: Props) {
   const coords = useLocationStore((s) => s.coords);
   const { filters } = useFiltersStore();
   const { places } = useNearbyPlaces();
-  const sweepAngle = useRadarSweep(mapReady);
+
+  const sweepGeoJSON = useRadarSweep(
+    coords?.longitude ?? null,
+    coords?.latitude ?? null,
+    filters.radiusMeters,
+  );
 
   // ── Init map ──────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -68,18 +66,15 @@ export default function MapView({ onPlaceSelect }: Props) {
       });
 
       map.on('load', () => {
-        // Sources
         map.addSource('user-dot', { type: 'geojson', data: emptyFC() });
         map.addSource('radar-circle', { type: 'geojson', data: emptyFC() });
         map.addSource('radar-sweep', { type: 'geojson', data: emptyFC() });
         map.addSource('places', { type: 'geojson', data: emptyFC(), cluster: false });
 
-        // Radar fill
         map.addLayer({ id: 'radar-fill', type: 'fill', source: 'radar-circle', paint: { 'fill-color': RADAR_FILL_DARK, 'fill-opacity': 1 } });
         map.addLayer({ id: 'radar-stroke', type: 'line', source: 'radar-circle', paint: { 'line-color': ACCENT, 'line-width': 1.2, 'line-opacity': 0.5 } });
         map.addLayer({ id: 'radar-sweep-layer', type: 'fill', source: 'radar-sweep', paint: { 'fill-color': RADAR_SWEEP_DARK, 'fill-opacity': 1 } });
 
-        // Places circles
         map.addLayer({
           id: 'places-circle',
           type: 'circle',
@@ -92,7 +87,6 @@ export default function MapView({ onPlaceSelect }: Props) {
           },
         });
 
-        // Places labels
         map.addLayer({
           id: 'places-label',
           type: 'symbol',
@@ -107,14 +101,12 @@ export default function MapView({ onPlaceSelect }: Props) {
           paint: { 'text-color': '#e8e8e8', 'text-halo-color': '#000', 'text-halo-width': 1 },
         });
 
-        // User dot
         map.addLayer({ id: 'user-dot-layer', type: 'circle', source: 'user-dot', paint: { 'circle-radius': 8, 'circle-color': ACCENT, 'circle-stroke-width': 2, 'circle-stroke-color': '#000' } });
 
         mapRef.current = map;
         setMapReady(true);
       });
 
-      // Click on place
       map.on('click', 'places-circle', (e) => {
         if (!e.features?.length) return;
         const props = e.features[0].properties as Place;
@@ -132,7 +124,7 @@ export default function MapView({ onPlaceSelect }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // ── Update user position ───────────────────────────────────────────────────
+  // ── Update user position + radar circle ─────────────────────────────────
   useEffect(() => {
     const map = mapRef.current;
     if (!mapReady || !map || !coords) return;
@@ -150,29 +142,12 @@ export default function MapView({ onPlaceSelect }: Props) {
     (map.getSource('radar-circle') as GeoJSONSource)?.setData(circleFC);
   }, [mapReady, coords, filters.radiusMeters]);
 
-  // ── Update radar sweep ─────────────────────────────────────────────────────
+  // ── Update radar sweep ──────────────────────────────────────────────────
   useEffect(() => {
     const map = mapRef.current;
-    if (!mapReady || !map || !coords || sweepAngle == null) return;
-
-    const ARC = 30;
-    const start = ((sweepAngle - ARC / 2) * Math.PI) / 180;
-    const end = ((sweepAngle + ARC / 2) * Math.PI) / 180;
-    const R = filters.radiusMeters / 111320;
-    const steps = 20;
-    const ring: [number, number][] = [[coords.longitude, coords.latitude]];
-    for (let i = 0; i <= steps; i++) {
-      const a = start + ((end - start) * i) / steps;
-      ring.push([coords.longitude + R * Math.sin(a), coords.latitude + R * Math.cos(a)]);
-    }
-    ring.push([coords.longitude, coords.latitude]);
-
-    const sweepFC: FeatureCollection = {
-      type: 'FeatureCollection',
-      features: [{ type: 'Feature', geometry: { type: 'Polygon', coordinates: [ring] }, properties: {} }],
-    };
-    (map.getSource('radar-sweep') as GeoJSONSource)?.setData(sweepFC);
-  }, [mapReady, coords, sweepAngle, filters.radiusMeters]);
+    if (!mapReady || !map || !sweepGeoJSON) return;
+    (map.getSource('radar-sweep') as GeoJSONSource)?.setData(sweepGeoJSON);
+  }, [mapReady, sweepGeoJSON]);
 
   // ── Update places ──────────────────────────────────────────────────────────
   const updatePlaces = useCallback(() => {
@@ -209,8 +184,8 @@ export default function MapView({ onPlaceSelect }: Props) {
   // ── Watch location ─────────────────────────────────────────────────────────
   useEffect(() => {
     const unsub = watchPosition(
-      (c) => useLocationStore.getState().setCoords(c),
-      (err) => console.warn('[MapView] location error:', err),
+      (c: Coordinates) => useLocationStore.getState().setCoords(c),
+      (err: GeolocationPositionError) => console.warn('[MapView] location error:', err),
     );
     return unsub;
   }, []);

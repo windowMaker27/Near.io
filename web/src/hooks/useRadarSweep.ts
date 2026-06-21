@@ -1,10 +1,10 @@
-// Portable depuis RN — zéro dépendance native
 import { useEffect, useRef, useState } from 'react';
+import type { FeatureCollection } from 'geojson';
 import { makeRadarSweep } from '@/utils/geoCircle';
 
 const SWEEP_DEG = 70;
 const STEP_DEG = 3;
-const INTERVAL_MS = 40; // ~25 fps
+const INTERVAL_MS = 40;
 
 export function useRadarSweep(
   lng: number | null,
@@ -12,7 +12,7 @@ export function useRadarSweep(
   radiusMeters: number,
 ) {
   const angleRef = useRef(0);
-  const [sweepGeoJSON, setSweepGeoJSON] = useState<GeoJSON.FeatureCollection | null>(null);
+  const [sweepGeoJSON, setSweepGeoJSON] = useState<FeatureCollection | null>(null);
 
   useEffect(() => {
     if (lng == null || lat == null) return;
