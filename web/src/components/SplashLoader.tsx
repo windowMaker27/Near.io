@@ -73,7 +73,6 @@ export function SplashLoader({ onDone }: Props) {
         pointerEvents: opacity === 0 ? 'none' : 'all',
       }}
     >
-      {/* Titre : near.io avec .io en rouge */}
       <span
         style={{
           fontSize: 32,
@@ -83,7 +82,7 @@ export function SplashLoader({ onDone }: Props) {
           color: 'var(--color-text)',
         }}
       >
-        near<span style={{ color: 'var(--color-notification)' }}>.io</span>
+        near<span style={{ color: 'var(--color-primary)' }}>.io</span>
       </span>
 
       <span
@@ -99,7 +98,6 @@ export function SplashLoader({ onDone }: Props) {
         {tagline}
       </span>
 
-      {/* Track */}
       <div style={{ width: 200, height: 2, borderRadius: 2, backgroundColor: 'var(--color-border)', overflow: 'hidden' }}>
         <div style={{ height: 2, borderRadius: 2, backgroundColor: 'var(--color-primary)', width: barWidth }} />
       </div>
