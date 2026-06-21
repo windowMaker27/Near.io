@@ -1,10 +1,9 @@
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
+import type { CookieMethodsServer } from '@supabase/ssr';
 
-/**
- * Client Supabase côté serveur (Server Components, Route Handlers).
- * Ne pas utiliser dans les composants 'use client'.
- */
+type CookiesToSet = Parameters<NonNullable<CookieMethodsServer['setAll']>>[0];
+
 export async function createSupabaseServerClient() {
   const cookieStore = await cookies();
   return createServerClient(
@@ -13,7 +12,7 @@ export async function createSupabaseServerClient() {
     {
       cookies: {
         getAll: () => cookieStore.getAll(),
-        setAll: (cookiesToSet) => {
+        setAll: (cookiesToSet: CookiesToSet) => {
           cookiesToSet.forEach(({ name, value, options }) => {
             cookieStore.set(name, value, options);
           });
