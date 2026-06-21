@@ -19,13 +19,16 @@ const RADAR_SWEEP_DARK = 'rgba(0, 212, 170, 0.18)';
 const OPEN_COLOR = '#51cf66';
 const CLOSED_COLOR = '#ff6b6b';
 
-type Props = {
-  onPlaceSelect?: (place: Place) => void;
-};
+type Props = { onPlaceSelect?: (place: Place) => void };
 
 function emptyFC(): FeatureCollection {
   return { type: 'FeatureCollection', features: [] };
 }
+
+// Singleton guard: ensures only one MapLibre instance exists at a time.
+// React StrictMode mounts twice in dev — this prevents the second mount
+// from creating a duplicate map on the same container.
+let activeMapContainer: HTMLDivElement | null = null;
 
 export default function MapView({ onPlaceSelect }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -42,22 +45,32 @@ export default function MapView({ onPlaceSelect }: Props) {
     filters.radiusMeters,
   );
 
-  // ── Init map ──────────────────────────────────────────────────────────────
+  // ── Init map ────────────────────────────────────────────────────────
   useEffect(() => {
-    if (!containerRef.current || mapRef.current) return;
+    const container = containerRef.current;
+    if (!container) return;
 
+    // Abort if another instance already owns a container (StrictMode double-mount)
+    if (activeMapContainer && activeMapContainer !== container) return;
+    // Already initialised on this container
+    if (mapRef.current) return;
+
+    activeMapContainer = container;
     let map: MapLibreMap;
+    let cancelled = false;
 
     (async () => {
       const { Map: MLMap } = await import('maplibre-gl');
       await import('maplibre-gl/dist/maplibre-gl.css');
 
+      if (cancelled || !containerRef.current) return;
+
       map = new MLMap({
-        container: containerRef.current!,
+        container: containerRef.current,
         style: {
           version: 8,
           sources: {
-            'osm-tiles': {
+            osm: {
               type: 'raster',
               tiles: [
                 'https://a.tile.openstreetmap.org/{z}/{x}/{y}.png',
@@ -65,35 +78,34 @@ export default function MapView({ onPlaceSelect }: Props) {
                 'https://c.tile.openstreetmap.org/{z}/{x}/{y}.png',
               ],
               tileSize: 256,
-              attribution: '© <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a> contributors',
+              attribution:
+                '\u00a9 <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a> contributors',
               maxzoom: 19,
             },
           },
           layers: [
-            {
-              id: 'osm-layer',
-              type: 'raster',
-              source: 'osm-tiles',
-              minzoom: 0,
-              maxzoom: 22,
-            },
+            { id: 'osm-layer', type: 'raster', source: 'osm', minzoom: 0, maxzoom: 22 },
           ],
           glyphs: 'https://demotiles.maplibre.org/font/{fontstack}/{range}.pbf',
         },
-        center: coords ? [coords.longitude, coords.latitude] : [2.3488, 48.8534],
+        center: coords
+          ? [coords.longitude, coords.latitude]
+          : [2.3488, 48.8534],
         zoom: 15,
         attributionControl: true,
       });
 
       map.on('load', () => {
+        if (cancelled) { map.remove(); return; }
+
         map.addSource('user-dot', { type: 'geojson', data: emptyFC() });
         map.addSource('radar-circle', { type: 'geojson', data: emptyFC() });
         map.addSource('radar-sweep', { type: 'geojson', data: emptyFC() });
-        map.addSource('places', { type: 'geojson', data: emptyFC(), cluster: false });
+        map.addSource('places', { type: 'geojson', data: emptyFC() });
 
-        map.addLayer({ id: 'radar-fill', type: 'fill', source: 'radar-circle', paint: { 'fill-color': RADAR_FILL_DARK, 'fill-opacity': 1 } });
+        map.addLayer({ id: 'radar-fill', type: 'fill', source: 'radar-circle', paint: { 'fill-color': RADAR_FILL_DARK } });
         map.addLayer({ id: 'radar-stroke', type: 'line', source: 'radar-circle', paint: { 'line-color': ACCENT, 'line-width': 1.2, 'line-opacity': 0.5 } });
-        map.addLayer({ id: 'radar-sweep-layer', type: 'fill', source: 'radar-sweep', paint: { 'fill-color': RADAR_SWEEP_DARK, 'fill-opacity': 1 } });
+        map.addLayer({ id: 'radar-sweep-layer', type: 'fill', source: 'radar-sweep', paint: { 'fill-color': RADAR_SWEEP_DARK } });
 
         map.addLayer({
           id: 'places-circle',
@@ -101,7 +113,11 @@ export default function MapView({ onPlaceSelect }: Props) {
           source: 'places',
           paint: {
             'circle-radius': 7,
-            'circle-color': ['case', ['==', ['get', 'openingStatus'], 'open'], OPEN_COLOR, ['==', ['get', 'openingStatus'], 'closed'], CLOSED_COLOR, '#888'],
+            'circle-color': ['case',
+              ['==', ['get', 'openingStatus'], 'open'], OPEN_COLOR,
+              ['==', ['get', 'openingStatus'], 'closed'], CLOSED_COLOR,
+              '#888',
+            ],
             'circle-stroke-width': 1.5,
             'circle-stroke-color': '#fff',
           },
@@ -129,52 +145,51 @@ export default function MapView({ onPlaceSelect }: Props) {
 
       map.on('click', 'places-circle', (e) => {
         if (!e.features?.length) return;
-        const props = e.features[0].properties as Place;
-        onPlaceSelect?.(props);
+        onPlaceSelect?.(e.features[0].properties as Place);
       });
-
       map.on('mouseenter', 'places-circle', () => { map.getCanvas().style.cursor = 'pointer'; });
       map.on('mouseleave', 'places-circle', () => { map.getCanvas().style.cursor = ''; });
     })();
 
     return () => {
-      map?.remove();
-      mapRef.current = null;
+      cancelled = true;
+      if (mapRef.current) {
+        mapRef.current.remove();
+        mapRef.current = null;
+      }
+      if (activeMapContainer === container) activeMapContainer = null;
+      setMapReady(false);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // ── Update user position + radar circle ──────────────────────────────────
+  // ── Update user dot + radar circle ──────────────────────────────────
   useEffect(() => {
     const map = mapRef.current;
     if (!mapReady || !map || !coords) return;
 
-    const userFC: FeatureCollection = {
+    (map.getSource('user-dot') as GeoJSONSource)?.setData({
       type: 'FeatureCollection',
       features: [{ type: 'Feature', id: 'user', geometry: { type: 'Point', coordinates: [coords.longitude, coords.latitude] }, properties: {} }],
-    };
-    (map.getSource('user-dot') as GeoJSONSource)?.setData(userFC);
-
-    const circleFC: FeatureCollection = {
+    });
+    (map.getSource('radar-circle') as GeoJSONSource)?.setData({
       type: 'FeatureCollection',
       features: [makeCirclePolygon(coords.longitude, coords.latitude, filters.radiusMeters)],
-    };
-    (map.getSource('radar-circle') as GeoJSONSource)?.setData(circleFC);
+    });
   }, [mapReady, coords, filters.radiusMeters]);
 
-  // ── Update radar sweep ────────────────────────────────────────────────────
+  // ── Update radar sweep ───────────────────────────────────────────────
   useEffect(() => {
     const map = mapRef.current;
     if (!mapReady || !map || !sweepGeoJSON) return;
     (map.getSource('radar-sweep') as GeoJSONSource)?.setData(sweepGeoJSON);
   }, [mapReady, sweepGeoJSON]);
 
-  // ── Update places ─────────────────────────────────────────────────────────
+  // ── Update places ────────────────────────────────────────────────────
   const updatePlaces = useCallback(() => {
     const map = mapRef.current;
     if (!mapReady || !map) return;
-
-    const placesFC: FeatureCollection = {
+    (map.getSource('places') as GeoJSONSource)?.setData({
       type: 'FeatureCollection',
       features: places.map((p) => ({
         type: 'Feature',
@@ -186,27 +201,23 @@ export default function MapView({ onPlaceSelect }: Props) {
           categoryLabel: PLACE_TYPE_LABELS[p.category] ?? p.category,
           openingStatus: p.openingStatus ?? 'unknown',
           distanceLabel: p.distanceMeters != null ? formatDistance(p.distanceMeters) : '',
-        } satisfies Record<string, unknown>,
+        },
       })),
-    };
-    (map.getSource('places') as GeoJSONSource)?.setData(placesFC);
+    });
   }, [mapReady, places]);
 
   useEffect(() => { updatePlaces(); }, [updatePlaces]);
 
-  // ── Center on user ────────────────────────────────────────────────────────
+  // ── Center on user ───────────────────────────────────────────────────
   useEffect(() => {
     const map = mapRef.current;
     if (!mapReady || !map || !coords) return;
     map.easeTo({ center: [coords.longitude, coords.latitude], duration: 600 });
   }, [mapReady, coords]);
 
-  // ── Watch location ────────────────────────────────────────────────────────
+  // ── Watch location ───────────────────────────────────────────────────
   useEffect(() => {
-    const unsub = watchPosition(
-      (c: Coordinates) => useLocationStore.getState().setCoords(c),
-    );
-    return unsub;
+    return watchPosition((c: Coordinates) => useLocationStore.getState().setCoords(c));
   }, []);
 
   return (
