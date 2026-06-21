@@ -1,4 +1,3 @@
-// 100% portable depuis src/types/place.ts RN — zéro dépendance native
 export type OpeningStatus = 'open' | 'closed' | 'unknown';
 export type DataSource = 'osm' | 'google' | 'mock' | 'user';
 export type PlaceCategory =

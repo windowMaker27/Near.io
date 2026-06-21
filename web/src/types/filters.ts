@@ -1,4 +1,4 @@
-import type { PlaceCategory } from './place';
+import { PlaceCategory } from './place';
 
 export type Filters = {
   categories: PlaceCategory[];
