@@ -1,11 +1,11 @@
-// Portable depuis RN — zéro dépendance native
+import type { Feature, Polygon } from 'geojson';
 
 export function makeCirclePolygon(
   lng: number,
   lat: number,
   radiusMeters: number,
   steps = 64,
-): GeoJSON.Feature<GeoJSON.Polygon> {
+): Feature<Polygon> {
   const earthRadius = 6_371_008.8;
   const coords: [number, number][] = [];
   for (let i = 0; i <= steps; i++) {
@@ -28,7 +28,7 @@ export function makeRadarSweep(
   angleDeg: number,
   sweepDeg = 60,
   steps = 32,
-): GeoJSON.Feature<GeoJSON.Polygon> {
+): Feature<Polygon> {
   const earthRadius = 6_371_008.8;
   const toRad = (d: number) => (d * Math.PI) / 180;
   const latRad = toRad(lat);

@@ -137,7 +137,7 @@ export default function MapView({ onPlaceSelect }: Props) {
 
     const circleFC: FeatureCollection = {
       type: 'FeatureCollection',
-      features: [{ type: 'Feature', geometry: { type: 'Polygon', coordinates: [makeCirclePolygon(coords.latitude, coords.longitude, filters.radiusMeters)] }, properties: {} }],
+      features: [makeCirclePolygon(coords.longitude, coords.latitude, filters.radiusMeters)],
     };
     (map.getSource('radar-circle') as GeoJSONSource)?.setData(circleFC);
   }, [mapReady, coords, filters.radiusMeters]);
