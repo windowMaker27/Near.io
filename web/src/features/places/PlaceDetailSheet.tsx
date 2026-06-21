@@ -10,9 +10,10 @@ import { useLocationStore } from '@/store/locationStore';
 import { useAppStore } from '@/store/appStore';
 import { useRouter } from 'next/navigation';
 
-const ACCENT = '#00d4aa';
-const OPEN_COLOR = '#51cf66';
-const CLOSED_COLOR = '#ff6b6b';
+// Couleurs alignées sur src/constants/theme.ts
+const OPEN_COLOR   = '#4CAF72'; // colorOpen
+const CLOSED_COLOR = '#E84444'; // colorDanger
+const GOLD_COLOR   = '#C8A020'; // colorWarning (favoris)
 
 type Props = {
   place: Place;
@@ -47,6 +48,7 @@ export function PlaceDetailSheet({ place, onClose }: Props) {
   const navigateToCompass = () => {
     useAppStore.getState().setSelectedPlace(place);
     router.push('/compass');
+    onClose();
   };
 
   const handleFavToggle = () => {
@@ -55,14 +57,14 @@ export function PlaceDetailSheet({ place, onClose }: Props) {
   };
 
   const statusColor =
-    place.openingStatus === 'open' ? OPEN_COLOR
+    place.openingStatus === 'open'   ? OPEN_COLOR
     : place.openingStatus === 'closed' ? CLOSED_COLOR
-    : '#888';
+    : 'var(--color-text-faint)';
 
   const statusLabel =
     place.openingStatus === 'open'
-      ? `Ouvert${place.closingTime ? ` jusqu'\u00e0 ${place.closingTime}` : ''}`
-      : place.openingStatus === 'closed' ? 'Ferm\u00e9' : 'Horaires inconnus';
+      ? `Ouvert${place.closingTime ? ` jusqu'à ${place.closingTime}` : ''}`
+      : place.openingStatus === 'closed' ? 'Fermé' : 'Horaires inconnus';
 
   return (
     <>
@@ -82,13 +84,13 @@ export function PlaceDetailSheet({ place, onClose }: Props) {
       <div
         role="dialog"
         aria-modal="true"
-        aria-label={`D\u00e9tails : ${place.name}`}
+        aria-label={`Détails : ${place.name}`}
         style={{
           position: 'fixed', bottom: 0, left: 0, right: 0,
           zIndex: 101,
           backgroundColor: 'var(--color-surface)',
           borderRadius: 'var(--radius-xl) var(--radius-xl) 0 0',
-          padding: 'var(--space-6) var(--space-4) calc(var(--space-8) + env(safe-area-inset-bottom))',
+          padding: 'var(--space-6) var(--space-5) calc(80px + env(safe-area-inset-bottom))',
           display: 'flex', flexDirection: 'column', gap: 'var(--space-4)',
           boxShadow: 'var(--shadow-lg)',
           animation: 'slideUp 250ms cubic-bezier(0.16,1,0.3,1) forwards',
@@ -157,15 +159,16 @@ export function PlaceDetailSheet({ place, onClose }: Props) {
               flex: 1,
               padding: 'var(--space-3)',
               borderRadius: 'var(--radius-md)',
-              border: `1px solid ${isFav ? '#f59e0b' : 'var(--color-border)'}`,
-              backgroundColor: isFav ? 'oklch(from #f59e0b l c h / 0.12)' : 'var(--color-surface)',
-              color: isFav ? '#f59e0b' : 'var(--color-text-muted)',
+              border: `1px solid ${isFav ? GOLD_COLOR : 'var(--color-border)'}`,
+              backgroundColor: isFav ? `${GOLD_COLOR}18` : 'var(--color-surface)',
+              color: isFav ? GOLD_COLOR : 'var(--color-text-muted)',
               fontWeight: 600,
               fontSize: 'var(--text-sm)',
               cursor: 'pointer',
+              transition: 'all var(--transition)',
             }}
           >
-            {isFav ? '\u2605 Retirer' : '\u2606 Favori'}
+            {isFav ? '★ Retirer' : '☆ Favori'}
           </button>
           <button
             onClick={navigateToCompass}
@@ -173,25 +176,31 @@ export function PlaceDetailSheet({ place, onClose }: Props) {
               flex: 1,
               padding: 'var(--space-3)',
               borderRadius: 'var(--radius-md)',
-              border: `1px solid ${ACCENT}`,
-              backgroundColor: 'oklch(from #00d4aa l c h / 0.1)',
-              color: ACCENT,
+              border: '1px solid var(--color-primary-border)',
+              backgroundColor: 'var(--color-primary-highlight)',
+              color: 'var(--color-primary)',
               fontWeight: 600,
               fontSize: 'var(--text-sm)',
               cursor: 'pointer',
+              transition: 'all var(--transition)',
             }}
           >
-            🦭 Boussole
+            🧭 Boussole
           </button>
         </div>
 
         {/* Direction */}
         {bearing != null && (
           <p style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-faint)', textAlign: 'center' }}>
-            Direction : {Math.round(bearing)}\u00b0
+            Direction : {Math.round(bearing)}°
           </p>
         )}
       </div>
+
+      <style>{`
+        @keyframes fadeIn  { from { opacity: 0 } to { opacity: 1 } }
+        @keyframes slideUp { from { transform: translateY(100%) } to { transform: translateY(0) } }
+      `}</style>
     </>
   );
 }

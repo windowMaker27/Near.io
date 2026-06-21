@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
 import { useNearbyPlaces } from '@/features/places/hooks/useNearbyPlaces';
 import { PlaceCard } from '@/features/places/PlaceCard';
 import { PlaceDetailSheet } from '@/features/places/PlaceDetailSheet';
@@ -36,15 +35,16 @@ export default function HomePage() {
         paddingBottom: '80px',
       }}
     >
-      {/* Header */}
+      {/* Header sticky */}
       <header
         style={{
-          padding: 'var(--space-6) var(--space-4) var(--space-4)',
-          borderBottom: '1px solid var(--color-divider)',
+          padding: 'var(--space-6) var(--space-5) var(--space-4)',
+          borderBottom: '1px solid var(--color-border)',
           position: 'sticky', top: 0,
           backgroundColor: 'var(--color-bg)',
           zIndex: 10,
-          backdropFilter: 'blur(8px)',
+          backdropFilter: 'blur(12px)',
+          WebkitBackdropFilter: 'blur(12px)',
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -58,7 +58,7 @@ export default function HomePage() {
                 letterSpacing: '-0.01em',
               }}
             >
-              near.
+              near<span style={{ color: 'var(--color-primary)' }}>.</span>
             </h1>
             <p style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)', margin: '2px 0 0' }}>
               {coords
@@ -92,22 +92,18 @@ export default function HomePage() {
       </header>
 
       {/* AdSense banner */}
-      <AdBanner
-        style={{ margin: 'var(--space-3) var(--space-4) 0', minHeight: 60 }}
-      />
+      <AdBanner style={{ margin: 'var(--space-3) var(--space-5) 0', minHeight: 60 }} />
 
-      {/* Liste des lieux */}
-      <div style={{ padding: 'var(--space-4)', display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
+      {/* Liste */}
+      <div style={{ padding: 'var(--space-4) var(--space-5)', display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
         {loading && (
           Array.from({ length: 4 }).map((_, i) => (
             <div
               key={i}
+              className="skeleton"
               style={{
                 height: 80,
                 borderRadius: 'var(--radius-xl)',
-                background: `linear-gradient(90deg, var(--color-surface-offset) 25%, var(--color-surface-dynamic) 50%, var(--color-surface-offset) 75%)`,
-                backgroundSize: '200% 100%',
-                animation: 'shimmer 1.5s ease-in-out infinite',
               }}
             />
           ))
@@ -126,7 +122,7 @@ export default function HomePage() {
               Aucun commerce trouvé
             </p>
             <p style={{ fontSize: 'var(--text-sm)', maxWidth: '28ch', margin: '0 auto' }}>
-              Essaie d’augmenter le rayon de recherche.
+              Essaie d'augmenter le rayon de recherche.
             </p>
           </div>
         )}
@@ -139,13 +135,6 @@ export default function HomePage() {
       {selected && <PlaceDetailSheet place={selected} onClose={() => setSelected(null)} />}
 
       <BottomNav />
-
-      <style>{`
-        @keyframes shimmer {
-          0% { background-position: -200% 0; }
-          100% { background-position: 200% 0; }
-        }
-      `}</style>
     </main>
   );
 }

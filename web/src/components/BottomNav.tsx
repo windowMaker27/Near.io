@@ -2,13 +2,14 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, Map, Heart, User } from 'lucide-react';
+import { Home, Compass, Heart, User, Settings } from 'lucide-react';
 
 const routes = [
-  { href: '/',           icon: Home,  label: 'Explorer' },
-  { href: '/map',        icon: Map,   label: 'Carte'    },
-  { href: '/favorites',  icon: Heart, label: 'Favoris'  },
-  { href: '/profile',    icon: User,  label: 'Profil'   },
+  { href: '/',          icon: Home,    label: 'Explorer' },
+  { href: '/compass',   icon: Compass, label: 'Boussole' },
+  { href: '/favorites', icon: Heart,   label: 'Favoris'  },
+  { href: '/profile',   icon: User,    label: 'Profil'   },
+  { href: '/settings',  icon: Settings,label: 'Réglages' },
 ] as const;
 
 interface BottomNavProps {
@@ -30,8 +31,8 @@ export function BottomNav({ transparent = false }: BottomNavProps) {
         borderTop: transparent ? 'none' : '1px solid var(--color-border)',
         paddingBottom: 'env(safe-area-inset-bottom)',
         display: 'flex',
-        backdropFilter: transparent ? 'blur(12px)' : undefined,
-        WebkitBackdropFilter: transparent ? 'blur(12px)' : undefined,
+        backdropFilter: 'blur(12px)',
+        WebkitBackdropFilter: 'blur(12px)',
       }}
       aria-label="Navigation principale"
     >
@@ -47,18 +48,19 @@ export function BottomNav({ transparent = false }: BottomNavProps) {
               flexDirection: 'column',
               alignItems: 'center',
               justifyContent: 'center',
-              gap: '4px',
+              gap: '3px',
               padding: '10px 0',
               color: isActive ? 'var(--color-primary)' : 'var(--color-text-muted)',
               textDecoration: 'none',
               fontSize: 'var(--text-xs)',
               fontWeight: isActive ? 600 : 400,
               minHeight: '56px',
+              transition: 'color var(--transition)',
             }}
             aria-current={isActive ? 'page' : undefined}
           >
             <Icon
-              size={22}
+              size={20}
               strokeWidth={isActive ? 2.5 : 1.8}
               aria-hidden="true"
             />

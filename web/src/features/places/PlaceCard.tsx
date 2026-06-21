@@ -5,8 +5,9 @@ import { PLACE_TYPE_LABELS } from '@/constants/placeTypes';
 import { formatDistance } from '@/features/compass/utils/distance';
 import { useFavoritesStore } from '@/store/favoritesStore';
 
-const OPEN_COLOR = '#51cf66';
-const CLOSED_COLOR = '#ff6b6b';
+// Couleurs alignées sur src/constants/theme.ts
+const OPEN_COLOR   = '#4CAF72'; // colorOpen
+const CLOSED_COLOR = '#E84444'; // colorDanger
 
 type Props = {
   place: Place;
@@ -19,15 +20,15 @@ export function PlaceCard({ place, onSelect, compact = false }: Props) {
   const isFav = isFavorite(place.id);
 
   const statusColor =
-    place.openingStatus === 'open' ? OPEN_COLOR
+    place.openingStatus === 'open'   ? OPEN_COLOR
     : place.openingStatus === 'closed' ? CLOSED_COLOR
-    : '#888';
+    : 'var(--color-text-faint)';
 
   const statusLabel =
     place.openingStatus === 'open'
-      ? `Ouvert${place.closingTime ? ` jusqu'\u00e0 ${place.closingTime}` : ''}`
+      ? `Ouvert${place.closingTime ? ` jusqu'à ${place.closingTime}` : ''}`
       : place.openingStatus === 'closed'
-      ? 'Ferm\u00e9'
+      ? 'Fermé'
       : 'Horaires inconnus';
 
   const handleFavToggle = (e: React.MouseEvent) => {
@@ -48,14 +49,14 @@ export function PlaceCard({ place, onSelect, compact = false }: Props) {
         display: 'flex',
         alignItems: 'center',
         gap: 'var(--space-3)',
-        transition: 'box-shadow var(--transition-interactive)',
+        transition: 'box-shadow var(--transition)',
         boxShadow: 'var(--shadow-sm)',
         position: 'relative',
       }}
       onMouseEnter={(e) => (e.currentTarget.style.boxShadow = 'var(--shadow-md)')}
       onMouseLeave={(e) => (e.currentTarget.style.boxShadow = 'var(--shadow-sm)')}
     >
-      {/* Catégorie dot */}
+      {/* Icône catégorie */}
       <div
         style={{
           width: compact ? 36 : 44,
@@ -87,17 +88,11 @@ export function PlaceCard({ place, onSelect, compact = false }: Props) {
         >
           {place.name}
         </p>
-        <p
-          style={{
-            fontSize: 'var(--text-xs)',
-            color: 'var(--color-text-muted)',
-            margin: '2px 0 0',
-          }}
-        >
+        <p style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)', margin: '2px 0 0' }}>
           {PLACE_TYPE_LABELS[place.category] ?? place.category}
         </p>
         <div style={{ display: 'flex', gap: 'var(--space-3)', marginTop: 4, alignItems: 'center' }}>
-          <span style={{ fontSize: 'var(--text-xs)', color: statusColor }}>
+          <span style={{ fontSize: 'var(--text-xs)', color: statusColor, fontWeight: 500 }}>
             ● {statusLabel}
           </span>
           {place.distanceMeters != null && (
@@ -117,13 +112,13 @@ export function PlaceCard({ place, onSelect, compact = false }: Props) {
           border: 'none',
           cursor: 'pointer',
           fontSize: 20,
-          color: isFav ? '#f59e0b' : 'var(--color-text-faint)',
+          color: isFav ? '#C8A020' : 'var(--color-text-faint)',
           padding: 'var(--space-2)',
-          transition: 'color 150ms',
+          transition: 'color var(--transition)',
           flexShrink: 0,
         }}
       >
-        {isFav ? '\u2605' : '\u2606'}
+        {isFav ? '★' : '☆'}
       </button>
     </article>
   );
@@ -131,24 +126,24 @@ export function PlaceCard({ place, onSelect, compact = false }: Props) {
 
 function getCategoryEmoji(category: string): string {
   const map: Record<string, string> = {
-    restaurant: '\ud83c\udf7d',
-    cafe: '\u2615',
-    bakery: '\ud83e\udd50',
-    bar: '\ud83c\udf7a',
-    supermarket: '\ud83d\udecd',
-    pharmacy: '\ud83d\udc8a',
-    hospital: '\ud83c\udfe5',
-    bank: '\ud83c\udfe6',
-    hotel: '\ud83c\udfe8',
-    park: '\ud83c\udf33',
-    gym: '\ud83c\udfcb',
-    school: '\ud83c\udfeb',
-    museum: '\ud83c\udfdb',
-    cinema: '\ud83c\udfa6',
-    shop: '\ud83d�',
-    gas_station: '\u26fd',
-    parking: '\ud83c\udd7f',
-    atm: '\ud83d�',
+    restaurant:  '🍽',
+    cafe:        '☕',
+    bakery:      '🥐',
+    bar:         '🍺',
+    supermarket: '🛒',
+    pharmacy:    '💊',
+    hospital:    '🏥',
+    bank:        '🏦',
+    hotel:       '🏨',
+    park:        '🌳',
+    gym:         '🏋',
+    school:      '🏫',
+    museum:      '🏛',
+    cinema:      '🎦',
+    shop:        '🛍',
+    gas_station: '⛽',
+    parking:     '🅿',
+    atm:         '💳',
   };
-  return map[category] ?? '\ud83d�';
+  return map[category] ?? '📍';
 }
