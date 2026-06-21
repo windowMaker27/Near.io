@@ -9,13 +9,12 @@ import { useNearbyPlaces } from '@/features/places/hooks/useNearbyPlaces';
 import { useFiltersStore } from '@/store/filtersStore';
 import { useLocationStore } from '@/store/locationStore';
 import { watchPosition } from '@/services/locationService';
+import { nearMapStyleDark, nearMapStyleLight } from './style/nearMapStyle';
 import type { Coordinates, Place } from '@/types/place';
 import { PLACE_TYPE_LABELS } from '@/constants/placeTypes';
 import { formatDistance } from '@/features/compass/utils/distance';
 
 const ACCENT = '#e63946';
-const RADAR_FILL = 'rgba(230, 57, 70, 0.06)';
-const RADAR_SWEEP = 'rgba(230, 57, 70, 0.18)';
 const OPEN_COLOR = '#51cf66';
 const CLOSED_COLOR = '#ff6b6b';
 
@@ -23,6 +22,11 @@ type Props = { onPlaceSelect?: (place: Place) => void };
 
 function emptyFC(): FeatureCollection {
   return { type: 'FeatureCollection', features: [] };
+}
+
+function isDarkTheme() {
+  if (typeof document === 'undefined') return true;
+  return document.documentElement.getAttribute('data-theme') !== 'light';
 }
 
 let activeMapContainer: HTMLDivElement | null = null;
@@ -42,6 +46,7 @@ export default function MapView({ onPlaceSelect }: Props) {
     filters.radiusMeters,
   );
 
+  // ── Init map ─────────────────────────────────────────────────────
   useEffect(() => {
     const container = containerRef.current;
     if (!container) return;
@@ -55,31 +60,15 @@ export default function MapView({ onPlaceSelect }: Props) {
     (async () => {
       const { Map: MLMap } = await import('maplibre-gl');
       await import('maplibre-gl/dist/maplibre-gl.css');
-
       if (cancelled || !containerRef.current) return;
+
+      const dark = isDarkTheme();
+      const radarFill = dark ? 'rgba(231,76,60,0.04)' : 'rgba(231,76,60,0.03)';
+      const sweepFill = dark ? 'rgba(231,76,60,0.18)' : 'rgba(231,76,60,0.12)';
 
       map = new MLMap({
         container: containerRef.current,
-        style: {
-          version: 8,
-          sources: {
-            osm: {
-              type: 'raster',
-              tiles: [
-                'https://a.tile.openstreetmap.org/{z}/{x}/{y}.png',
-                'https://b.tile.openstreetmap.org/{z}/{x}/{y}.png',
-                'https://c.tile.openstreetmap.org/{z}/{x}/{y}.png',
-              ],
-              tileSize: 256,
-              attribution: '\u00a9 <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a> contributors',
-              maxzoom: 19,
-            },
-          },
-          layers: [
-            { id: 'osm-layer', type: 'raster', source: 'osm', minzoom: 0, maxzoom: 22 },
-          ],
-          glyphs: 'https://demotiles.maplibre.org/font/{fontstack}/{range}.pbf',
-        },
+        style: dark ? nearMapStyleDark : nearMapStyleLight,
         center: coords ? [coords.longitude, coords.latitude] : [2.3488, 48.8534],
         zoom: 15,
         attributionControl: true,
@@ -88,19 +77,21 @@ export default function MapView({ onPlaceSelect }: Props) {
       map.on('load', () => {
         if (cancelled) { map.remove(); return; }
 
+        const dark2 = isDarkTheme();
+        const rf = dark2 ? 'rgba(231,76,60,0.04)' : 'rgba(231,76,60,0.03)';
+        const sf = dark2 ? 'rgba(231,76,60,0.18)' : 'rgba(231,76,60,0.12)';
+
         map.addSource('user-dot', { type: 'geojson', data: emptyFC() });
         map.addSource('radar-circle', { type: 'geojson', data: emptyFC() });
         map.addSource('radar-sweep', { type: 'geojson', data: emptyFC() });
         map.addSource('places', { type: 'geojson', data: emptyFC() });
 
-        map.addLayer({ id: 'radar-fill', type: 'fill', source: 'radar-circle', paint: { 'fill-color': RADAR_FILL } });
+        map.addLayer({ id: 'radar-fill', type: 'fill', source: 'radar-circle', paint: { 'fill-color': rf } });
         map.addLayer({ id: 'radar-stroke', type: 'line', source: 'radar-circle', paint: { 'line-color': ACCENT, 'line-width': 1.2, 'line-opacity': 0.6 } });
-        map.addLayer({ id: 'radar-sweep-layer', type: 'fill', source: 'radar-sweep', paint: { 'fill-color': RADAR_SWEEP } });
+        map.addLayer({ id: 'radar-sweep-layer', type: 'fill', source: 'radar-sweep', paint: { 'fill-color': sf } });
 
         map.addLayer({
-          id: 'places-circle',
-          type: 'circle',
-          source: 'places',
+          id: 'places-circle', type: 'circle', source: 'places',
           paint: {
             'circle-radius': 7,
             'circle-color': ['case',
@@ -114,17 +105,20 @@ export default function MapView({ onPlaceSelect }: Props) {
         });
 
         map.addLayer({
-          id: 'places-label',
-          type: 'symbol',
-          source: 'places',
+          id: 'places-label', type: 'symbol', source: 'places',
           layout: {
             'text-field': ['get', 'name'],
             'text-size': 11,
             'text-offset': [0, 1.4],
             'text-anchor': 'top',
             'text-optional': true,
+            'text-font': ['Noto Sans Regular'],
           },
-          paint: { 'text-color': '#111', 'text-halo-color': '#fff', 'text-halo-width': 1.5 },
+          paint: {
+            'text-color': dark2 ? '#cccccc' : '#111111',
+            'text-halo-color': dark2 ? '#080808' : '#ffffff',
+            'text-halo-width': 1.5,
+          },
         });
 
         map.addLayer({ id: 'user-dot-layer', type: 'circle', source: 'user-dot', paint: { 'circle-radius': 8, 'circle-color': ACCENT, 'circle-stroke-width': 2, 'circle-stroke-color': '#fff' } });
@@ -150,6 +144,50 @@ export default function MapView({ onPlaceSelect }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // ── React to theme changes ────────────────────────────────────────────
+  useEffect(() => {
+    if (!mapReady || !mapRef.current) return;
+    const map = mapRef.current;
+
+    const observer = new MutationObserver(() => {
+      const dark = isDarkTheme();
+      map.setStyle(dark ? nearMapStyleDark : nearMapStyleLight);
+
+      // Re-add overlay sources/layers after style change
+      map.once('style.load', () => {
+        const rf = dark ? 'rgba(231,76,60,0.04)' : 'rgba(231,76,60,0.03)';
+        const sf = dark ? 'rgba(231,76,60,0.18)' : 'rgba(231,76,60,0.12)';
+
+        map.addSource('user-dot', { type: 'geojson', data: emptyFC() });
+        map.addSource('radar-circle', { type: 'geojson', data: emptyFC() });
+        map.addSource('radar-sweep', { type: 'geojson', data: emptyFC() });
+        map.addSource('places', { type: 'geojson', data: emptyFC() });
+
+        map.addLayer({ id: 'radar-fill', type: 'fill', source: 'radar-circle', paint: { 'fill-color': rf } });
+        map.addLayer({ id: 'radar-stroke', type: 'line', source: 'radar-circle', paint: { 'line-color': ACCENT, 'line-width': 1.2, 'line-opacity': 0.6 } });
+        map.addLayer({ id: 'radar-sweep-layer', type: 'fill', source: 'radar-sweep', paint: { 'fill-color': sf } });
+        map.addLayer({
+          id: 'places-circle', type: 'circle', source: 'places',
+          paint: {
+            'circle-radius': 7,
+            'circle-color': ['case', ['==', ['get', 'openingStatus'], 'open'], OPEN_COLOR, ['==', ['get', 'openingStatus'], 'closed'], CLOSED_COLOR, '#888'],
+            'circle-stroke-width': 1.5, 'circle-stroke-color': '#fff',
+          },
+        });
+        map.addLayer({
+          id: 'places-label', type: 'symbol', source: 'places',
+          layout: { 'text-field': ['get', 'name'], 'text-size': 11, 'text-offset': [0, 1.4], 'text-anchor': 'top', 'text-optional': true, 'text-font': ['Noto Sans Regular'] },
+          paint: { 'text-color': dark ? '#cccccc' : '#111111', 'text-halo-color': dark ? '#080808' : '#ffffff', 'text-halo-width': 1.5 },
+        });
+        map.addLayer({ id: 'user-dot-layer', type: 'circle', source: 'user-dot', paint: { 'circle-radius': 8, 'circle-color': ACCENT, 'circle-stroke-width': 2, 'circle-stroke-color': '#fff' } });
+      });
+    });
+
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+    return () => observer.disconnect();
+  }, [mapReady]);
+
+  // ── Update user dot + radar circle ─────────────────────────────────
   useEffect(() => {
     const map = mapRef.current;
     if (!mapReady || !map || !coords) return;
@@ -163,12 +201,14 @@ export default function MapView({ onPlaceSelect }: Props) {
     });
   }, [mapReady, coords, filters.radiusMeters]);
 
+  // ── Update radar sweep ───────────────────────────────────────────────
   useEffect(() => {
     const map = mapRef.current;
     if (!mapReady || !map || !sweepGeoJSON) return;
     (map.getSource('radar-sweep') as GeoJSONSource)?.setData(sweepGeoJSON);
   }, [mapReady, sweepGeoJSON]);
 
+  // ── Update places ───────────────────────────────────────────────────
   const updatePlaces = useCallback(() => {
     const map = mapRef.current;
     if (!mapReady || !map) return;
@@ -178,9 +218,7 @@ export default function MapView({ onPlaceSelect }: Props) {
         type: 'Feature',
         geometry: { type: 'Point', coordinates: [p.coordinates.longitude, p.coordinates.latitude] },
         properties: {
-          id: p.id,
-          name: p.name,
-          category: p.category,
+          id: p.id, name: p.name, category: p.category,
           categoryLabel: PLACE_TYPE_LABELS[p.category] ?? p.category,
           openingStatus: p.openingStatus ?? 'unknown',
           distanceLabel: p.distanceMeters != null ? formatDistance(p.distanceMeters) : '',
@@ -191,12 +229,14 @@ export default function MapView({ onPlaceSelect }: Props) {
 
   useEffect(() => { updatePlaces(); }, [updatePlaces]);
 
+  // ── Center on user ─────────────────────────────────────────────────
   useEffect(() => {
     const map = mapRef.current;
     if (!mapReady || !map || !coords) return;
     map.easeTo({ center: [coords.longitude, coords.latitude], duration: 600 });
   }, [mapReady, coords]);
 
+  // ── Watch location ────────────────────────────────────────────────
   useEffect(() => {
     return watchPosition((c: Coordinates) => useLocationStore.getState().setCoords(c));
   }, []);
