@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNearbyPlaces } from '@/features/places/hooks/useNearbyPlaces';
 import { PlaceCard } from '@/features/places/PlaceCard';
 import { PlaceDetailSheet } from '@/features/places/PlaceDetailSheet';
@@ -24,8 +24,9 @@ export default function HomePage() {
   const { filters, setFilters } = useFiltersStore();
   const [detailPlace, setDetailPlace] = useState<Place | null>(null);
   const [requesting, setRequesting] = useState(false);
+  // Garde en mémoire si l'utilisateur a manuellement déselectionné
+  const userClearedRef = useRef(false);
 
-  // Permission géo au montage si déjà accordée
   useEffect(() => {
     if (!navigator.geolocation) return;
     navigator.permissions
@@ -50,9 +51,23 @@ export default function HomePage() {
     ? { latitude: coords.latitude, longitude: coords.longitude }
     : undefined;
 
-  const { places, loading, error } = useNearbyPlaces(userCoords);
+  const { places, target, loading, error } = useNearbyPlaces(userCoords);
 
-  // Bearing + distance vers le lieu sélectionné
+  // Auto-sélectionne le commerce le plus proche dès que la liste est chargée,
+  // SAUF si l'utilisateur a volontairement annulé le guidage.
+  useEffect(() => {
+    if (loading) return;
+    if (userClearedRef.current) return;
+    if (target && !selectedPlace) {
+      setSelectedPlace(target);
+    }
+  }, [target, loading, selectedPlace, setSelectedPlace]);
+
+  const handleClearSelection = () => {
+    userClearedRef.current = true;
+    setSelectedPlace(null);
+  };
+
   const bearing =
     coords && selectedPlace
       ? getBearingDeg(
@@ -71,18 +86,7 @@ export default function HomePage() {
   // ── PERMISSION GATE ──────────────────────────────────────────────────────
   if ((permissionState === 'idle' || permissionState === 'denied' || permissionState === 'unavailable') && !coords) {
     return (
-      <main
-        style={{
-          minHeight: '100dvh',
-          backgroundColor: 'var(--color-bg)',
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'center',
-          padding: 'var(--space-8)',
-          gap: 'var(--space-6)',
-        }}
-      >
+      <main style={{ minHeight: '100dvh', backgroundColor: 'var(--color-bg)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 'var(--space-8)', gap: 'var(--space-6)' }}>
         <div style={{ fontSize: 48 }}>📍</div>
         <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 'var(--text-xl)', color: 'var(--color-text)', margin: 0, textAlign: 'center' }}>
           near<span style={{ color: 'var(--color-primary)' }}>.</span>
@@ -103,18 +107,7 @@ export default function HomePage() {
             <button
               onClick={handleRequestLocation}
               disabled={requesting}
-              style={{
-                backgroundColor: 'var(--color-primary)',
-                color: '#fff',
-                border: 'none',
-                borderRadius: 'var(--radius-lg)',
-                padding: 'var(--space-4) var(--space-8)',
-                fontSize: 'var(--text-sm)',
-                fontWeight: 600,
-                cursor: requesting ? 'wait' : 'pointer',
-                opacity: requesting ? 0.7 : 1,
-                minWidth: 200,
-              }}
+              style={{ backgroundColor: 'var(--color-primary)', color: '#fff', border: 'none', borderRadius: 'var(--radius-lg)', padding: 'var(--space-4) var(--space-8)', fontSize: 'var(--text-sm)', fontWeight: 600, cursor: requesting ? 'wait' : 'pointer', opacity: requesting ? 0.7 : 1, minWidth: 200 }}
             >
               {requesting ? 'Localisation…' : 'Activer ma position'}
             </button>
@@ -128,18 +121,8 @@ export default function HomePage() {
   return (
     <main style={{ minHeight: '100dvh', backgroundColor: 'var(--color-bg)', paddingBottom: '80px' }}>
 
-      {/* ── HEADER ── */}
-      <header
-        style={{
-          padding: 'var(--space-4) var(--space-5)',
-          borderBottom: '1px solid var(--color-border)',
-          position: 'sticky', top: 0,
-          backgroundColor: 'var(--color-bg)',
-          zIndex: 10,
-          backdropFilter: 'blur(12px)',
-          WebkitBackdropFilter: 'blur(12px)',
-        }}
-      >
+      {/* HEADER */}
+      <header style={{ padding: 'var(--space-4) var(--space-5)', borderBottom: '1px solid var(--color-border)', position: 'sticky', top: 0, backgroundColor: 'var(--color-bg)', zIndex: 10, backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 'var(--space-3)' }}>
           <div>
             <h1 style={{ fontSize: 'var(--text-xl)', fontFamily: 'var(--font-display)', color: 'var(--color-text)', margin: 0, letterSpacing: '-0.01em' }}>
@@ -154,15 +137,7 @@ export default function HomePage() {
               value={filters.radiusMeters}
               onChange={(e) => setFilters({ radiusMeters: Number(e.target.value) })}
               aria-label="Rayon de recherche"
-              style={{
-                backgroundColor: 'var(--color-surface)',
-                border: '1px solid var(--color-border)',
-                borderRadius: 'var(--radius-md)',
-                padding: 'var(--space-2) var(--space-3)',
-                fontSize: 'var(--text-xs)',
-                color: 'var(--color-text-muted)',
-                cursor: 'pointer',
-              }}
+              style={{ backgroundColor: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', padding: 'var(--space-2) var(--space-3)', fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)', cursor: 'pointer' }}
             >
               <option value={200}>200 m</option>
               <option value={500}>500 m</option>
@@ -175,61 +150,40 @@ export default function HomePage() {
         </div>
       </header>
 
-      {/* ── BOUSSOLE HERO ── */}
-      <section
-        style={{
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          padding: 'var(--space-8) var(--space-5) var(--space-6)',
-          borderBottom: '1px solid var(--color-border)',
-          backgroundColor: 'var(--color-surface)',
-        }}
-      >
+      {/* BOUSSOLE HERO */}
+      <section style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: 'var(--space-8) var(--space-5) var(--space-6)', borderBottom: '1px solid var(--color-border)', backgroundColor: 'var(--color-surface)' }}>
         <CompassRing
           targetBearing={bearing}
           placeName={selectedPlace?.name ?? null}
           distance={distanceStr}
         />
-        {!selectedPlace && (
-          <p style={{ marginTop: 'var(--space-4)', fontSize: 'var(--text-xs)', color: 'var(--color-text-faint)', textAlign: 'center', maxWidth: '28ch' }}>
-            Appuie sur un commerce ci-dessous pour activer le guidage
+        {loading && !selectedPlace && (
+          <p style={{ marginTop: 'var(--space-4)', fontSize: 'var(--text-xs)', color: 'var(--color-text-faint)', textAlign: 'center' }}>
+            Chargement des commerces…
           </p>
         )}
         {selectedPlace && (
           <button
-            onClick={() => setSelectedPlace(null)}
+            onClick={handleClearSelection}
             aria-label="Désélectionner le commerce"
-            style={{
-              marginTop: 'var(--space-3)',
-              fontSize: 'var(--text-xs)',
-              color: 'var(--color-text-muted)',
-              background: 'none',
-              border: 'none',
-              cursor: 'pointer',
-              textDecoration: 'underline',
-            }}
+            style={{ marginTop: 'var(--space-3)', fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)', background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline' }}
           >
             ✕ Annuler le guidage
           </button>
         )}
       </section>
 
-      {/* ── ADSENSE ── */}
+      {/* ADSENSE */}
       <AdBanner style={{ margin: 'var(--space-3) var(--space-5) 0', minHeight: 60 }} />
 
-      {/* ── LISTE COMMERCES ── */}
+      {/* LISTE */}
       <div style={{ padding: 'var(--space-4) var(--space-5)', display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
         {loading && Array.from({ length: 4 }).map((_, i) => (
           <div key={i} className="skeleton" style={{ height: 80, borderRadius: 'var(--radius-xl)' }} />
         ))}
-
         {!loading && error && (
-          <div style={{ textAlign: 'center', padding: 'var(--space-8)', color: 'var(--color-error)', fontSize: 'var(--text-sm)' }}>
-            {error}
-          </div>
+          <div style={{ textAlign: 'center', padding: 'var(--space-8)', color: 'var(--color-error)', fontSize: 'var(--text-sm)' }}>{error}</div>
         )}
-
         {!loading && !error && places.length === 0 && coords && (
           <div style={{ textAlign: 'center', padding: 'var(--space-16) var(--space-8)', color: 'var(--color-text-muted)' }}>
             <div style={{ fontSize: 40, marginBottom: 'var(--space-4)' }}>📍</div>
@@ -237,23 +191,21 @@ export default function HomePage() {
             <p style={{ fontSize: 'var(--text-sm)', maxWidth: '28ch', margin: '0 auto' }}>Essaie d&apos;augmenter le rayon de recherche.</p>
           </div>
         )}
-
         {!loading && places.map((place) => (
           <PlaceCard
             key={place.id}
             place={place}
+            isActive={selectedPlace?.id === place.id}
             onSelect={(p) => {
-              // Tap : sélectionne pour la boussole ET ouvre le détail
+              userClearedRef.current = false; // reset si l'utilisateur rechoisit manuellement
               setSelectedPlace(p);
               setDetailPlace(p);
             }}
-            isActive={selectedPlace?.id === place.id}
           />
         ))}
       </div>
 
       {detailPlace && <PlaceDetailSheet place={detailPlace} onClose={() => setDetailPlace(null)} />}
-
       <BottomNav />
     </main>
   );
